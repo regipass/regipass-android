@@ -1,0 +1,32 @@
+# Bu dosyayi `key.properties` adiyla kopyalayip degerleri doldurun.
+# Gercek dosya ve keystore .gitignore'dadir; parola depoya girmez.
+#
+# ── Keystore nasil uretilir ───────────────────────────────────────────
+# Bir kez uretilir ve ASLA kaybedilmemeli: Play Store'a ilk yuklemeden
+# sonra ayni anahtarla imzalanmayan guncelleme kabul edilmez. Yedegini
+# parola yoneticisinde saklayin.
+#
+#   keytool -genkey -v -keystore regipass-release.jks -storetype JKS ^
+#     -keyalg RSA -keysize 2048 -validity 10000 -alias regipass
+#
+# (keytool, JDK ile gelir. Android Studio kuruluysa:
+#  "C:\Program Files\Android\Android Studio\jbr\bin\keytool.exe")
+#
+# ── Uretimden SONRA yapilmasi zorunlu ─────────────────────────────────
+# Yayin anahtarinin SHA-1 ve SHA-256 parmak izlerini Firebase Console >
+# Proje ayarlari > app.regipass.mobile > "SHA sertifika parmak izleri"
+# altina EKLEYIN. Eklenmezse yayin yapisinda Google girisi
+# DEVELOPER_ERROR verir ve telefon dogrulamasi reCAPTCHA'ya duser.
+# Parmak izlerini gormek icin:
+#
+#   cd android && ./gradlew signingReport
+#
+# Ardindan google-services.json'i yeniden indirip android/app/ altina
+# koyun.
+
+# Keystore dosyasinin yolu. Goreli yazilirsa `android/` klasorune goredir;
+# mutlak yol da verilebilir. Dosyayi depo disinda tutmak daha guvenli.
+storeFile=C:/Users/5sana/Documents/Regipass-gizli/regipass-release.jks
+storePassword=
+keyAlias=regipass
+keyPassword=

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- ── Push Notifications ────────────────────────────────────────────
+	     Uygulama FCM kullanmıyor; bu yetenek TELEFON DOĞRULAMASI için
+	     gerekli. Firebase, SMS göndermeden önce isteğin gerçek cihazdan
+	     geldiğini sessiz bir APNs bildirimiyle doğrular (Android'deki Play
+	     Integrity'nin iOS karşılığı). Bu yetki ve Firebase Console'a
+	     yüklenmiş APNs anahtarı yoksa `verifyPhoneNumber` reCAPTCHA
+	     sayfasına düşer — bkz. docs/ios-kurulum.md.
+
+	     Değer "development" (APNs sandbox). App Store / TestFlight için
+	     dışa aktarırken Xcode bunu kendisi "production" yapar; elle
+	     değiştirmeyin. -->
+	<key>aps-environment</key>
+	<string>development</string>
+
+	<!-- ── Sign in with Apple ────────────────────────────────────────────
+	     `AuthRepository.signInWithApple` iOS'ta yerel Apple akışını
+	     (ASAuthorizationAppleIDProvider) çalıştırır. Bu yetki olmadan
+	     akış "The operation couldn't be completed. (com.apple.AuthenticationServices
+	     .AuthorizationError error 1000)" ile düşer.
+
+	     Ayrıca App Store Review Guideline 4.8 gereği: Google ile giriş
+	     sunan bir uygulama Apple ile girişi de sunmak zorunda. -->
+	<key>com.apple.developer.applesignin</key>
+	<array>
+		<string>Default</string>
+	</array>
+</dict>
+</plist>

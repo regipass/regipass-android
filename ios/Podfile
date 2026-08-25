@@ -1,0 +1,73 @@
+# Regipass iOS bağımlılıkları.
+#
+# Flutter bu dosyayı yoksa kendisi üretir; burada elle tutulmasının tek
+# sebebi aşağıdaki iki ayar. Şablonun geri kalanı Flutter 3.44 ile birebir
+# aynıdır, `flutter upgrade` sonrası şablon değişirse buradaki farkları
+# koruyarak güncelleyin.
+
+# ── 1. Dağıtım hedefi ────────────────────────────────────────────────────
+# Firebase eklentilerinin tamamı (core/auth/firestore/storage) iOS 15.0
+# istiyor. Bu satır açık olmazsa CocoaPods hedefi Runner'ın Xcode
+# ayarından okumaya çalışır ve sürüm uyuşmazlığında
+# "The platform of the target `Runner` (iOS 12.0) is not compatible with
+# `firebase_core`" ile durur. Runner.xcodeproj içindeki
+# IPHONEOS_DEPLOYMENT_TARGET ile aynı kalmalı.
+platform :ios, '15.0'
+
+# ── 2. file_picker alt seçicileri ────────────────────────────────────────
+# Uygulama yalnızca `FileType.custom` kullanıyor (PDF/JPEG/PNG) — yani
+# yalnızca belge seçici. Diğer ikisi kapatılınca:
+#   • PICKER_MEDIA=false → DKImagePickerController bağımlılığı hiç
+#     çekilmez (fotoğraf galerisi API'si zaten image_picker'da).
+#   • PICKER_AUDIO=false → MPMediaPickerController derlemeye girmez.
+#     Girseydi App Store, kullanılmasa bile NSAppleMusicUsageDescription
+#     açıklaması isterdi.
+# Not: Swift Package Manager açık bir makinede file_picker SPM üzerinden
+# gelir ve bu bayraklar geçersiz kalır (Package.swift üçünü de açık
+# tanımlıyor). O durumda ya `flutter config --no-enable-swift-package-manager`
+# ile bu proje için SPM kapatılmalı ya da Info.plist'e
+# NSAppleMusicUsageDescription eklenmeli.
+PICKER_MEDIA = false
+PICKER_AUDIO = false
+PICKER_DOCUMENT = true
+
+# CocoaPods analytics sends network stats synchronously affecting flutter build latency.
+ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+
+project 'Runner', {
+  'Debug' => :debug,
+  'Profile' => :release,
+  'Release' => :release,
+}
+
+def flutter_root
+  generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
+  unless File.exist?(generated_xcode_build_settings_path)
+    raise "#{generated_xcode_build_settings_path} must exist. If you're running pod install manually, make sure flutter pub get is executed first"
+  end
+
+  File.foreach(generated_xcode_build_settings_path) do |line|
+    matches = line.match(/FLUTTER_ROOT\=(.*)/)
+    return matches[1].strip if matches
+  end
+  raise "FLUTTER_ROOT not found in #{generated_xcode_build_settings_path}. Try deleting Generated.xcconfig, then run flutter pub get"
+end
+
+require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
+
+flutter_ios_podfile_setup
+
+target 'Runner' do
+  use_frameworks!
+
+  flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+  target 'RunnerTests' do
+    inherit! :search_paths
+  end
+end
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    flutter_additional_ios_build_settings(target)
+  end
+end

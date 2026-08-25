@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Açılış perdesinin zemini. Flutter tarafındaki karşılığı
+         BrandColors.white (bkz. lib/features/landing/splash_screen.dart);
+         ikisi aynı olmazsa ilk karede zemin rengi zıplıyor. -->
+    <color name="splash_background">#FFFFFFFF</color>
+
+    <!-- Yerel perdedeki işaretin rengi: BrandColors.redDark. -->
+    <color name="splash_mark">#FFBA181B</color>
+
+    <!-- Uygulama simgesinin zemin gradyanı: BrandColors.gradient
+         (linear-gradient(135deg, red, redDark)). Simge koyu modda da aynı
+         kaldığı için values-night'ta karşılığı YOK; buradaki iki renk
+         her temada geçerli. -->
+    <color name="ic_launcher_gradient_start">#FFE5383B</color>
+    <color name="ic_launcher_gradient_end">#FFBA181B</color>
+</resources>

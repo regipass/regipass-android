@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Regipass</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>Regipass</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(FLUTTER_BUILD_NAME)</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<!-- ── Geri dönüş adresi (OAuth callback) ────────────────────────────
+	     Aşağıdaki şema, iOS OAuth istemci kimliğinin ters çevrilmiş
+	     hâlidir (GoogleService-Info.plist'teki REVERSED_CLIENT_ID).
+	     İki ayrı akış buna muhtaç:
+
+	       1. Google ile giriş — hesap seçici Safari'de açılır, seçimden
+	          sonra uygulamaya bu şemayla döner. Kayıt yoksa seçici açılır
+	          ama geri dönemez, akış sessizce asılı kalır.
+	       2. Telefon doğrulamasının reCAPTCHA yedeği — APNs doğrulaması
+	          çalışmadığında Firebase bir web sayfası açar ve sonucu yine
+	          bu şemayla geri verir.
+
+	     Değer sabittir; iOS istemci kimliği değişmedikçe elle güncellenmez
+	     (bkz. lib/firebase_options.dart > ios > iosClientId). -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.738082064551-8ar660fj2b8j8sukqbhhkvfn3hhv62ts</string>
+			</array>
+		</dict>
+	</array>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<!-- Google Maps anahtarı; değeri Flutter/Maps.xcconfig'ten gelir. -->
+	<key>GMSApiKey</key>
+	<string>$(MAPS_API_KEY)</string>
+	<!-- ── Google ile giriş ──────────────────────────────────────────────
+	     google_sign_in eklentisi iOS'ta istemci kimliğini Dart tarafından
+	     ALMAZ: `initialize(serverClientId: ...)` çağrısında `clientId`
+	     verilmediği için eklenti yapılandırmayı kurmaz ve GoogleSignIn SDK
+	     bu iki anahtarı Info.plist'ten okur. Yani Android'de
+	     `AuthRepository._kServerClientId` neyse, iOS'ta karşılığı
+	     GIDServerClientID'dir.
+
+	       GIDClientID       → iOS OAuth istemcisi (Firebase oluşturdu)
+	       GIDServerClientID → web OAuth istemcisi; Firebase'in kabul
+	                           edeceği idToken bunun için üretilir
+
+	     Alternatif olarak projeye GoogleService-Info.plist eklenirse
+	     eklenti CLIENT_ID'yi oradan okur ve bu iki anahtar gereksizleşir;
+	     yine de açık yazmak, dosyanın unutulması hâlinde girişin sessizce
+	     bozulmasını engelliyor. -->
+	<key>GIDClientID</key>
+	<string>738082064551-8ar660fj2b8j8sukqbhhkvfn3hhv62ts.apps.googleusercontent.com</string>
+	<key>GIDServerClientID</key>
+	<string>738082064551-5h5e3jab4u4ndk580og5gkkfvj5p9m0f.apps.googleusercontent.com</string>
+	<!-- Uygulama yalnızca HTTPS kullanıyor; ihracat kısıtlamasından muaf.
+	     Bu anahtar olmadan App Store Connect her yüklemede "şifreleme
+	     kullanıyor musunuz?" sorusunu tekrar sorar ve yapı o cevap
+	     verilene kadar TestFlight'a düşmez. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<!-- Profil fotoğrafı seçimi (image_picker). Bu açıklamalar olmadan
+	     seçici açıldığı anda uygulama kapanır. -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Profil fotoğrafını seçebilmen için fotoğraflarına erişim gerekiyor.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Profil fotoğrafı çekebilmen ve etkinlik QR kodlarını okutabilmen için kameraya erişim gerekiyor.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Etkinlik konumunu seçebilmek ve etkinlik girişini doğrulayabilmek için konumun kullanılıyor.</string>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneClassName</key>
+					<string>UIWindowScene</string>
+					<key>UISceneConfigurationName</key>
+					<string>flutter</string>
+					<key>UISceneDelegateClassName</key>
+					<string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+					<key>UISceneStoryboardFile</key>
+					<string>Main</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<!-- Telefon doğrulaması: Firebase, SMS göndermeden önce uygulamaya
+	     GÖRÜNMEZ bir push bildirimi yollayıp cevabını bekler. Bu mod
+	     olmadan bildirim işlenemez, doğrulama reCAPTCHA sayfasına düşer.
+	     Uygulamanın kendi bildirimleri (etkinlik hatırlatmaları) cihazda
+	     üretiliyor, buraya ihtiyaç duymuyor. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIMainStoryboardFile</key>
+	<string>Main</string>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+</dict>
+</plist>

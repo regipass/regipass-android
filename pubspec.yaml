@@ -1,0 +1,73 @@
+name: regipass
+description: "Regipass - üniversite kulüp etkinlik platformu (mobil)."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # ── Firebase ────────────────────────────────────────────────────────
+  # Web tarafındaki js/core/firebase.js karşılığı: Auth + Firestore + Storage.
+  firebase_core: ^4.1.1
+  firebase_auth: ^6.1.0
+  cloud_firestore: ^6.0.2
+  firebase_storage: ^13.0.2
+  google_sign_in: ^7.1.1
+
+  # ── Durum yönetimi & yönlendirme ────────────────────────────────────
+  # onSnapshot dinleyicileri StreamProvider'a, sayfa yönlendirmeleri
+  # (window.location.href) go_router redirect guard'larına karşılık gelir.
+  flutter_riverpod: ^3.0.1
+  go_router: ^17.0.0
+
+  # ── QR ──────────────────────────────────────────────────────────────
+  # Okuma: qr-scan-engine.js (BarcodeDetector/jsQR) karşılığı.
+  # Üretim: web ile aynı şekilde api.qrserver.com görseli kullanılır.
+  mobile_scanner: ^7.1.2
+
+  # ── Harita ──────────────────────────────────────────────────────────
+  # Etkinlik konumu seçici. Mobilde Maps SDK kullanımı ücretsiz ve
+  # sınırsızdır; anahtar android/local.properties'ten okunur (bkz.
+  # android/app/build.gradle.kts).
+  google_maps_flutter: ^2.13.1
+
+  # ── Cihaz yetenekleri ───────────────────────────────────────────────
+  geolocator: ^14.0.2          # navigator.geolocation
+  image_picker: ^1.1.2         # profil fotoğrafı / etkinlik görseli
+  file_picker: ^10.3.4         # kulüp belgeleri (PDF/JPEG/PNG)
+  shared_preferences: ^2.5.3   # role-session.js (localStorage/sessionStorage)
+
+  # ── Yardımcılar ─────────────────────────────────────────────────────
+  crypto: ^3.0.6               # phone_hints anahtarı için SHA-256
+  flutter_svg: ^2.2.1          # marka sembolü (assets/brand/regipass_mark.svg)
+  intl: ^0.20.2                # Intl.DateTimeFormat("tr-TR") karşılığı
+  http: ^1.5.0                 # Photon/Nominatim geocoding
+  url_launcher: ^6.3.1
+  connectivity_plus: ^7.3.1
+  pdfx: ^2.9.2
+  # Katılımcı listesini Excel dosyası olarak dışa aktarma (web'deki
+  # `downloadStudentsAsExcel` karşılığı). Mobilde tarayıcı indirmesi yok:
+  # dosya geçici dizine yazılıp paylaşım sayfasına verilir.
+  path_provider: ^2.1.5
+  share_plus: ^12.0.0
+  flutter_local_notifications: ^22.3.0
+  timezone: ^0.11.1
+  flutter_timezone: ^5.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/brand/

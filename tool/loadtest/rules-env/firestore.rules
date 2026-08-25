@@ -1,0 +1,561 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Yonetici (admin) hesabinin UID'si.
+    // ADIM: Firebase Console > Authentication bolumunde a@regipass.app
+    // hesabini olusturduktan sonra UID'sini kopyalayip asagiya yapistir.
+    function isAdmin() {
+      return isSignedIn()
+        && request.auth.uid == "AY1gi7Zi9AcqhjZinEkR1baB9T72";
+    }
+
+    function userData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isClubUser() {
+      return isSignedIn()
+        && (
+          userData().role == "club"
+          || userData().lastRole == "club"
+        );
+    }
+
+    function eventDoc(eventId) {
+      return get(/databases/$(database)/documents/events/$(eventId));
+    }
+
+    // Gecici tanilama modu:
+    // true iken event_registrations create/update icin event kosullari bypass edilir.
+    // Sorun cozulunce mutlaka false yap.
+    function registrationDebugMode() {
+      return true;
+    }
+
+    match /users/{userId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+    }
+
+    // Telefon dogrulamasi: phoneVerified yalnizca gercek Firebase Auth telefon
+    // baglamasi sonrasinda (ID token'daki phone_number iddiasi, profildeki phone
+    // alaniyla eslesirse) true yazilabilir. Boylece istemci tarafindan sahte
+    // "phoneVerified: true" yazilmasi engellenir (token sunucu tarafinda dogrulanir).
+    // DIKKAT: request.resource.data, GUNCELLEMEDE yazilan alanlari degil BIRLESMIS
+    // (merge sonrasi) belgeyi temsil eder. Yani istemci phoneVerified'a hic
+    // dokunmasa bile, belgede zaten varsa alan burada GORUNUR. Bu yuzden
+    // "alan istekte var mi" kontrolu tek basina yetmez.
+    //
+    // Bu fonksiyon: telefon numarasi VE dogrulama bayragi ikisi de aynen
+    // korunuyorsa (kullanici sadece isim/bolum/fotograf gibi baska alanlari
+    // guncelliyorsa) yazmanin telefon dogrulamasiyla hicbir ilgisi yoktur.
+    // Bu dal olmadan, telefonu dogrulanmis HER ogrencinin her profil
+    // guncellemesi taze bir phone_number iddiasi gerektirir ve reddedilir.
+    function phoneFieldsUnchanged() {
+      return resource != null
+        && ("phoneVerified" in resource.data)
+        && ("phone" in resource.data)
+        && ("phone" in request.resource.data)
+        && resource.data.phoneVerified == request.resource.data.phoneVerified
+        && resource.data.phone == request.resource.data.phone;
+    }
+
+    function phoneVerificationValid() {
+      // Alan hic dokunulmadiysa (baska bir kayit akisi phoneVerified'i degistirmiyorsa) serbest.
+      // Telefon ve dogrulama bayragi aynen korunuyorsa da serbest (bkz. phoneFieldsUnchanged).
+      // Degisiyorsa MUTLAKA boolean olmali (string/number gibi sahte "true" degerleri reddedilir).
+      // false yazmak her zaman serbesttir; true yazmak icin ID token'daki phone_number
+      // iddiasi (yalnizca gercek Firebase Auth telefon baglamasindan sonra olusur)
+      // profildeki phone alaniyla birebir eslesmelidir.
+      return !("phoneVerified" in request.resource.data)
+        || phoneFieldsUnchanged()
+        || (
+          request.resource.data.phoneVerified is bool
+          && (
+            request.resource.data.phoneVerified == false
+            || (
+              request.auth.token.phone_number is string
+              && request.resource.data.phone is string
+              && request.auth.token.phone_number == request.resource.data.phone
+            )
+          )
+        );
+    }
+
+    // ── Dogrulanmamis kaydin omru ("expireAt") ────────────────────────────
+    // "expireAt", Firestore TTL politikasinin okudugu tarihtir: tarih gecince
+    // belge KENDILIGINDEN silinir (bkz. firestore.indexes.json > fieldOverrides
+    // ve js/modules/auth/account-expiry.js). Telefonunu 3 gun icinde
+    // dogrulamayan ogrenci kaydi boylece veritabaninda kalmaz.
+    //
+    // Tarih istemcide hesaplanir (TTL gercek bir zaman damgasi ister,
+    // serverTimestamp'a gun eklenemez), bu yuzden burada TAVAN uygulanir; aksi
+    // halde bir istemci cok ileri bir tarih yazip silinmekten kurtulabilirdi.
+    //
+    // Tavan neden 3 degil 7 gun: kullanicinin sistem saati bozuksa dogru niyetli
+    // bir KAYIT ISLEMI reddedilmemeli. 7 gun, saati birkac gun ileri olan gercek
+    // kullaniciyi kirmadan kotuye kullanimi kisa tutar.
+    function expiryDeadlineValid() {
+      return !("expireAt" in request.resource.data)
+        || (
+          request.resource.data.expireAt is timestamp
+          && request.resource.data.expireAt < request.time + duration.value(7, 'd')
+        );
+    }
+
+    // Sure yalnizca telefon DOGRULANDIGINDA kaldirilabilir; dogrulanmamis bir
+    // kayit kendi silinme tarihini silemez. (phoneVerified == true yazmak zaten
+    // gercek bir phone_number iddiasi gerektirir, bkz. phoneVerificationValid.)
+    function expiryNotDropped() {
+      return !(resource != null && "expireAt" in resource.data)
+        || ("expireAt" in request.resource.data)
+        || (
+          "phoneVerified" in request.resource.data
+          && request.resource.data.phoneVerified == true
+        );
+    }
+
+    // Ogrenci profilleri: sahibi tam erisim (telefon dogrulama korumasiyla);
+    // admin istatistik/ban ekranlari icin okuma+yazma (kulup profilleriyle ayni desen).
+    match /student_profiles/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create, update: if isAdmin()
+        || (
+          isOwner(userId)
+          && phoneVerificationValid()
+          && expiryDeadlineValid()
+          && expiryNotDropped()
+        );
+      allow delete: if isOwner(userId);
+    }
+
+    // Kulup profilleri: sahibi tam erisim (telefon dogrulama korumasiyla); admin onay/engelleme icin okuma+yazma.
+    match /club_profiles/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create, update: if isAdmin() || (isOwner(userId) && phoneVerificationValid());
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    // ── Telefon ipuclari (sifre sifirlama ekrani icin) ────────────────────
+    // Anahtar: e-postanin SHA-256'si. Icerik: SADECE maskelenmis metin
+    // ("+90 XXX XXX XX 67"). Tam numara, e-posta veya baska profil alani
+    // BURADA TUTULMAZ (bkz. js/modules/auth/phone-hint.js).
+    //
+    // get  : acik — sifresini unutmus kullanici giris YAPMAMIS durumdadir,
+    //        kendi ipucunu okuyabilmesi icin baska yol yok.
+    // list : KAPALI — koleksiyon listelenip toplu numara taramasi yapilamaz;
+    //        yalnizca tam anahtari (e-posta hash'ini) bilen tek tek okuyabilir.
+    //
+    // Kurallar hash hesaplayamadigi icin "anahtar gercekten bu kullanicinin
+    // e-postasina mi ait" dogrulanamaz; yani giris yapmis bir kullanici baska
+    // bir anahtarin ipucunun uzerine yazabilir. Bu YALNIZCA GORSEL bir etkidir:
+    // dogrulama SMS'i her zaman Firebase Auth'a bagli gercek numaraya gider,
+    // bu yuzden guvenlik sinirini degistirmez. Kotuye kullanimi sinirlamak icin
+    // yazilabilecek alanlar ve uzunluk asagida kisitlanmistir.
+    match /phone_hints/{emailHash} {
+      allow get: if true;
+      allow list: if false;
+
+      allow create, update: if isSignedIn()
+        && request.resource.data.keys().hasOnly(["maskedPhone", "updatedAt"])
+        && request.resource.data.maskedPhone is string
+        && request.resource.data.maskedPhone.size() <= 40;
+
+      allow delete: if false;
+    }
+
+    // ── Telefon sahiplik kaydi (numara teklik kontrolu) ───────────────────
+    // Anahtar: E.164 numara ("+905551234567"). Icerik: SADECE sahibin uid'si.
+    // Amaci, kullanici numarayi YAZARKEN "bu numara baskasina ait" uyarisini
+    // verebilmek (bkz. js/modules/auth/phone-registry.js).
+    //
+    // get  : giris yapmis kullaniciya acik — profil koleksiyonlari bilerek
+    //        yalnizca sahibine acik oldugu icin teklik baska turlu sorulamaz.
+    // list : KAPALI — koleksiyon listelenip toplu numara/uid taramasi yapilamaz.
+    //
+    // YAZMA SINIRI: kayit ancak ID token'indaki phone_number iddiasi belge
+    // kimligiyle BIREBIR eslesirse yazilabilir. Yani bir kullanici yalnizca
+    // Firebase Auth'ta GERCEKTEN dogruladigi numarayi kaydedebilir; baskasinin
+    // numarasini rezerve edip o kisinin kaydolmasini engelleyemez.
+    //
+    // Var olan bir kaydin UZERINE YAZILABILIR: Firebase Auth bir numarayi ayni
+    // anda tek hesaba baglar, dolayisiyla token'inda o numara olan kullanici
+    // numaranin GUNCEL sahibidir. Eski sahibin kaydi (ör. birakma yazmasi
+    // basarisiz oldugu icin) duruyorsa bu, yeni sahibi kilitlememelidir.
+    match /phone_owners/{phoneNumber} {
+      // "verified": numara Firebase Auth'ta GERCEKTEN bu hesaba bagli.
+      // Kanit, ID token'indaki phone_number iddiasidir — sahtelenemez, bu yuzden
+      // her kaydin (baskasinin eski kaydi dahil) uzerine yazabilir. Firebase Auth
+      // bir numarayi ayni anda tek hesaba bagladigi icin bu dogrudur.
+      function isVerifiedClaim() {
+        return request.resource.data.status == "verified"
+          && request.auth.token.phone_number is string
+          && request.auth.token.phone_number == phoneNumber;
+      }
+
+      // "pending": numaraya SMS gonderildi, kod henuz onaylanmadi. Kanit
+      // TASIMAZ — bu yuzden yalnizca 15 dakika gecerlidir ve suresi dolunca
+      // baskasi ayni numarayi rezerve edebilir. Boylece kimse bir numarayi
+      // suresiz kilitleyip baskasinin kaydolmasini engelleyemez.
+      function pendingExpired() {
+        return resource.data.status == "pending"
+          && resource.data.updatedAt is timestamp
+          && request.time > resource.data.updatedAt + duration.value(15, 'm');
+      }
+
+      function canReserve() {
+        return request.resource.data.status == "pending"
+          && (
+            resource == null
+            || resource.data.uid == request.auth.uid
+            || pendingExpired()
+          );
+      }
+
+      allow get: if isSignedIn();
+      allow list: if false;
+
+      // updatedAt'in serverTimestamp olmasi SART: aksi halde istemci ileri
+      // tarihli bir damga yazip rezervasyonunu sonsuza kadar taze gosterebilirdi.
+      allow create, update: if isSignedIn()
+        && request.resource.data.keys().hasOnly(["uid", "status", "updatedAt"])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.updatedAt == request.time
+        && (isVerifiedClaim() || canReserve());
+
+      // Numara degistirilince ya da dogrulamadan vazgecilince kayit birakilir —
+      // yalnizca sahibi silebilir.
+      allow delete: if isSignedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    match /events/{eventId} {
+      // Giris yapmis kullanici: eskisi gibi tum etkinlikleri okuyabilir.
+      // Misafir (mobil "Kesfet" ekrani): yalnizca gizlenmemis etkinlikler.
+      //
+      // ONEMLI: Firestore'da sorgu izni donen belgelere degil SORGUNUN
+      // kendisine bakar. Kuralin resource.data'ya bagli tarafi, ancak sorgu
+      // ayni alani filtreliyorsa gecer. Bu yuzden misafir tarafi
+      //     where('hiddenGlobally', isEqualTo: false)
+      // ile sorgulamak ZORUNDA. isSignedIn() dali ise belgeden bagimsiz
+      // oldugu icin girisli kullanicinin filtresiz sorgusu calismaya devam
+      // eder (ogrenci paneli boyle sorguluyor).
+      //
+      // NOT: Bu kural etkinlik dokumanini misafire tumuyle acar; icinde
+      // locationLat/locationLng (etkinligin tam GPS konumu), quota ve
+      // feeAmount da var. Katilimci listesi (event_registrations) ve
+      // profiller etkilenmez, onlarin kurallari ayri.
+      allow read: if isSignedIn() || resource.data.hiddenGlobally == false;
+
+      allow create: if isClubUser() && request.resource.data.clubId == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.clubId == request.auth.uid;
+    }
+
+    // ── Kontenjan parcalari (sharded counter) ─────────────────────────────
+    // events/{eventId}/quota_shards/{0..S-1}  ->  { count, capacity }
+    //
+    // NEDEN VAR: kontenjani korumak, kaydi bir sayacla BIRLIKTE atomik
+    // yazmayi gerektirir. Sayac tek dokumanda tutulursa o dokuman butun
+    // etkinligin darbogazi olur (Firestore'da tek dokumana surdurulebilir
+    // yazma: saniyede ~1). Yuk testinde tek sayacli kurulum 100 eszamanli
+    // kayitta %99 hata verdi. Kapasiteler parcalara bolunur; toplamlari TAM
+    // OLARAK kontenjandir, boylece ne asim ne eksik olur.
+    // Bkz. lib/domain/registration_capacity.dart, tool/loadtest/
+    match /events/{eventId}/quota_shards/{shardId} {
+      function eventPath() {
+        return /databases/$(database)/documents/events/$(eventId);
+      }
+
+      // Parcalar etkinlikle AYNI toplu yazimda kuruluyor (atomik olmasi
+      // gerekir: parcasiz ama "parcali" gorunen bir etkinlik, kaydolmaya
+      // calisan herkese "kontenjan doldu" derdi). O anda etkinlik dokumani
+      // HENUZ YOKTUR, bu yuzden get() degil getAfter(): islem bittiginde
+      // olusacak hale bakiyoruz. Etkinligin degismedigi normal durumlarda
+      // getAfter zaten mevcut hali dondurur.
+      function isEventOwnerAfter() {
+        return isSignedIn()
+          && existsAfter(eventPath())
+          && getAfter(eventPath()).data.clubId == request.auth.uid;
+      }
+
+      function isEventOwner() {
+        return isSignedIn()
+          && exists(eventPath())
+          && get(eventPath()).data.clubId == request.auth.uid;
+      }
+
+      // Ogrencinin BU etkinlikteki kaydinin yolu. Kimlik deterministik
+      // oldugu icin (eventId + "_" + uid) kurallar da hesaplayabiliyor.
+      function myRegistration() {
+        return /databases/$(database)/documents/event_registrations/$(eventId + "_" + request.auth.uid);
+      }
+
+      allow read: if isSignedIn();
+
+      // Parcalari YALNIZCA etkinligin sahibi kulup kurar ve siler. Istemciye
+      // parca yaratma izni verilseydi kapasiteyi kendisi belirler, kontenjan
+      // diye bir sey kalmazdi.
+      allow create: if isEventOwnerAfter();
+      allow delete: if isEventOwner();
+
+      allow update: if isEventOwner()
+        || (
+          isSignedIn()
+          && request.resource.data.keys().hasOnly(["count", "capacity"])
+          // Kapasite ASLA istemciden degismez.
+          && request.resource.data.capacity == resource.data.capacity
+          && (
+            // YER KAPMA: sayac tam +1 ve kapasiteyi asmiyor. Sart, islem
+            // BITTIGINDE ogrencinin kaydinin gercekten var olmasi ve bu
+            // parcayi gostermesi — yani kayit yazmadan sayac artirilamaz.
+            (
+              request.resource.data.count == resource.data.count + 1
+              && request.resource.data.count <= resource.data.capacity
+              && existsAfter(myRegistration())
+              && getAfter(myRegistration()).data.quotaShard == int(shardId)
+            )
+            ||
+            // YER BIRAKMA: sayac tam -1. Sart, islem BITTIGINDE kaydin
+            // silinmis olmasi — kimse kaydini silmeden yer acamaz, yani
+            // sayaci dusurup kontenjani sisirmek mumkun degil.
+            (
+              request.resource.data.count == resource.data.count - 1
+              && request.resource.data.count >= 0
+              && !existsAfter(myRegistration())
+            )
+          )
+        );
+    }
+
+    match /event_registrations/{registrationId} {
+      function clubCanReadRegistration() {
+        return isClubUser()
+          && eventDoc(resource.data.eventId).data != null
+          && eventDoc(resource.data.eventId).data.clubId == request.auth.uid;
+      }
+
+      function clubCanMarkCheckIn() {
+        return isClubUser()
+          && eventDoc(resource.data.eventId).data != null
+          && eventDoc(resource.data.eventId).data.clubId == request.auth.uid
+          && request.resource.data.eventId == resource.data.eventId
+          && request.resource.data.studentId == resource.data.studentId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "checkedInAt",
+            "checkedInAtMs",
+            "checkedInByClubId",
+            "updatedAt",
+            "sessionsAttended",
+            "lastSessionCheckInAtMs",
+            "lastAttendedSession"
+          ])
+          && request.resource.data.checkedInByClubId == request.auth.uid
+          && request.resource.data.checkedInAtMs is int
+          && request.resource.data.checkedInAtMs > 0;
+      }
+
+      // Ogrenci, kulubun ekrana bastigi oturum QR'ini kendi kamerasindan
+      // okuttugunda SADECE KENDI kaydindaki oturum alanlarini gunceller.
+      // Kopyalama/hile onlemleri:
+      //  - lastAttendedSession, etkinligin O ANKI currentSession'ina esit olmali
+      //    (eski/gelecek bir QR kabul edilmez).
+      //  - lastAttendedSession bir onceki degerinden KESINLIKLE buyuk olmali
+      //    (ayni oturumu ikinci kez bildirip sayim artiramaz).
+      //  - sessionsAttended tam olarak +1 artmali (toplu/sahte artis engellenir).
+      //  - checkedInByClubId bu yoldan YAZILAMAZ (kulup dogrulamasi degil,
+      //    ogrenci kendi kendine giris yaptigi ayirt edilsin).
+      function studentCanMarkOwnSessionCheckIn() {
+        return isSignedIn()
+          && resource.data.studentId == request.auth.uid
+          && request.resource.data.eventId == resource.data.eventId
+          && request.resource.data.studentId == resource.data.studentId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "checkedInAt",
+            "checkedInAtMs",
+            "sessionsAttended",
+            "lastSessionCheckInAtMs",
+            "lastAttendedSession",
+            "updatedAt"
+          ])
+          && eventDoc(resource.data.eventId).data != null
+          && eventDoc(resource.data.eventId).data.sessionsCompleted != true
+          && request.resource.data.lastAttendedSession == eventDoc(resource.data.eventId).data.currentSession
+          && request.resource.data.lastAttendedSession
+              > (resource.data.lastAttendedSession is int ? resource.data.lastAttendedSession : 0)
+          && request.resource.data.sessionsAttended
+              == (resource.data.sessionsAttended is int ? resource.data.sessionsAttended : 0) + 1
+          && request.resource.data.checkedInAtMs is int
+          && request.resource.data.checkedInAtMs > 0;
+      }
+
+      // Ogrenci profilini guncelledikten sonra KENDI kayitlarindaki kisisel
+      // bilgi kopyasini tazeler. Kulup student_profiles'i okuyamadigi icin
+      // Excel ciktisi ve sertifikaya islenen ad bu kopyadan gelir; kopya
+      // tazelenmezse belge her zaman ESKI adla uretilir.
+      //
+      // Bu dal bilerek hedef-kitle (scope) kontrolu YAPMAZ: ogrenci bolumunu
+      // degistirdiginde artik kapsam disinda kalabilir, ama zaten kayitli
+      // oldugu etkinligin katilimci listesindeki adi yine de dogru olmalidir.
+      // Yalnizca asagidaki kisisel alanlar degisebilir; eventId, studentId,
+      // yoklama ve oturum alanlari bu yoldan DOKUNULAMAZ.
+      function studentCanRefreshOwnSnapshot() {
+        return isSignedIn()
+          && resource != null
+          && resource.data.studentId == request.auth.uid
+          && request.resource.data.studentId == resource.data.studentId
+          && request.resource.data.eventId == resource.data.eventId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "studentName",
+            "studentFirstName",
+            "studentLastName",
+            "studentEmail",
+            "studentPhone",
+            "studentUniversity",
+            "studentDepartment",
+            "studentClassYear",
+            "studentNumber",
+            "studentCity",
+            "studentDistrict",
+            "profileSyncedAtMs",
+            "updatedAt"
+          ]);
+      }
+
+      function registrationPayloadValid() {
+        return request.resource.data.studentId == request.auth.uid
+          && request.resource.data.eventId is string
+          && registrationId == request.resource.data.eventId + "_" + request.auth.uid;
+      }
+
+      function targetEventAllowsRegistration() {
+        return eventDoc(request.resource.data.eventId).data != null
+          && eventDoc(request.resource.data.eventId).data.hiddenGlobally != true
+          && eventDoc(request.resource.data.eventId).data.registrationClosed != true;
+      }
+
+      // ── Hedef kitle (kapsam) kontrolu ────────────────────────────────────
+      // Etkinlik "sadece universiteye" ya da "sadece bolume/bolum+universiteye"
+      // ozelse, sartlari karsilamayan ogrenci KAYIT OLAMAZ. Istemci ayni
+      // kontrolu yapar (canStudentSeeEvent) ama asil sinir burasidir;
+      // registrationDebugMode bu kontrolu BYPASS ETMEZ.
+      function studentProfileData() {
+        return get(/databases/$(database)/documents/student_profiles/$(request.auth.uid)).data;
+      }
+
+      function eventTargetDepartments(eventData) {
+        return ("targetDepartments" in eventData && eventData.targetDepartments is list)
+          ? eventData.targetDepartments
+          : (
+            ("targetDepartment" in eventData
+              && eventData.targetDepartment is string
+              && eventData.targetDepartment != "")
+              ? [eventData.targetDepartment]
+              : []
+          );
+      }
+
+      function studentMatchesDepartment(eventData) {
+        return eventTargetDepartments(eventData).hasAny([studentProfileData().department]);
+      }
+
+      function studentMatchesUniversity(eventData) {
+        return "targetUniversity" in eventData
+          && eventData.targetUniversity is string
+          && eventData.targetUniversity != ""
+          && eventData.targetUniversity == studentProfileData().university;
+      }
+
+      // Eski kayitlarda "department" kapsami bolum + universite demekti
+      // (targetDepartments dizisi yoktu, targetUniversity doluydu).
+      function isLegacyDepartmentUniversityScope(eventData) {
+        return !("targetDepartments" in eventData)
+          && "targetUniversity" in eventData
+          && eventData.targetUniversity is string
+          && eventData.targetUniversity != "";
+      }
+
+      function studentMeetsEventScope(eventData) {
+        return !("targetScope" in eventData)
+          || eventData.targetScope == "public"
+          || (
+            eventData.targetScope == "university"
+            && studentMatchesUniversity(eventData)
+          )
+          || (
+            eventData.targetScope == "department_university"
+            && studentMatchesUniversity(eventData)
+            && studentMatchesDepartment(eventData)
+          )
+          || (
+            eventData.targetScope == "department"
+            && studentMatchesDepartment(eventData)
+            && (
+              !isLegacyDepartmentUniversityScope(eventData)
+              || studentMatchesUniversity(eventData)
+            )
+          );
+      }
+
+      function studentEligibleForTargetEvent() {
+        return eventDoc(request.resource.data.eventId).data != null
+          && studentMeetsEventScope(eventDoc(request.resource.data.eventId).data);
+      }
+
+      allow read: if isSignedIn()
+        && (
+          resource.data.studentId == request.auth.uid
+          || clubCanReadRegistration()
+        );
+
+      allow create: if isSignedIn()
+        && registrationPayloadValid()
+        && studentEligibleForTargetEvent()
+        && (
+          registrationDebugMode()
+          || targetEventAllowsRegistration()
+        );
+
+      allow update: if (
+          isSignedIn()
+          && registrationPayloadValid()
+          && studentEligibleForTargetEvent()
+          && (
+            registrationDebugMode()
+            || targetEventAllowsRegistration()
+          )
+        )
+        || clubCanMarkCheckIn()
+        || studentCanMarkOwnSessionCheckIn()
+        || studentCanRefreshOwnSnapshot();
+
+      allow delete: if isSignedIn()
+        && (
+          resource.data.studentId == request.auth.uid
+          || clubCanReadRegistration()
+        );
+    }
+
+    // Ogrenci belgeleri/sertifikalari: kulup olusturur (dagitir),
+    // ogrenci kendi belgesini goruntuler ve silebilir.
+    match /student_certificates/{certificateId} {
+      allow read: if isSignedIn()
+        && (resource.data.studentId == request.auth.uid || resource.data.clubId == request.auth.uid);
+
+      allow create, update: if isSignedIn()
+        && request.resource.data.clubId == request.auth.uid;
+
+      allow delete: if isSignedIn()
+        && (resource.data.studentId == request.auth.uid || resource.data.clubId == request.auth.uid);
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

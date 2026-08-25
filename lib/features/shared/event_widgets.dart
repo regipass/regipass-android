@@ -1,0 +1,807 @@
+import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../../app/theme.dart';
+import '../../domain/event_utils.dart';
+import '../../l10n/app_strings.dart';
+import '../../models/event.dart';
+import 'common_widgets.dart';
+
+/// Etkinlik kartı ve detay penceresinin ortak parçaları.
+///
+/// Öğrenci ve kulüp tarafı aynı etkinlik verisini gösteriyor; tek fark alt
+/// eylem çubuğu (öğrencide kayıt, kulüpte yönetim). Bu yüzden görsel yapı
+/// burada bir kez kuruluyor, eylemler dışarıdan veriliyor.
+
+/// dashboard.js#getScopeLabel
+String eventScopeLabel(BuildContext context, String targetScope) =>
+    switch (targetScope) {
+      'university_department' => context.t('dashboard.scope.department'),
+      'department' => context.t('dashboard.scope.departmentOnly'),
+      'university' => context.t('dashboard.scope.university'),
+      _ => context.t('dashboard.scope.all'),
+    };
+
+/// dashboard.js#getPriorityLabel
+String eventPriorityLabel(BuildContext context, int priority) =>
+    switch (priority) {
+      0 => context.t('dashboard.priority.departmentUniversity'),
+      1 => context.t('dashboard.priority.university'),
+      2 => context.t('dashboard.priority.departmentRelated'),
+      _ => context.t('dashboard.priority.general'),
+    };
+
+/// club-events.js#getStatusLabel — üç durum: geçmiş / kapalı / açık.
+({String label, FeedbackTone tone}) eventStatus(
+  BuildContext context,
+  AppEvent event,
+) {
+  if (isPastEvent(event)) {
+    return (
+      label: context.t('dashboard.status.expired'),
+      tone: FeedbackTone.error,
+    );
+  }
+  if (event.registrationClosed) {
+    return (
+      label: context.t('clubEvents.status.closed'),
+      tone: FeedbackTone.info,
+    );
+  }
+  return (label: context.t('dashboard.status.open'), tone: FeedbackTone.success);
+}
+
+/// Liste kartı.
+class EventSummaryCard extends StatelessWidget {
+  const EventSummaryCard({
+    required this.event,
+    required this.onTap,
+    this.priority,
+    this.statusOverride,
+    this.footer,
+    super.key,
+  });
+
+  final AppEvent event;
+  final VoidCallback onTap;
+
+  /// Verilirse öncelik etiketi de gösterilir (keşif akışları).
+  final int? priority;
+
+  /// Kayıt durumu gibi çağırana özel bir rozet.
+  final ({String label, FeedbackTone tone})? statusOverride;
+
+  /// Kartın altına eklenen eylem satırı (kulüp tarafında düzenle/sil).
+  final Widget? footer;
+
+  @override
+  Widget build(BuildContext context) {
+    final ({String label, FeedbackTone tone}) status =
+        statusOverride ?? eventStatus(context, event);
+
+    return Card(
+      child: InkWell(
+        onTap: onTap,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            EventImage(url: event.displayImageUrl),
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: Text(
+                          event.title,
+                          style: Theme.of(context).textTheme.titleMedium,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      StatusPill(label: status.label, tone: status.tone),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  EventMetaRow(
+                    icon: Icons.groups_outlined,
+                    text: event.clubName.isNotEmpty
+                        ? event.clubName
+                        : context.t('dashboard.clubFallback'),
+                  ),
+                  EventMetaRow(
+                    icon: Icons.calendar_today_outlined,
+                    text: formatDeadline(
+                      event.deadlineAtMs,
+                      locale: context.lang,
+                    ),
+                  ),
+                  if (event.locationName.isNotEmpty)
+                    EventMetaRow(
+                      icon: Icons.place_outlined,
+                      text: event.locationName,
+                    ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: <Widget>[
+                      StatusPill(
+                        label: eventScopeLabel(context, event.targetScope),
+                      ),
+                      if (priority != null)
+                        StatusPill(
+                          label: eventPriorityLabel(context, priority!),
+                        ),
+                      if (event.isMultiSession)
+                        StatusPill(
+                          label: context.t(
+                            'eventModal.sessionsValue',
+                            <String, Object?>{'count': event.sessionCount},
+                          ),
+                        ),
+                    ],
+                  ),
+                  if (footer != null) ...<Widget>[
+                    const SizedBox(height: 12),
+                    footer!,
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class EventMetaRow extends StatelessWidget {
+  const EventMetaRow({required this.icon, required this.text, super.key});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 3),
+        child: Row(
+          children: <Widget>[
+            Icon(icon, size: 14, color: context.inkMuted),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                text,
+                style: Theme.of(context).textTheme.bodySmall,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+/// Modal içindeki bölüm başlığı — solunda kısa bir marka çubuğu.
+class EventSectionTitle extends StatelessWidget {
+  const EventSectionTitle(this.text, {super.key});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        children: <Widget>[
+          Container(
+            width: 3,
+            height: 15,
+            decoration: BoxDecoration(
+              color: BrandColors.red,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 14.5,
+              fontWeight: FontWeight.w700,
+              color: context.ink,
+            ),
+          ),
+        ],
+      );
+}
+
+/// Etkinliği düzenleyen kulübün kimlik kartı: ad + kısa bilgi baloncukları.
+class EventClubHeader extends StatelessWidget {
+  const EventClubHeader({required this.event, super.key});
+
+  final AppEvent event;
+
+  @override
+  Widget build(BuildContext context) {
+    final String name = event.clubName.isNotEmpty
+        ? event.clubName
+        : context.t('dashboard.clubFallback');
+
+    final List<String> facts = <String>[
+      ...eventClubFields(event).where((String f) => f.isNotEmpty),
+      if (event.clubUniversity.isNotEmpty) event.clubUniversity,
+    ];
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        // Kulübün kimliği başta logosuyla temsil edilir; logo yüklememiş
+        // kulüplerde ClubLogoBox marka gradyanlı grup simgesine düşer.
+        ClubLogoBox(logoUrl: event.clubLogoUrl),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: context.ink,
+                ),
+              ),
+              if (facts.isNotEmpty) ...<Widget>[
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: <Widget>[
+                    for (final String fact in facts) EventBubble(text: fact),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Kırmızının en soluk tonunda küçük bilgi baloncuğu.
+class EventBubble extends StatelessWidget {
+  const EventBubble({required this.text, super.key});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: BrandColors.red.withValues(
+          alpha: context.isDarkMode ? 0.18 : 0.09,
+        ),
+        borderRadius: BorderRadius.circular(BrandShape.pillRadius),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 11.5,
+          fontWeight: FontWeight.w600,
+          color: context.brandInk,
+        ),
+      ),
+    );
+  }
+}
+
+/// Etiket/değer çiftlerinden oluşan bilgi bloğu.
+class EventInfoTable extends StatelessWidget {
+  const EventInfoTable({required this.rows, super.key});
+
+  final List<({IconData icon, String label, String value})> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: context.subtleFill,
+        borderRadius: BorderRadius.circular(BrandShape.controlRadius),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      child: Column(
+        children: <Widget>[
+          for (int i = 0; i < rows.length; i++) ...<Widget>[
+            if (i > 0)
+              Divider(
+                height: 1,
+                thickness: 1,
+                color: context.hairline.withValues(alpha: 0.5),
+              ),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 11),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Icon(rows[i].icon, size: 16, color: context.inkMuted),
+                  const SizedBox(width: 9),
+                  Text(
+                    rows[i].label,
+                    style: TextStyle(fontSize: 13, color: context.inkMuted),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      rows[i].value,
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                        color: context.ink,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Etkinliğin bilgi satırları (kulüp satırı hariç — o başlıkta gösteriliyor).
+List<({IconData icon, String label, String value})> eventInfoRows(
+  BuildContext context,
+  AppEvent event,
+) {
+  // Bölüm hedeflenmemişse (herkese açık ya da yalnızca üniversite kısıtlı)
+  // alan olarak kulübün kendi alanları yazılır: satır boş kalmasın, öğrenci
+  // etkinliğin hangi alana dokunduğunu görsün.
+  final List<String> audience = <String>[
+    eventScopeLabel(context, event.targetScope),
+    ...event.targetUniversities,
+    ...eventAudienceFields(event),
+  ];
+
+  return <({IconData icon, String label, String value})>[
+    if ((event.eventDateAtMs ?? 0) > 0)
+      (
+        icon: Icons.event_outlined,
+        label: context.t('eventModal.eventDate'),
+        value: formatDeadline(event.eventDateAtMs, locale: context.lang) +
+            (event.timeRangeLabel.isEmpty ? '' : ' · ${event.timeRangeLabel}'),
+      ),
+    (
+      icon: Icons.calendar_today_outlined,
+      label: context.t('eventModal.deadline'),
+      value: formatDeadline(event.deadlineAtMs, locale: context.lang),
+    ),
+    (
+      icon: Icons.payments_outlined,
+      label: context.t('eventModal.fee'),
+      value: event.feeInfo.isNotEmpty
+          ? event.feeInfo
+          : context.t('eventModal.free'),
+    ),
+    (
+      icon: Icons.event_seat_outlined,
+      label: context.t('eventModal.quota'),
+      value: event.quota > 0
+          ? '${event.quota}'
+          : context.t('eventModal.unlimited'),
+    ),
+    if (event.locationName.isNotEmpty)
+      (
+        icon: Icons.place_outlined,
+        label: context.t('eventModal.location'),
+        value: event.locationName,
+      ),
+    if (event.isMultiSession)
+      (
+        icon: Icons.repeat,
+        label: context.t('eventModal.sessions'),
+        value: context.t(
+          'eventModal.sessionsValue',
+          <String, Object?>{'count': event.sessionCount},
+        ),
+      ),
+    (
+      icon: Icons.public_outlined,
+      label: context.t('eventModal.audience'),
+      value: audience.join(' • '),
+    ),
+  ];
+}
+
+/// Ücretli etkinliklerde kulübün iletişim bilgileri + ücret notu.
+///
+/// Yalnızca `feeType == 'paid'` olan etkinliklerde çizilir: ücret uygulama
+/// içinden tahsil edilmiyor, öğrencinin ödemeyi konuşacağı bir muhatap
+/// gerekiyor. Ücretsiz etkinliklerde kulübün numarasını yaymanın gerekçesi
+/// yok, o yüzden blok hiç görünmez.
+///
+/// Bilgiler etkinlik dokümanındaki kopyadan gelir (bkz. [AppEvent.clubPhone]);
+/// bu alanlar eklenmeden önce oluşturulmuş etkinliklerde boş olabilir, o
+/// durumda not tek başına gösterilir.
+class EventPaidContactBlock extends StatelessWidget {
+  const EventPaidContactBlock({required this.event, super.key});
+
+  final AppEvent event;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!event.isPaid) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        EventSectionTitle(context.t('eventModal.clubContact')),
+        const SizedBox(height: 10),
+        _PaidContactCard(event: event),
+      ],
+    );
+  }
+}
+
+/// Ücret notu + tıklanabilir telefon/e-posta satırları.
+///
+/// Hem detay penceresindeki blokta hem de kayıt sonrası açılan pencerede
+/// aynısı gösteriliyor; iki yerde ayrı ayrı kurmamak için tek parça.
+class _PaidContactCard extends StatelessWidget {
+  const _PaidContactCard({required this.event});
+
+  final AppEvent event;
+
+  Future<void> _launch(String scheme, String value) async {
+    final Uri uri = Uri(scheme: scheme, path: value);
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      // Cihazda arama/e-posta uygulaması yoksa sessizce geç: metin zaten
+      // ekranda yazılı, kullanıcı elle kopyalayabilir.
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final String phone = event.clubPhone.trim();
+    final String email = event.clubEmail.trim();
+
+    return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: context.subtleFill,
+            borderRadius: BorderRadius.circular(BrandShape.controlRadius),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Icon(
+                    Icons.info_outline,
+                    size: 16,
+                    color: context.brandInk,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      context.t('eventModal.feeContactNote'),
+                      style: TextStyle(
+                        fontSize: 13,
+                        height: 1.45,
+                        fontWeight: FontWeight.w600,
+                        color: context.brandInk,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (phone.isNotEmpty || email.isNotEmpty) ...<Widget>[
+                const SizedBox(height: 12),
+                if (phone.isNotEmpty)
+                  _ContactRow(
+                    icon: Icons.phone_outlined,
+                    value: phone,
+                    onTap: () => _launch('tel', phone),
+                  ),
+                if (email.isNotEmpty)
+                  _ContactRow(
+                    icon: Icons.mail_outline,
+                    value: email,
+                    onTap: () => _launch('mailto', email),
+                  ),
+              ],
+            ],
+          ),
+    );
+  }
+}
+
+/// Ücretli etkinliğe kayıt alındıktan sonra açılan bilgilendirme penceresi.
+///
+/// Ücret uygulama içinde tahsil edilmediği için kayıt tek başına yeterli
+/// değil: öğrencinin ödemeyi konuşmak üzere kulübe ulaşması gerekiyor.
+/// Detaydaki blok kolayca gözden kaçtığından kayıt anında bir kez daha
+/// önüne çıkarıyoruz. Ücretsiz etkinliklerde hiç açılmaz.
+Future<void> showPaidEventContactDialog(
+  BuildContext context,
+  AppEvent event,
+) {
+  if (!event.isPaid) return Future<void>.value();
+
+  return showDialog<void>(
+    context: context,
+    builder: (BuildContext dialogContext) => AlertDialog(
+      backgroundColor: dialogContext.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(BrandShape.cardRadius),
+      ),
+      title: Text(dialogContext.t('eventModal.clubContact')),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              event.title,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: dialogContext.ink,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _PaidContactCard(event: event),
+          ],
+        ),
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(),
+          child: Text(dialogContext.t('common.close')),
+        ),
+      ],
+    ),
+  );
+}
+
+class _ContactRow extends StatelessWidget {
+  const _ContactRow({
+    required this.icon,
+    required this.value,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String value;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          children: <Widget>[
+            Icon(icon, size: 16, color: context.inkMuted),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Text(
+                value,
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  color: context.ink,
+                ),
+              ),
+            ),
+            Icon(Icons.open_in_new, size: 15, color: context.inkMuted),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Web'deki etkinlik modalinin mobil karşılığı.
+///
+/// [actionBar] verilirse pencerenin altına sabitlenir; verilmezse pencere
+/// salt görüntülemedir (kulübün keşif akışı böyle).
+Future<void> showEventDetailSheet(
+  BuildContext context, {
+  required AppEvent event,
+  int? priority,
+  Widget? extraContent,
+  Widget? actionBar,
+}) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: context.surface,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (_) => EventDetailSheet(
+      event: event,
+      priority: priority,
+      extraContent: extraContent,
+      actionBar: actionBar,
+    ),
+  );
+}
+
+class EventDetailSheet extends StatelessWidget {
+  const EventDetailSheet({
+    required this.event,
+    this.priority,
+    this.extraContent,
+    this.actionBar,
+    super.key,
+  });
+
+  final AppEvent event;
+  final int? priority;
+  final Widget? extraContent;
+  final Widget? actionBar;
+
+  @override
+  Widget build(BuildContext context) {
+    final ({String label, FeedbackTone tone}) status =
+        eventStatus(context, event);
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.88,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (BuildContext context, ScrollController scrollController) =>
+          Column(
+        children: <Widget>[
+          Expanded(
+            child: ListView(
+              controller: scrollController,
+              padding: EdgeInsets.zero,
+              children: <Widget>[
+                Stack(
+                  children: <Widget>[
+                    ClipRRect(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(24),
+                      ),
+                      child: EventImage(url: event.displayImageUrl, height: 200),
+                    ),
+                    Positioned(
+                      top: 10,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: Container(
+                          width: 42,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: BrandColors.white.withValues(alpha: 0.75),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Material(
+                        color: const Color(0x8C000000),
+                        shape: const CircleBorder(),
+                        clipBehavior: Clip.antiAlias,
+                        child: InkWell(
+                          onTap: () => Navigator.of(context).pop(),
+                          child: const Padding(
+                            padding: EdgeInsets.all(7),
+                            child: Icon(
+                              Icons.close,
+                              size: 19,
+                              color: BrandColors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        event.title,
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                      const SizedBox(height: 14),
+                      EventClubHeader(event: event),
+                      const SizedBox(height: 14),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: <Widget>[
+                          StatusPill(label: status.label, tone: status.tone),
+                          StatusPill(
+                            label: eventScopeLabel(context, event.targetScope),
+                          ),
+                          if (priority != null)
+                            StatusPill(
+                              label: eventPriorityLabel(context, priority!),
+                            ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 22),
+                      EventSectionTitle(context.t('eventModal.info')),
+                      const SizedBox(height: 10),
+                      EventInfoTable(rows: eventInfoRows(context, event)),
+
+                      // Ücretli etkinlik: ödeme uygulama dışında yapılıyor,
+                      // öğrenci kulübe ulaşabilmeli.
+                      if (event.isPaid) ...<Widget>[
+                        const SizedBox(height: 22),
+                        EventPaidContactBlock(event: event),
+                      ],
+
+                      const SizedBox(height: 22),
+                      EventSectionTitle(context.t('eventModal.description')),
+                      const SizedBox(height: 8),
+                      Text(
+                        event.description.isNotEmpty
+                            ? event.description
+                            : context.t('dashboard.modal.noDescription'),
+                        style: const TextStyle(height: 1.55),
+                      ),
+
+                      if (event.purpose.isNotEmpty) ...<Widget>[
+                        const SizedBox(height: 22),
+                        EventSectionTitle(context.t('eventModal.purpose')),
+                        const SizedBox(height: 8),
+                        Text(
+                          event.purpose,
+                          style: const TextStyle(height: 1.55),
+                        ),
+                      ],
+
+                      if (extraContent != null) ...<Widget>[
+                        const SizedBox(height: 22),
+                        extraContent!,
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (actionBar != null)
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: context.surface,
+                border: Border(top: BorderSide(color: context.hairline)),
+              ),
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+                  child: actionBar,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}

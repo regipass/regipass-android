@@ -1,0 +1,349 @@
+/// Web'de her sayfanın başındaki `onAuthStateChanged` bloğu kendi
+/// yönlendirmesini yapıyordu (20+ dosyada tekrarlanan aynı mantık).
+/// Burada tüm bu kararlar tek bir `redirect` fonksiyonunda toplanır —
+/// davranış aynı, ama kural tek yerde.
+library;
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../core/constants.dart';
+import '../domain/routing.dart';
+import '../features/admin/admin_notifications_screen.dart';
+import '../features/admin/admin_screens.dart';
+import '../features/admin/admin_shell.dart';
+import '../features/auth/forgot_password_screen.dart';
+import '../features/auth/phone_change_screen.dart';
+import '../features/auth/phone_verify_screen.dart';
+import '../features/auth/register_screen.dart';
+import '../features/auth/role_select_screen.dart';
+import '../features/club/club_account_screen.dart';
+import '../features/club/club_create_event_screen.dart';
+import '../features/club/club_dashboard_screen.dart';
+import '../features/club/club_documents_screen.dart';
+import '../features/club/club_event_detail_screen.dart';
+import '../features/club/club_events_screen.dart';
+import '../features/club/club_notifications_screen.dart';
+import '../features/club/club_pending_screen.dart';
+import '../features/club/club_qr_checkin_screen.dart';
+import '../features/club/club_session_qr_screen.dart';
+import '../features/club/club_shell.dart';
+import '../features/explore/explore_screen.dart';
+import '../features/landing/login_screen.dart';
+import '../features/onboarding/club_info_screen.dart';
+import '../features/onboarding/student_info_screen.dart';
+import '../features/student/student_account_screen.dart';
+import '../features/student/student_appointments_screen.dart';
+import '../features/student/student_certificates_screen.dart';
+import '../features/student/student_dashboard_screen.dart';
+import '../features/student/student_notifications_screen.dart';
+import '../features/student/student_qr_checkin_screen.dart';
+import '../features/student/student_qr_generate_screen.dart';
+import '../features/student/student_shell.dart';
+import '../state/providers.dart';
+
+/// Oturum değiştiğinde router'ı yeniden değerlendirmek için köprü.
+/// (go_router'ın `refreshListenable` beklentisi.)
+class _SessionRefresh extends ChangeNotifier {
+  void ping() => notifyListeners();
+}
+
+Page<void> _instantPage(GoRouterState state, Widget child) =>
+    NoTransitionPage<void>(key: state.pageKey, child: child);
+
+final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
+  final _SessionRefresh refresh = _SessionRefresh();
+  ref.onDispose(refresh.dispose);
+
+  // Oturumun herhangi bir parçası değişince yönlendirme yeniden çalışır.
+  ref.listen<Session>(
+    sessionProvider,
+    (Session? _, Session _) => refresh.ping(),
+  );
+
+  return GoRouter(
+    initialLocation: Routes.landing,
+    refreshListenable: refresh,
+    redirect: (BuildContext context, GoRouterState state) =>
+        _resolveRedirect(ref.read(sessionProvider), state.matchedLocation),
+    routes: <RouteBase>[
+      GoRoute(
+        path: Routes.landing,
+        pageBuilder: (_, state) => _instantPage(state, const LoginScreen()),
+      ),
+      GoRoute(
+        path: Routes.explore,
+        pageBuilder: (_, state) => _instantPage(state, const ExploreScreen()),
+      ),
+      GoRoute(
+        path: Routes.forgotPassword,
+        pageBuilder: (BuildContext context, GoRouterState state) =>
+            _instantPage(
+              state,
+              ForgotPasswordScreen(
+                email: state.uri.queryParameters['email'] ?? '',
+              ),
+            ),
+      ),
+      GoRoute(
+        path: Routes.register,
+        pageBuilder: (_, state) => _instantPage(state, const RegisterScreen()),
+      ),
+      GoRoute(
+        path: Routes.roleSelect,
+        pageBuilder: (_, state) =>
+            _instantPage(state, const RoleSelectScreen()),
+      ),
+
+      // ── Onboarding ────────────────────────────────────────────────
+      GoRoute(
+        path: Routes.studentOnboarding,
+        pageBuilder: (_, state) =>
+            _instantPage(state, const StudentInfoScreen()),
+      ),
+      GoRoute(
+        path: Routes.clubOnboarding,
+        pageBuilder: (_, state) => _instantPage(state, const ClubInfoScreen()),
+      ),
+      GoRoute(
+        path: Routes.phoneVerify,
+        pageBuilder: (_, state) =>
+            _instantPage(state, const PhoneVerifyScreen()),
+      ),
+      GoRoute(
+        path: Routes.phoneChange,
+        pageBuilder: (_, state) =>
+            _instantPage(state, const PhoneChangeScreen()),
+      ),
+
+      // ── Öğrenci ───────────────────────────────────────────────────
+      // Alt gezinme çubuğu kalıcıdır; web'deki yan çekmecenin karşılığı.
+      ShellRoute(
+        builder: (BuildContext context, GoRouterState state, Widget child) =>
+            StudentShell(location: state.matchedLocation, child: child),
+        routes: <RouteBase>[
+          GoRoute(
+            path: Routes.studentHome,
+            builder: (_, _) => const StudentDashboardScreen(),
+          ),
+          GoRoute(
+            path: Routes.studentAppointments,
+            // `open`: QR okutma ekranı, giriş onaylandıktan sonra öğrenciyi
+            // ilgili etkinliğin detay penceresi açık olarak buraya döndürür.
+            builder: (BuildContext context, GoRouterState state) =>
+                StudentAppointmentsScreen(
+                  openRegistrationId: state.uri.queryParameters['open'],
+                ),
+          ),
+          GoRoute(
+            path: Routes.studentQrGenerate,
+            builder: (_, _) => const StudentQrGenerateScreen(),
+          ),
+          GoRoute(
+            path: Routes.studentQrCheckin,
+            // `eventId`: etkinlik penceresinden gelindiyse yalnızca o
+            // etkinliğin oturum QR'ı kabul edilir.
+            builder: (BuildContext context, GoRouterState state) =>
+                StudentQrCheckinScreen(
+                  expectedEventId: state.uri.queryParameters['eventId'],
+                ),
+          ),
+          GoRoute(
+            path: Routes.studentCertificates,
+            builder: (_, _) => const StudentCertificatesScreen(),
+          ),
+          GoRoute(
+            path: Routes.studentAccount,
+            builder: (_, _) => const StudentAccountScreen(),
+          ),
+          GoRoute(
+            path: Routes.studentNotifications,
+            builder: (_, _) => const StudentNotificationsScreen(),
+          ),
+        ],
+      ),
+
+      // ── Kulüp ─────────────────────────────────────────────────────
+      // Alt gezinme çubuğu öğrenci tarafındaki gibi kalıcıdır; belge yükleme
+      // ve onay bekleme ekranları kapının dışında kaldığı için kabuğun
+      // dışındadır (o aşamada gezinecek bir panel yok).
+      ShellRoute(
+        builder: (BuildContext context, GoRouterState state, Widget child) =>
+            ClubShell(location: state.matchedLocation, child: child),
+        routes: <RouteBase>[
+          GoRoute(
+            path: Routes.clubHome,
+            builder: (_, _) => const ClubDashboardScreen(),
+          ),
+          GoRoute(
+            path: Routes.clubEvents,
+            builder: (_, _) => const ClubEventsScreen(),
+          ),
+          GoRoute(
+            path: Routes.clubEventDetail,
+            builder: (BuildContext context, GoRouterState state) =>
+                ClubEventDetailScreen(
+                  eventId: state.uri.queryParameters['eventId'] ?? '',
+                ),
+          ),
+          GoRoute(
+            path: Routes.clubCreateEvent,
+            builder: (BuildContext context, GoRouterState state) =>
+                ClubCreateEventScreen(
+                  eventId: state.uri.queryParameters['eventId'],
+                ),
+          ),
+          GoRoute(
+            path: Routes.clubQrCheckin,
+            builder: (BuildContext context, GoRouterState state) =>
+                ClubQrCheckinScreen(
+                  eventId: state.uri.queryParameters['eventId'],
+                ),
+          ),
+          GoRoute(
+            path: Routes.clubSessionQr,
+            builder: (_, _) => const ClubSessionQrScreen(),
+          ),
+          GoRoute(
+            path: Routes.clubAccount,
+            builder: (_, _) => const ClubAccountScreen(),
+          ),
+          GoRoute(
+            path: Routes.clubNotifications,
+            builder: (_, _) => const ClubNotificationsScreen(),
+          ),
+        ],
+      ),
+
+      GoRoute(
+        path: Routes.clubDocuments,
+        builder: (_, _) => const ClubDocumentsScreen(),
+      ),
+      GoRoute(
+        path: Routes.clubPending,
+        builder: (_, _) => const ClubPendingScreen(),
+      ),
+
+      // ── Yönetici ──────────────────────────────────────────────────
+      // admin-nav.js'teki çekmecenin karşılığı: kalıcı alt sekme çubuğu.
+      ShellRoute(
+        builder: (BuildContext context, GoRouterState state, Widget child) =>
+            AdminShell(location: state.matchedLocation, child: child),
+        routes: <RouteBase>[
+          GoRoute(
+            path: Routes.adminHome,
+            builder: (_, _) => const AdminDashboardScreen(),
+          ),
+          GoRoute(
+            path: Routes.adminStats,
+            builder: (_, _) => const AdminStatsScreen(),
+          ),
+          GoRoute(
+            path: Routes.adminBan,
+            builder: (_, _) => const AdminBanScreen(),
+          ),
+          GoRoute(
+            path: Routes.adminNotifications,
+            builder: (_, _) => const AdminNotificationsScreen(),
+          ),
+        ],
+      ),
+    ],
+  );
+});
+
+/// Tek yönlendirme kuralı. Saf fonksiyon — yan etkisi yok, test edilebilir.
+///
+/// Ban tespitinde oturum kapatma yan etkisi burada değil, `RegipassApp`
+/// içindeki dinleyicide yapılır (bkz. lib/app/app.dart).
+@visibleForTesting
+String? resolveRedirectForTest(Session session, String location) =>
+    _resolveRedirect(session, location);
+
+String? _resolveRedirect(Session session, String location) {
+  // Profil dokümanları henüz yüklenmediyse karar verilemez; mevcut ekran
+  // (açılışta LoginScreen) yükleniyor göstergesini çizer.
+  if (session.isLoading) return null;
+
+  // ── Şifre sıfırlama ─────────────────────────────────────────────
+  // Bu rota hem oturumsuz hem oturumlu erişime açık olmalı: SMS kodu
+  // doğrulandığı anda kullanıcı Auth'a giriş yapmış olur (şifre değiştirmek
+  // oturum gerektiriyor). Aksi hâlde router onu tam o anda panele fırlatır
+  // ve kullanıcı yeni şifresini hiç giremez.
+  if (location == Routes.forgotPassword) return null;
+
+  // ── Oturum yok ──────────────────────────────────────────────────
+  // Keşfet giriş gerektirmez: misafir vitrini bilerek herkese açık.
+  if (!session.isSignedIn) {
+    const Set<String> publicRoutes = <String>{
+      Routes.landing,
+      Routes.register,
+      Routes.explore,
+    };
+    return publicRoutes.contains(location) ? null : Routes.landing;
+  }
+
+  // ── Yönetici ────────────────────────────────────────────────────
+  if (session.isAdmin) {
+    return isAdminRoute(location) ? null : Routes.adminHome;
+  }
+  if (isAdminRoute(location)) return Routes.landing;
+
+  // ── Rol seçimi ──────────────────────────────────────────────────
+  // Hesapta hiç rol yoksa (ilk Google girişi) ya da her iki rol de varsa
+  // ve kullanıcı bu cihazda henüz seçim yapmadıysa seçim ekranı gösterilir.
+  final String? role = session.resolvedRole;
+  if (role == null) {
+    return location == Routes.roleSelect ? null : Routes.roleSelect;
+  }
+  if (session.hasBothRoles && session.activeRole == null) {
+    return location == Routes.roleSelect ? null : Routes.roleSelect;
+  }
+  if (location == Routes.roleSelect) {
+    // Seçim yapıldı; role göre hedefe düş.
+    return _homeFor(role, session);
+  }
+
+  // ── Rol içi durum kapıları ──────────────────────────────────────
+  final String target = role == UserRole.club
+      ? getClubRouteByStatus(session.clubProfile)
+      : getStudentRouteByStatus(session.studentProfile);
+
+  if (target == Routes.banned) return Routes.landing;
+
+  final bool isFullyOnboarded =
+      target == Routes.studentHome || target == Routes.clubHome;
+
+  if (!isFullyOnboarded) {
+    // Telefon doğrulama ekranından numara değiştirmeye geçişe izin verilir
+    // (phone-verify.html üzerindeki "Numarayı Değiştir" bağlantısı).
+    if (target == Routes.phoneVerify && location == Routes.phoneChange) {
+      return null;
+    }
+    return location == target ? null : target;
+  }
+
+  // ── Tam yetkili: kendi rol alanının dışına çıkamaz ───────────────
+  // Tek istisna hesap yönetimi ekranları: bilgi formu (düzenleme modu) ve
+  // numara değiştirme, panelin dışında yaşayan ama panele ait sayfalardır.
+  // Bunlar dışlanırsa "Bilgileri Düzenle" / "Numaramı Değiştir" düğmeleri
+  // kullanıcıyı anında panele geri fırlatır.
+  if (location == Routes.phoneChange) return null;
+
+  if (role == UserRole.student) {
+    if (location == Routes.studentOnboarding) return null;
+    return location.startsWith(Routes.studentHome) ? null : Routes.studentHome;
+  }
+  if (location == Routes.clubOnboarding) return null;
+  return location.startsWith(Routes.clubHome) ? null : Routes.clubHome;
+}
+
+String _homeFor(String role, Session session) {
+  final String target = role == UserRole.club
+      ? getClubRouteByStatus(session.clubProfile)
+      : getStudentRouteByStatus(session.studentProfile);
+
+  // Engellenmiş kullanıcı hiçbir iç sayfaya gidemez.
+  return target == Routes.banned ? Routes.landing : target;
+}

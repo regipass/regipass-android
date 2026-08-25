@@ -1,0 +1,8 @@
+// Bu dosyayi `Maps.xcconfig` adiyla kopyalayip anahtari yapistirin.
+// Gercek dosya .gitignore'dadir; anahtar depoya girmez.
+//
+// Anahtari nereden alacaksiniz:
+//   Google Cloud Console > APIs & Services > Credentials > "Regipass iOS"
+//   (Application restrictions: iOS apps -> app.regipass.mobile,
+//    API restrictions: yalnizca Maps SDK for iOS)
+MAPS_API_KEY=
