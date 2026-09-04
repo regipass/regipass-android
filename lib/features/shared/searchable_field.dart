@@ -97,6 +97,7 @@ class SearchableField extends StatelessWidget {
     required this.options,
     required this.onSelected,
     this.enabled = true,
+    this.searchable = true,
     this.emptyListText,
     this.noResultText,
     this.hint,
@@ -111,6 +112,10 @@ class SearchableField extends StatelessWidget {
   final List<String> options;
   final ValueChanged<String> onSelected;
   final bool enabled;
+
+  /// Seçim sayfasında arama çubuğu gösterilsin mi. Sınıf gibi bir ekrana
+  /// sığan kısa listelerde arama gereksiz — kapatınca doğrudan liste açılır.
+  final bool searchable;
 
   /// Seçenek listesi boşken gösterilecek metin (ör. "Önce şehir seçin").
   final String? emptyListText;
@@ -138,6 +143,7 @@ class SearchableField extends StatelessWidget {
           title: label,
           options: options,
           selected: value,
+          searchable: searchable,
           noResultText: noResultText ?? 'Sonuç bulunamadı.',
         ),
       ),
@@ -181,12 +187,14 @@ class _SearchablePickerPage extends StatefulWidget {
     required this.title,
     required this.options,
     required this.selected,
+    required this.searchable,
     required this.noResultText,
   });
 
   final String title;
   final List<String> options;
   final String selected;
+  final bool searchable;
   final String noResultText;
 
   @override
@@ -200,7 +208,9 @@ class _SearchablePickerPageState extends State<_SearchablePickerPage> {
   void _onQueryChanged(String value) {
     setState(() {
       _query = value;
-      _results = rankOptions(value, widget.options, limit: 60);
+      _results = value.trim().isEmpty
+          ? widget.options
+          : rankOptions(value, widget.options, limit: 60);
     });
   }
 
@@ -210,18 +220,19 @@ class _SearchablePickerPageState extends State<_SearchablePickerPage> {
       appBar: AppBar(title: Text(widget.title)),
       body: Column(
         children: <Widget>[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: TextField(
-              autofocus: true,
-              onChanged: _onQueryChanged,
-              inputFormatters: guardedInput(InputLimits.search),
-              decoration: const InputDecoration(
-                hintText: 'Ara...',
-                prefixIcon: Icon(Icons.search),
+          if (widget.searchable)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: TextField(
+                autofocus: true,
+                onChanged: _onQueryChanged,
+                inputFormatters: guardedInput(InputLimits.search),
+                decoration: const InputDecoration(
+                  hintText: 'Ara...',
+                  prefixIcon: Icon(Icons.search),
+                ),
               ),
             ),
-          ),
           Expanded(
             child: _results.isEmpty
                 ? Center(

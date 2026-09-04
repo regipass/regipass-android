@@ -10,9 +10,17 @@ import 'auth_actions.dart';
 
 /// login-modal.js#showRoleStep karşılığı.
 ///
-/// Gösterildiği iki durum:
-///   • Hesapta hem öğrenci hem kulüp rolü var -> hangisiyle devam edileceği.
-///   • Hesapta hiç rol yok (ilk Google girişi) -> hangi rolün oluşturulacağı.
+/// **Tek durumda gösterilir:** hesapta hiç tamamlanmış rol yok (ilk
+/// Google/Apple girişi ya da eski yarım iskelet) ve kullanıcı hesabının
+/// TÜRÜNÜ seçiyor. Bu adım kaldırılamaz — OAuth ile gelen kullanıcının rolünü
+/// başka türlü belirleyemeyiz, kaldırılırsa Google/Apple ile hesap açmak
+/// imkânsız hale gelir.
+///
+/// Eskiden ikinci bir durum daha vardı: hesapta iki rol de varsa "hangisiyle
+/// devam edeceksin" sorusu. Bir e-postaya artık tek rol bağlanabildiği için o
+/// soru kalktı (bkz. `lib/app/router.dart` rol seçimi bölümü). Aşağıdaki
+/// `hasCompletedRole` dalı yalnızca kural gelmeden önce açılmış çift rollü
+/// hesaplar bu ekrana elle gelirse diye duruyor.
 class RoleSelectScreen extends ConsumerStatefulWidget {
   const RoleSelectScreen({super.key});
 
@@ -31,17 +39,35 @@ class _RoleSelectScreenState extends ConsumerState<RoleSelectScreen> {
     });
 
     try {
-      await ref.read(activeRoleProvider.notifier).select(role);
-
-      // users/{uid} ve profil iskeleti oluşturulur; yönlendirmeyi router yapar.
       final Session session = ref.read(sessionProvider);
-      if (session.user != null) {
-        await ref.read(authRepositoryProvider).upsertBaseUser(session.user!, role);
+
+      if (session.hasCompletedRole(role)) {
+        // İki tamamlanmış hesabı olan kullanıcı yalnız aktif hesabını seçer;
+        // yeni bir profil oluşturulmaz.
+        final String? uid = session.user?.uid;
+        if (uid != null) {
+          await ref
+              .read(authRepositoryProvider)
+              .syncActiveRoleToUserDoc(uid, role);
+        }
+        await ref.read(activeRoleProvider.notifier).select(role);
+      } else {
+        // Yeni rol yalnız bellekte yaşar. Bilgi formu başarıyla kaydedilene
+        // kadar Firestore ve SharedPreferences'a hiçbir rol yazılmaz.
+        final activeRole = ref.read(activeRoleProvider.notifier);
+        final pendingRole = ref.read(pendingOnboardingRoleProvider.notifier);
+        try {
+          await activeRole.clear();
+        } catch (_) {
+          // Bellekteki pending rol yeterlidir; eski yerel tercih bir sonraki
+          // başarılı kalıcı seçimde üzerine yazılır.
+        }
+        pendingRole.select(role);
       }
     } catch (error) {
       if (mounted) {
         setState(() {
-          _error = '$error';
+          _error = context.t('feedback.saveErrorRetry');
           _busy = false;
         });
       }

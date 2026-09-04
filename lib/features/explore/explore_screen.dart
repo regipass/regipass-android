@@ -149,8 +149,8 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
               ExplorePermissionDenied() => _ExploreMessage(
                 text: context.t('explore.permissionDenied'),
               ),
-              ExploreFailed(code: final String code) => _ExploreMessage(
-                text: '${context.t('explore.loadError')} ($code)',
+              ExploreFailed() => _ExploreMessage(
+                text: context.t('explore.loadError'),
               ),
               ExploreEvents(events: final List<AppEvent> events) =>
                 events.isEmpty

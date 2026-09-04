@@ -11,7 +11,7 @@
 library;
 
 /// Doğrulama için tanınan süre.
-const Duration kPhoneVerifyGrace = Duration(days: 3);
+const Duration kPhoneVerifyGrace = Duration(minutes: 3);
 
 /// Doğrulanmamış kaydın silinme zamanı geldi mi?
 ///

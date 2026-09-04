@@ -14,7 +14,9 @@ import '../../core/sanitize.dart';
 import '../../data/club_fields.dart';
 import '../../data/department_data.dart';
 import '../../data/location_data.dart';
+import '../../domain/checkin_mode.dart';
 import '../../domain/event_utils.dart';
+import '../../domain/paid_event_consent.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/event.dart';
 import '../../models/profiles.dart';
@@ -22,6 +24,7 @@ import '../../services/event_repository.dart';
 import '../../services/firebase_refs.dart';
 import '../../state/providers.dart';
 import '../shared/common_widgets.dart';
+import '../shared/event_widgets.dart';
 import '../shared/multi_select_chips.dart';
 import 'club_shell.dart';
 import 'location_picker_screen.dart';
@@ -31,7 +34,6 @@ enum _Field {
   title,
   description,
   purpose,
-  targetSector,
   image,
   deadline,
   eventDate,
@@ -41,6 +43,7 @@ enum _Field {
   targetUniversity,
   targetDepartment,
   threshold,
+  checkinMode,
   location,
 }
 
@@ -71,7 +74,6 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
   final TextEditingController _title = TextEditingController();
   final TextEditingController _description = TextEditingController();
   final TextEditingController _purpose = TextEditingController();
-  final TextEditingController _targetSector = TextEditingController();
   final TextEditingController _quota = TextEditingController();
   final TextEditingController _feeAmount = TextEditingController();
   final TextEditingController _imageUrl = TextEditingController();
@@ -82,7 +84,13 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
     text: '50',
   );
 
+  /// İlk üç alan tek bir yazım akışı oluşturur: etkinlik adı → açıklama →
+  /// amaç. Son alandaki "bitir" odağı kaldırıp klavyeyi kapatır.
+  final FocusNode _descriptionFocus = FocusNode();
+  final FocusNode _purposeFocus = FocusNode();
+
   String _feeType = 'free';
+  String _checkinMode = CheckinMode.checkinOnly;
   String _targetScope = TargetScope.public;
 
   /// Hedeflenen üniversiteler / bölümler. Kulüp birden fazla seçebilir:
@@ -133,7 +141,6 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
     _title.dispose();
     _description.dispose();
     _purpose.dispose();
-    _targetSector.dispose();
     _quota.dispose();
     _feeAmount.dispose();
     _imageUrl.dispose();
@@ -141,6 +148,8 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
     _threshold.dispose();
     _locationName.dispose();
     _locationRadius.dispose();
+    _descriptionFocus.dispose();
+    _purposeFocus.dispose();
     super.dispose();
   }
 
@@ -160,11 +169,11 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
     _title.text = event.title;
     _description.text = event.description;
     _purpose.text = event.purpose;
-    _targetSector.text = event.targetSector;
     _quota.text = event.quota > 0 ? '${event.quota}' : '';
     _feeType = event.feeType.isEmpty ? 'free' : event.feeType;
     _feeAmount.text = event.feeAmount > 0 ? '${event.feeAmount}' : '';
     _sessionCount.text = '${event.sessionCount}';
+    _checkinMode = event.resolvedCheckinMode;
     _threshold.text = event.certificateThresholdPercent?.toString() ?? '';
     _locationName.text = event.locationName;
     _locationRadius.text = '${event.effectiveRadius}';
@@ -465,10 +474,6 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
     final String title = sanitizeText(_title.text, maxLength: 200);
     final String description = sanitizeLongText(_description.text);
     final String purpose = sanitizeLongText(_purpose.text);
-    final String targetSector = sanitizeText(
-      _targetSector.text,
-      maxLength: 100,
-    );
 
     // Boş bırakılan ilk zorunlu alanı işaretle: "hepsini doldur" demek uzun
     // formda kullanıcıyı arama zahmetine sokuyordu.
@@ -477,7 +482,6 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
               _Field.title: title,
               _Field.description: description,
               _Field.purpose: purpose,
-              _Field.targetSector: targetSector,
             }.entries
             .where((MapEntry<_Field, String> e) => e.value.isEmpty)
             .firstOrNull
@@ -585,9 +589,18 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
       }
     }
 
-    // Oturum sayısı: boş/1 ise tek oturumlu (oturum takibi devre dışı).
+    // Mod, oturum sayısını değil kapı girişinin gerekip gerekmediğini de
+    // belirler. Yoklama içeren iki modda en az iki oturum zorunludur.
     final int rawSessions = int.tryParse(_sessionCount.text.trim()) ?? 1;
-    final int sessionCount = rawSessions > 1 ? rawSessions : 1;
+    final bool hasSessions = CheckinMode.hasSessions(_checkinMode);
+    if (hasSessions && rawSessions <= 1) {
+      _fail(
+        _Field.checkinMode,
+        context.t('clubCreateEvent.feedback.sessionCountRequired'),
+      );
+      return;
+    }
+    final int sessionCount = hasSessions ? rawSessions : 1;
 
     int? threshold;
     if (sessionCount > 1 && _threshold.text.trim().isNotEmpty) {
@@ -617,6 +630,14 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
         ? (_pickedImageDataUrl ?? sanitizeUrl(_imageUrl.text))
         : '';
 
+    // Tüm form kontrolleri tamamlandıktan sonra, yalnızca ücretli etkinliğin
+    // ödeme sorumluluğu onayı istenir. İptal eden kulübün formdaki bilgileri
+    // korunur; hiçbir etkinlik ya da görsel yüklemesi başlatılmaz.
+    final PaidEventConsentAcceptance? paidEventConsent = _feeType == 'paid'
+        ? await showPaidEventClubCreationConsentDialog(context)
+        : null;
+    if ((_feeType == 'paid' && paidEventConsent == null) || !mounted) return;
+
     setState(() {
       _saving = true;
       _invalidField = null;
@@ -633,7 +654,7 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
       targetScope: _targetScope,
       targetUniversities: targetUniversities,
       targetDepartments: targetDepartments,
-      targetSector: targetSector,
+      targetSector: '',
       imageUrl: imageUrl,
       quota: quota,
       deadlineAtMs: deadlineAtMs,
@@ -644,6 +665,7 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
       eventStartAtMs: _combine(_eventDate, _startTime),
       eventEndAtMs: _combine(_eventDate, _endTime),
       sessionCount: sessionCount,
+      checkinMode: _checkinMode,
       certificateThresholdPercent: threshold,
       locationName: locationName,
       locationLat: _lat,
@@ -667,6 +689,7 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
         await repo.updateEvent(
           widget.eventId!,
           draft.copyWith(imageUrl: savedImageUrl),
+          paidEventConsent: paidEventConsent,
         );
       } else {
         createdEventId = await repo.createEvent(
@@ -674,6 +697,7 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
           clubId: uid,
           club: session.clubProfile,
           clubFallbackName: context.t('dashboard.clubFallback'),
+          paidEventConsent: paidEventConsent,
         );
         if (_pickedImageFile != null) {
           final String savedImageUrl = await _uploadEventImage(
@@ -684,6 +708,7 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
           await repo.updateEvent(
             createdEventId,
             draft.copyWith(imageUrl: savedImageUrl),
+            paidEventConsent: paidEventConsent,
           );
         }
       }
@@ -723,8 +748,7 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
       _prefill(ref.watch(_editEventProvider(widget.eventId!)).value);
     }
 
-    final bool multiSession =
-        (int.tryParse(_sessionCount.text.trim()) ?? 1) > 1;
+    final bool multiSession = CheckinMode.hasSessions(_checkinMode);
 
     // Bölüm listesi kulübün alanlarıyla başladığı için profil izlenir.
     final ClubProfile? club = ref.watch(sessionProvider).clubProfile;
@@ -744,9 +768,12 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
       // club-create-event.html ile birebir aynı — iki istemci aynı formu
       // anlatıyor, kullanıcı web'den mobile geçince formu yeniden öğrenmiyor.
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
-          children: <Widget>[
+        child: GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
+            children: <Widget>[
             // ── 1. Temel bilgiler ─────────────────────────────────
             _SectionCard(
               icon: Icons.notes_rounded,
@@ -758,6 +785,8 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
                   child: TextField(
                     controller: _title,
                     enabled: !_saving,
+                    textInputAction: TextInputAction.next,
+                    onSubmitted: (_) => _descriptionFocus.requestFocus(),
                     inputFormatters: guardedInput(InputLimits.title),
                     decoration: InputDecoration(
                       labelText: context.t('form.eventTitle'),
@@ -769,8 +798,11 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
                   active: _invalidField == _Field.description,
                   child: TextField(
                     controller: _description,
+                    focusNode: _descriptionFocus,
                     enabled: !_saving,
                     maxLines: 4,
+                    textInputAction: TextInputAction.next,
+                    onSubmitted: (_) => _purposeFocus.requestFocus(),
                     inputFormatters: guardedInput(
                       InputLimits.longText,
                       multiline: true,
@@ -788,8 +820,12 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
                   active: _invalidField == _Field.purpose,
                   child: TextField(
                     controller: _purpose,
+                    focusNode: _purposeFocus,
                     enabled: !_saving,
                     maxLines: 3,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) =>
+                        FocusManager.instance.primaryFocus?.unfocus(),
                     inputFormatters: guardedInput(
                       InputLimits.paragraph,
                       multiline: true,
@@ -837,6 +873,9 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
                       controller: _feeAmount,
                       enabled: !_saving,
                       keyboardType: TextInputType.number,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) =>
+                          FocusManager.instance.primaryFocus?.unfocus(),
                       inputFormatters: digitsInput(InputLimits.money),
                       decoration: InputDecoration(
                         labelText: context.t('placeholder.feeAmount'),
@@ -848,44 +887,80 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
                       ),
                     ),
                   ),
-                // Kota ve oturum sayısı web'de de yan yana duruyor; ikisi de
-                // kısa sayılar olduğu için mobilde de tek satıra sığıyor.
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Expanded(
-                      child: _NeonAlert(
-                        active: _invalidField == _Field.quota,
-                        child: TextField(
-                          controller: _quota,
-                          enabled: !_saving,
-                          keyboardType: TextInputType.number,
-                          inputFormatters: digitsInput(InputLimits.quota),
-                          decoration: InputDecoration(
-                            labelText: context.t('form.quota'),
-                            hintText: context.t('placeholder.quotaExample'),
-                          ),
-                        ),
-                      ),
+                _NeonAlert(
+                  active: _invalidField == _Field.quota,
+                  child: TextField(
+                    controller: _quota,
+                    enabled: !_saving,
+                    keyboardType: TextInputType.number,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) =>
+                        FocusManager.instance.primaryFocus?.unfocus(),
+                    inputFormatters: digitsInput(InputLimits.quota),
+                    decoration: InputDecoration(
+                      labelText: context.t('form.quota'),
+                      hintText: context.t('placeholder.quotaExample'),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: _sessionCount,
-                        enabled: !_saving,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: digitsInput(InputLimits.sessionCount),
-                        onChanged: (_) => setState(() {}),
-                        decoration: InputDecoration(
-                          labelText: context.t('form.sessionCount'),
-                          hintText: context.t(
-                            'placeholder.sessionCountExample',
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
+                const SizedBox(height: 12),
+                _NeonAlert(
+                  active: _invalidField == _Field.checkinMode,
+                  child: DropdownButtonFormField<String>(
+                    initialValue: _checkinMode,
+                    // Mod adlari dar ekranda kutuya sigmiyor; isExpanded
+                    // olmadan satir kendi genisligini dayatip tasiyor.
+                    isExpanded: true,
+                    decoration: InputDecoration(
+                      labelText: context.t('form.checkinMode'),
+                    ),
+                    items: <DropdownMenuItem<String>>[
+                      for (final String mode in CheckinMode.values)
+                        DropdownMenuItem<String>(
+                          value: mode,
+                          child: Text(context.t('checkinMode.$mode')),
+                        ),
+                    ],
+                    onChanged: _saving
+                        ? null
+                        : (String? value) {
+                            if (value == null) return;
+                            setState(() {
+                              _checkinMode = value;
+                              if (!CheckinMode.hasSessions(value)) {
+                                _sessionCount.text = '1';
+                                _threshold.clear();
+                              } else if ((int.tryParse(_sessionCount.text) ?? 1) <= 1) {
+                                _sessionCount.text = '2';
+                              }
+                            });
+                          },
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 7),
+                  child: Text(
+                    context.t('checkinMode.${_checkinMode}Desc'),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+                if (multiSession) ...<Widget>[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _sessionCount,
+                    enabled: !_saving,
+                    keyboardType: TextInputType.number,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) =>
+                        FocusManager.instance.primaryFocus?.unfocus(),
+                    inputFormatters: digitsInput(InputLimits.sessionCount),
+                    onChanged: (_) => setState(() {}),
+                    decoration: InputDecoration(
+                      labelText: context.t('form.sessionCount'),
+                      hintText: context.t('placeholder.sessionCountExample'),
+                    ),
+                  ),
+                ],
                 if (multiSession)
                   _NeonAlert(
                     active: _invalidField == _Field.threshold,
@@ -893,6 +968,9 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
                       controller: _threshold,
                       enabled: !_saving,
                       keyboardType: TextInputType.number,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) =>
+                          FocusManager.instance.primaryFocus?.unfocus(),
                       inputFormatters: digitsInput(InputLimits.percent),
                       decoration: InputDecoration(
                         labelText: context.t('form.certificateThreshold'),
@@ -1048,18 +1126,6 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
                           if (value != null) _onScopeChanged(value);
                         },
                 ),
-                _NeonAlert(
-                  active: _invalidField == _Field.targetSector,
-                  child: TextField(
-                    controller: _targetSector,
-                    enabled: !_saving,
-                    inputFormatters: guardedInput(InputLimits.shortText),
-                    decoration: InputDecoration(
-                      labelText: context.t('form.targetSector'),
-                      hintText: context.t('placeholder.targetSectorExample'),
-                    ),
-                  ),
-                ),
                 // Üniversite kutusu YALNIZCA üniversite kısıtı olan
                 // kapsamlarda açılır: "sadece bölüme özel" seçildiğinde kulüp
                 // üniversite seçmek zorunda kalmamalı.
@@ -1129,6 +1195,9 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
                   TextField(
                     controller: _locationName,
                     enabled: !_saving,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) =>
+                        FocusManager.instance.primaryFocus?.unfocus(),
                     inputFormatters: guardedInput(InputLimits.shortText),
                     decoration: InputDecoration(
                       labelText: context.t('form.locationName'),
@@ -1200,7 +1269,8 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
               const SizedBox(height: 12),
               FeedbackBanner(message: _feedback, tone: _tone),
             ],
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -1,6 +1,10 @@
+import 'dart:math';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../core/constants.dart';
+import '../core/input_guard.dart';
+import '../domain/club_moderation.dart';
 import '../models/profiles.dart';
 import 'firebase_refs.dart';
 
@@ -24,11 +28,15 @@ class AdminRepository {
 
   List<ClubProfile> _mapClubs(QSnap snap) {
     final List<ClubProfile> list = snap.docs
-        .map((QueryDocumentSnapshot<Map<String, dynamic>> d) =>
-            ClubProfile.fromMap(d.id, d.data()))
+        .map(
+          (QueryDocumentSnapshot<Map<String, dynamic>> d) =>
+              ClubProfile.fromMap(d.id, d.data()),
+        )
         .toList();
 
-    list.sort((ClubProfile a, ClubProfile b) => a.clubName.compareTo(b.clubName));
+    list.sort(
+      (ClubProfile a, ClubProfile b) => a.clubName.compareTo(b.clubName),
+    );
     return list;
   }
 
@@ -100,6 +108,97 @@ class AdminRepository {
     await batch.commit();
   }
 
+  // ── Kulübe mesaj (js/modules/admin/club-messages.js) ────────────────
+
+  /// Tek bir kulübe yönetici notu gönderir.
+  ///
+  /// Kayıt kulüp profilinin içindeki `adminMessages` dizisine eklenir; ayrı
+  /// koleksiyon açılmadı çünkü kulüp kendi `club_profiles` belgesini zaten
+  /// okuyabiliyor (bkz. firestore.rules) ve projede Cloud Functions yok.
+  ///
+  /// Zaman damgası istemciden yazılır: `serverTimestamp()` [FieldValue.arrayUnion]
+  /// içinde çalışmaz. Belge düzeyindeki `lastAdminMessageAt` sunucu saatiyle
+  /// tutulur, böylece sıralamada güvenilecek bir alan yine de var.
+  ///
+  /// Yazılan kaydı döndürür: çağıran ekran listeyi sunucuyu beklemeden
+  /// tazeleyebilir.
+  Future<AdminMessage> sendClubMessage({
+    required String clubUid,
+    required String message,
+    required String adminUid,
+  }) async {
+    final String uid = clubUid.trim();
+    final String text = message.trim().length > InputLimits.adminMessage
+        ? message.trim().substring(0, InputLimits.adminMessage)
+        : message.trim();
+
+    if (uid.isEmpty) throw ArgumentError('missing-club');
+    if (text.isEmpty) throw ArgumentError('empty-message');
+
+    final AdminMessage entry = AdminMessage(
+      id: '${DateTime.now().millisecondsSinceEpoch}-${_randomSuffix()}',
+      message: text,
+      createdAtMs: DateTime.now().millisecondsSinceEpoch,
+      createdBy: adminUid.trim(),
+    );
+
+    await clubProfileDoc(uid).update(<String, dynamic>{
+      'adminMessages': FieldValue.arrayUnion(<Map<String, dynamic>>[
+        <String, dynamic>{
+          'id': entry.id,
+          'message': entry.message,
+          'createdAtMs': entry.createdAtMs,
+          'createdBy': entry.createdBy.isEmpty ? null : entry.createdBy,
+        },
+      ]),
+      'lastAdminMessageAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+
+    return entry;
+  }
+
+  static String _randomSuffix() {
+    const String alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    final Random random = Random();
+    return List<String>.generate(
+      6,
+      (int _) => alphabet[random.nextInt(alphabet.length)],
+    ).join();
+  }
+
+  // ── Kulüp engelle / engeli kaldır (ban-actions.js) ──────────────────
+
+  /// Kulübü engeller ya da engelini kaldırır; işlemden sonraki `clubStatus`
+  /// değerini döndürür.
+  ///
+  /// [blockClub]'dan farkı: belgelere dokunmaz. Onay kuyruğundaki bir kulübü
+  /// reddetmek belgeleri silmeyi gerektiriyor, listeden engellemek ise geri
+  /// alınabilir bir işlem — engeli kaldırınca kulüp kaldığı yerden devam eder.
+  Future<String> setClubBanned(ClubProfile club, bool banned) async {
+    final String nextStatus = banned
+        ? ClubStatus.banned
+        : clubStatusAfterUnban(club);
+
+    final WriteBatch batch = fbDb.batch();
+
+    batch.update(clubProfileDoc(club.uid), <String, dynamic>{
+      'clubStatus': nextStatus,
+      'banned': banned,
+      'reviewedAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+
+    batch.update(userDoc(club.uid), <String, dynamic>{
+      'clubStatus': nextStatus,
+      'banned': banned,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+
+    await batch.commit();
+    return nextStatus;
+  }
+
   Future<void> _deleteClubDocuments(ClubProfile club) async {
     await Future.wait(
       club.documents.values.map((Map<String, dynamic> info) async {
@@ -124,12 +223,15 @@ class AdminRepository {
 
   List<StudentProfile> _mapStudents(QSnap snap) {
     final List<StudentProfile> list = snap.docs
-        .map((QueryDocumentSnapshot<Map<String, dynamic>> d) =>
-            StudentProfile.fromMap(d.id, d.data()))
+        .map(
+          (QueryDocumentSnapshot<Map<String, dynamic>> d) =>
+              StudentProfile.fromMap(d.id, d.data()),
+        )
         .toList();
 
-    list.sort((StudentProfile a, StudentProfile b) =>
-        a.fullName.compareTo(b.fullName));
+    list.sort(
+      (StudentProfile a, StudentProfile b) => a.fullName.compareTo(b.fullName),
+    );
     return list;
   }
 

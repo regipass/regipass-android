@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
@@ -9,6 +8,7 @@ import '../../domain/event_utils.dart';
 import '../../domain/routing.dart';
 import '../../l10n/app_strings.dart';
 import '../shared/common_widgets.dart';
+import '../shared/event_widgets.dart';
 import 'student_providers.dart';
 
 /// student-appointments.js / student-qr-generate.js içindeki detay
@@ -55,7 +55,6 @@ class _AppointmentDetailSheetState extends ConsumerState<AppointmentDetailSheet>
   bool _qrVisible = false;
   bool _qrLoading = false;
   String? _qrImageUrl;
-  String? _locationNote;
 
   /// Giriş onaylandığı anda açık QR'ı kapatmak için önceki katılım sayısı.
   int? _lastSeenAttendance;
@@ -82,69 +81,36 @@ class _AppointmentDetailSheetState extends ConsumerState<AppointmentDetailSheet>
     );
   }
 
-  /// Konum izni + koordinat. Reddedilirse QR konumsuz üretilir — kulüp
-  /// tarafındaki doğrulama bu durumda girişi reddedebilir, kullanıcı uyarılır.
-  Future<({double? lat, double? lng})> _resolvePosition() async {
-    try {
-      if (!await Geolocator.isLocationServiceEnabled()) {
-        return (lat: null, lng: null);
-      }
-
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
-        return (lat: null, lng: null);
-      }
-
-      final Position position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 8),
-        ),
-      );
-      return (lat: position.latitude, lng: position.longitude);
-    } catch (_) {
-      // Zaman aşımı / sinyal yok: konumsuz devam.
-      return (lat: null, lng: null);
-    }
-  }
-
   Future<void> _generateQr() async {
     final RegistrationWithEvent? item = _currentItem();
-    // Oturumlu etkinlikte öğrenci QR'ı hiç üretilmez (okutma yolu kullanılır);
-    // QR Oluştur sekmesinden gelen otomatik tetik de burada durur.
-    if (item == null || item.isMultiSession || !item.canGenerateQr) return;
+    // Bilet yalnızca kapı check-in'i olan etkinlikte ve giriş alınmadan önce
+    // gösterilir (student-ticket.js#canShowStudentTicket ile aynı ölçüt).
+    if (item == null || item.isClosed || !item.canShowTicket) return;
 
     setState(() {
       _qrVisible = true;
       _qrLoading = true;
       _qrImageUrl = null;
-      _locationNote = null;
     });
 
-    final ({double? lat, double? lng}) position = await _resolvePosition();
-    if (!mounted) return;
-
+    // Bilet STATİKTİR: içeriği kaydın kimliğinden ibarettir ve etkinlik
+    // boyunca değişmez. Konum TAŞIMAZ — okutan taraf kapıdaki görevlidir,
+    // öğrenci zaten karşısında durmaktadır (bkz. domain/checkin_qr.dart).
+    //
+    // Bilet ADRESE de sarılmaz (buildCheckinQrUrl kullanılmaz): bunu telefon
+    // kamerası değil görevlinin uygulaması okur; ham token en küçük ve en
+    // hızlı okunan biçimdir.
     final String token = createCheckinQrToken(
       buildStudentCheckinPayload(
         registrationId: item.registration.id,
         eventId: item.registration.eventId,
         studentId: item.registration.studentId,
-        lat: position.lat,
-        lng: position.lng,
       ),
     );
 
     setState(() {
       _qrImageUrl = buildCheckinQrImageUrl(token, size: 400);
       _qrLoading = false;
-      // Etkinlik konum doğrulaması yapıyorsa ve koordinat alınamadıysa uyar.
-      _locationNote = position.lat == null && (item.event?.hasLocationCheck ?? false)
-          ? context.t('location.permissionDenied')
-          : null;
     });
   }
 
@@ -265,22 +231,49 @@ class _AppointmentDetailSheetState extends ConsumerState<AppointmentDetailSheet>
                           ],
                         ),
                       ],
+
+                      // Ücretli etkinlik: ödeme uygulama dışında konuşulduğu
+                      // için kulübün iletişim bilgileri kayıt sonrasında da
+                      // erişilebilir olmalı. Kayıt anındaki pencere kapandıktan
+                      // sonra öğrencinin bakacağı yer burası.
+                      if (item.event!.isPaid) ...<Widget>[
+                        const SizedBox(height: 20),
+                        EventPaidContactBlock(event: item.event!),
+                      ],
                     ],
 
                     const SizedBox(height: 24),
                     // Oturumlu etkinlik: okutma düğmesi HER ZAMAN görünür,
                     // yalnızca sırası gelmediğinde pasiftir (altında sebebi
                     // yazar). Tek oturumlu: eskisi gibi QR üretilir.
-                    if (item.isMultiSession)
+                    // Kapı check-in'i olan etkinlikte İKİ yol da açıktır ve
+                    // ikisi de aynı damgayı yazar; hangisinin kullanılacağını
+                    // kulüp kapıda seçer:
+                    //   • kulübün ekrandaki kodunu okut  → _DoorScanAction
+                    //   • biletini görevliye göster      → "QR Oluştur"
+                    // Web de ikisini birlikte sunuyor (qr-entry.js +
+                    // student-ticket.js); iki platform aynı veriyi okuduğu için
+                    // mobilde birini kapatmak, o kapıda takılan öğrenci demekti.
+                    if (item.canShowTicket) ...<Widget>[
+                      _DoorScanAction(
+                        open: item.event!.entryOpen,
+                        onScan: () => _openSessionScanner(item),
+                      ),
+                      const SizedBox(height: 10),
+                      OutlinedButton.icon(
+                        onPressed: _qrLoading ? null : _generateQr,
+                        icon: const Icon(Icons.qr_code_2),
+                        label: Text(
+                          context.t('studentAppointments.modal.showTicket'),
+                        ),
+                      ),
+                    ]
+                    // Kapı girişi olmayan ("Sadece Yoklama") etkinlikte tek yol
+                    // salondaki oturum QR'ını okutmaktır.
+                    else if (item.isMultiSession)
                       _SessionScanAction(
                         item: item,
                         onScan: () => _openSessionScanner(item),
-                      )
-                    else if (item.canGenerateQr)
-                      FilledButton.icon(
-                        onPressed: _qrLoading ? null : _generateQr,
-                        icon: const Icon(Icons.qr_code_2),
-                        label: Text(context.t('studentAppointments.modal.generateQr')),
                       ),
                     const SizedBox(height: 20),
                   ],
@@ -339,18 +332,6 @@ class _AppointmentDetailSheetState extends ConsumerState<AppointmentDetailSheet>
                               style: const TextStyle(color: BrandColors.white),
                             ),
                           ),
-                          if (_locationNote != null) ...<Widget>[
-                            const SizedBox(height: 12),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 32),
-                              child: Text(
-                                _locationNote!,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                    color: BrandColors.red, fontSize: 12.5),
-                              ),
-                            ),
-                          ],
                         ],
                       ],
                     ),
@@ -418,6 +399,35 @@ class _SessionScanAction extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Kapı QR'ı hem yalnızca Check-in hem de Check-in + Yoklama modunun ortak
+/// ilk adımıdır. Kapı kapalıyken öğrenciye düğmenin neden pasif olduğu görünür.
+class _DoorScanAction extends StatelessWidget {
+  const _DoorScanAction({required this.open, required this.onScan});
+
+  final bool open;
+  final VoidCallback onScan;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          FilledButton.icon(
+            onPressed: open ? onScan : null,
+            icon: const Icon(Icons.qr_code_scanner),
+            label: Text(context.t('clubEvents.entry.open')),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            open
+                ? context.t('clubEvents.entry.subtitle')
+                : context.t('scan.doorClosed'),
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 12, color: open ? context.brandInk : context.inkMuted),
+          ),
+        ],
+      );
 }
 
 /// student-appointments.js#renderSessionProgress karşılığı.

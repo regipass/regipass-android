@@ -13,14 +13,31 @@ kExtraTranslations = <String, Map<String, String>>{
   'tr': <String, String>{
     // register.js içinde sabit metin olarak duruyordu
     'auth.error.roleAlreadyExists':
-        'Bu hesapta bu rol zaten mevcut. Lütfen giriş yapın.',
+        'Bu hesap türü zaten var. Lütfen giriş yap.',
     'auth.error.emailRegisteredWrongPassword':
-        'Bu e-posta zaten kayıtlı fakat şifre yanlış.',
+        'Bu e-posta kayıtlı, şifre hatalı.',
+    // Kayıt ekranındaki zorunlu KVKK/sözleşme onayı işaretlenmeden kayıt
+    // düğmesi zaten pasif kalır; bu metin yalnızca Enter/gönder ile
+    // tetiklenen kenar durumlar için (bkz. register_screen.dart).
+    'auth.feedback.termsRequired':
+        'Devam etmek için Kullanıcı ve Kulüp Sözleşmesi ile KVKK Aydınlatma '
+        'Metni\'ni onaylamalısın.',
+    // Onay özeti — bilgi formunun altında ve hesap kartlarında.
+    'legal.consent.summaryTitle': 'Onayladığın metinler',
+    'legal.consent.acceptedAt': 'Onay zamanı',
+    'legal.consent.tileLabel': 'Metin onayı',
+    'legal.consent.notRecorded': 'Kayıt yok',
+    'legal.consent.marketingOn': 'pazarlama izni verildi',
+    'legal.consent.marketingOff': 'pazarlama izni verilmedi',
 
     // Telefonu doğrulanmadığı için silinen kayıt (bkz. domain/account_expiry.dart)
     'auth.notice.unverifiedPhoneRemoved':
-        'Telefon numaran 3 gün içinde doğrulanmadığı için kaydın silindi. '
-        'Dilersen yeniden hesap oluşturabilirsin.',
+        'Belirtilen süre içerisinde hesabın doğrulanmadığı için '
+        'silinmiştir. Dilersen yeniden hesap oluşturabilirsin.',
+    // Doğrulama ekranındaki süre uyarısı — süre domain/account_expiry.dart
+    // içindeki kPhoneVerifyGrace ile aynı olmalı.
+    'phoneVerify.deleteWarning':
+        'Telefon numaranı 3 dakika içinde doğrulamazsan hesabın silinir.',
 
     // Giriş ekranı (yeniden tasarım) ve Keşfet
     'nav.explore': 'Keşfet',
@@ -30,8 +47,7 @@ kExtraTranslations = <String, Map<String, String>>{
 
     // Şifremi unuttum
     'forgotPassword.title': 'Şifreni Sıfırla',
-    'forgotPassword.emailRequired':
-        'Önce e-posta adresini gir, sonra "Şifremi unuttum"a bas.',
+    'forgotPassword.emailRequired': 'Önce e-posta adresini gir.',
     'forgotPassword.phoneQuestion':
         'Bu hesaba kayıtlı telefon numarası aşağıdaki gibi. Doğrulama kodu bu numaraya gönderilecek.',
     'forgotPassword.enterPhoneHint':
@@ -40,26 +56,25 @@ kExtraTranslations = <String, Map<String, String>>{
     'forgotPassword.phoneMismatch':
         'Bu numara girdiğin e-postaya ait hesapla eşleşmiyor. Numaranı kontrol et.',
     'forgotPassword.noPhone':
-        'Bu e-postaya bağlı doğrulanmış bir telefon bulunamadı. Numaranı yazıp yine de deneyebilirsin.',
+        'Kayıtlı numaranı burada gösteremiyoruz. Hesabına ait telefon numarasını yaz; doğrulama kodu o numaraya gönderilir.',
     'forgotPassword.tooManyAttempts':
-        'Çok fazla deneme yapıldı. Lütfen bir süre sonra tekrar dene.',
+        'Çok fazla deneme yapıldı. Biraz sonra tekrar dene.',
     'forgotPassword.newPasswordHint': 'Doğrulandı. Yeni şifreni belirle.',
     'forgotPassword.savePassword': 'Şifreyi Kaydet',
     'forgotPassword.success': 'Şifren güncellendi.',
     'forgotPassword.continue': 'Girişe dön',
     'forgotPassword.genericError': 'İşlem tamamlanamadı. Lütfen tekrar dene.',
-    'auth.error.networkFailed':
-        'Bağlantı kurulamadı. İnternet bağlantını kontrol et.',
+    'account.sharedPhoneNotice':
+        'Bu telefon aynı e-postaya bağlı öğrenci ve kulüp hesaplarında ortak kullanılır ve zaten doğrulanmıştır. Bu formdan değiştirilemez.',
+    'auth.error.networkFailed': 'Bağlantı kurulamadı. İnternetini kontrol et.',
     'explore.guestTitle': 'Misafir olarak geziyorsun',
     'explore.guestDesc':
         'Etkinliklere göz atabilirsin. Kayıt olmak, QR oluşturmak ve belge almak için giriş yapmalısın.',
     'explore.signInToJoin': 'Katılmak için giriş yap',
     'explore.empty': 'Şu anda gösterilecek etkinlik yok.',
-    'explore.loadError': 'Etkinlikler yüklenemedi.',
+    'explore.loadError': 'Etkinlikler yüklenemedi. Lütfen tekrar dene.',
     'explore.permissionDenied':
-        'Etkinlikler misafir kullanıcılara henüz açık değil.\n'
-        'Yöneticinin firestore.rules dosyasındaki etkinlik okuma kuralını '
-        'yayınlaması gerekiyor.',
+        'Etkinlikleri görmek için giriş yapman gerekiyor.',
 
     // Öğrenci alt çubuğu / üst çubuğu
     'student.nav.account': 'Hesabım',
@@ -110,9 +125,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'admin.notify.send': 'Gönder',
     'admin.notify.sent': '{{university}} için duyuru gönderildi.',
     'admin.notify.sendError': 'Duyuru gönderilemedi. Lütfen tekrar dene.',
-    'admin.notify.sendDenied':
-        'Duyuru gönderilemedi: bu hesabın yazma yetkisi yok. '
-        'Firestore kuralları güncel değilse yeniden yayınla.',
+    'admin.notify.sendDenied': 'Duyuru gönderme yetkin yok.',
 
     // Üretilen sözlükte diakritiksiz kalmış öğrenci metinleri
     'studentAccount.title': 'Hesabım',
@@ -132,7 +145,9 @@ kExtraTranslations = <String, Map<String, String>>{
     'settings.appearance.light': 'Açık mod',
     'settings.appearance.dark': 'Koyu mod',
     'settings.language': 'Dil',
-    'account.switchRole': 'Hesap değiştir',
+    // NOT: 'account.switchRole' kaldırıldı. Bir e-postaya tek rol bağlandığı
+    // için rol değiştirme diye bir işlem yok; düğmesi de silindi (web'de zaten
+    // hiç yoktu).
 
     // Hesap ekranındaki telefon alanı + doğrulama pop-up'ı
     'account.phoneChangeHint':
@@ -142,37 +157,44 @@ kExtraTranslations = <String, Map<String, String>>{
         'Numara doğrulanmadı; kayıtlı numaran olduğu gibi kaldı.',
     // Telefon doğrulama hataları (üretilen sözlükte karşılığı yok)
     'phoneVerify.error.browserCanceled':
-        'Güvenlik doğrulaması tamamlanmadı: açılan tarayıcı penceresi '
-        'kapatıldı. Lütfen "Kodu Gönder"e tekrar basın ve pencere kendi '
-        'kapanana kadar bekleyin.',
+        'Doğrulama yarıda kaldı. Kodu tekrar gönder.',
     'phoneVerify.error.browserAlreadyOpen':
-        'Devam eden bir doğrulama var. Lütfen açık olan doğrulama penceresini '
-        'tamamlayın ya da birkaç saniye sonra tekrar deneyin.',
+        'Devam eden bir doğrulama var. Birkaç saniye sonra tekrar dene.',
     'phoneVerify.error.network':
-        'İnternet bağlantısı kurulamadı. Bağlantınızı kontrol edip tekrar '
-        'deneyin.',
+        'İnternet bağlantını kontrol edip tekrar dene.',
     'phoneVerify.error.deviceCheckFailed':
-        'Cihaz doğrulaması tamamlanamadı, bu yüzden SMS gönderilemedi. '
-        'Google Play Hizmetleri olan bir cihazda tekrar deneyin; sorun '
-        'sürerse uygulamayı güncelleyin.',
+        'SMS gönderilemedi. Lütfen daha sonra tekrar dene.',
+    // Bir e-postaya artık tek rol bağlanabildiği için kayıt akışında çıkan
+    // uyarı (bkz. AuthRepository kayıt akışı).
+    'auth.error.emailAlreadyRegistered':
+        'Bu e-posta ile bir hesap var. Giriş yap ya da şifreni yenile.',
     'phoneVerifySheet.title': 'Telefon Numarasını Doğrula',
     'phoneVerifySheet.subtitle':
         'Bu numaraya 6 haneli bir doğrulama kodu göndereceğiz. Vazgeçmek '
-        'istersen sağ üstteki çarpıya basabilirsin.',
+        'istersen sağ üstteki düğmeden işlemi iptal edebilirsin.',
 
     // Fotoğraf seçimi (mobilde galeri/kamera ayrımı web'de yoktu)
     'form.photoFromGallery': 'Galeriden Seç',
     'form.photoFromCamera': 'Fotoğraf Çek',
-    'form.phoneOperatorPrefix': 'Türkiye cep telefonu 5 ile başlamalı.',
+    // Operatör ön eki denetimi (bkz. data/mobile_prefixes.dart): ülkenin cep
+    // ön eklerine uymayan numara — sabit hat ya da yanlış ülke.
+    'form.phoneOperatorPrefix':
+        '{{country}} cep numaraları {{prefixes}} ile başlamalı.',
+    'form.phoneDigits': '{{digits}} haneli olmalı',
+    // Aynı denetimin SMS gönderimi öncesi hâli: alanın altında değil, geri
+    // bildirim şeridinde gösterildiği için ülke adıyla birlikte yazılır.
+    'form.phoneCountryDigits':
+        '{{country}} numaraları {{digits}} haneli olmalı.',
     // Alanın altında gösterilen kısa uyarı; pop-up içindeki uzun açıklama
     // 'phoneVerify.error.numberInUse' anahtarında.
-    'form.phoneTaken':
-        'Bu numara başka bir hesaba ait. Lütfen farklı bir numara gir.',
+    'form.phoneTaken': 'Bu numara başka bir hesaba ait. Farklı bir numara gir.',
     // Numaraya başka bir hesap kod istedi ama henüz doğrulamadı; rezervasyon
     // 15 dakika sonra kendiliğinden düşer (bkz. phone_directory_repository).
     'form.phonePending':
-        'Bu numara için az önce başka bir hesap doğrulama kodu istedi. '
-        'Numara senin ise 15 dakika sonra tekrar dene.',
+        'Bu numara için doğrulama sürüyor. 15 dakika sonra tekrar dene.',
+    // Alanın altındaki canlı sorgu satırı (bkz. shared/live_phone_field.dart).
+    'form.phoneChecking': 'Numara kontrol ediliyor…',
+    'form.phoneAvailable': 'Bu numara kullanılabilir.',
 
     // Etkinlik detay penceresi
     'eventModal.info': 'Etkinlik Bilgileri',
@@ -202,34 +224,52 @@ kExtraTranslations = <String, Map<String, String>>{
     'common.logout': 'Çıkış Yap',
     'common.select': 'Seçiniz',
     'common.search': 'Ara...',
+    // Çok satırlı alanlarda klavyenin üstünde çıkan çubuk
+    // (bkz. lib/core/keyboard.dart).
+    'common.done': 'Bitti',
 
     // Kamera / QR (mobilde web'den farklı izin akışı var)
-    'scan.permissionDenied':
-        'Kamera izni verilmedi. Ayarlardan kamera iznini açın.',
+    'scan.permissionDenied': 'Kamera izni kapalı. Ayarlardan aç.',
     'scan.pointCamera': 'Kamerayı QR koda tutun.',
     'scan.ready': 'Sonraki öğrenci için hazır.',
     'scan.successTitle': 'Giriş Başarılı',
     'scan.failTitle': 'Giriş Başarısız',
     'scan.notRegipassQr': 'Bu QR Regipass giriş kodu değil.',
-    'scan.missingEventInfo': 'QR kodda etkinlik bilgisi eksik.',
+    'scan.missingEventInfo': 'QR kod eksik ya da bozuk.',
     'scan.notSessionQr': 'Bu QR bir oturum giriş kodu değil.',
-    'scan.missingSessionInfo': 'QR kodda oturum bilgisi eksik.',
+    'clubScan.needsDoorCheckin':
+        '{{name}} kapıda giriş yapmamış — yoklama için önce check-in gerekiyor.',
+    'scan.notDoorQr': 'Bu QR bir kapı giriş kodu değil.',
+    'scan.doorClosed': 'Kapı girişi henüz açık değil.',
+    'scan.needsDoorCheckin': 'Önce kapıdaki giriş QR\'ını okutman gerekiyor.',
+    'scan.doorSuccess':
+        'Kapı girişin kaydedildi. Oturum yoklamasına katılabilirsin.',
+    'scan.doorOnlySuccess': 'Etkinlik girişin kaydedildi. İyi etkinlikler!',
+    'scan.locationRequired':
+        'Bu giriş için konum gerekiyor. Konumu açıp tekrar dene.',
+    'scan.tooFar':
+        'Etkinlik konumundan uzaktasın ({{distance}}; en fazla {{radius}} m).',
+    'scan.missingSessionInfo': 'QR kod eksik ya da bozuk.',
     'scan.eventNotFound': 'Etkinlik bulunamadı.',
     'scan.notSessionBased': 'Bu etkinlik oturum bazlı değil.',
     'scan.sessionsCompleted': 'Etkinlik oturumları tamamlandı.',
     'scan.qrExpired': 'Bu QR artık geçerli değil — oturum ilerledi.',
+    // Ekrandaki oturum kodu 20 saniyede bir yenilenir; ekran görüntüsüyle
+    // paylaşılan kod bu adımda düşer (bkz. domain/session_qr_window.dart).
+    'scan.qrSlotExpired':
+        'Bu kod artık geçerli değil — ekrandaki QR 20 saniyede bir yenileniyor. Güncel kodu okut.',
     'scan.notRegistered': 'Bu etkinliğe kayıtlı değilsiniz.',
     'scan.alreadyCheckedInSession':
         'Bu oturumda ({{current}}/{{total}}) zaten giriş yaptınız.',
-    'scan.checkinSaveFailed': 'Giriş kaydedilemedi, tekrar deneyin.',
-    'scan.permissionError':
-        'Yetki hatası — bu oturum için giriş kaydedilemedi.',
+    'scan.checkinSaveFailed': 'Giriş kaydedilemedi. Tekrar dene.',
+    'scan.permissionError': 'Bu giriş kaydedilemedi. Kulüp görevlisine bildir.',
     'scan.sessionSuccess':
         '{{current}}. oturumdasınız (katılım {{attended}}/{{total}}).',
     'scan.otherEventQr':
         'Bu QR başka bir etkinliğe ait. Girdiğiniz etkinliğin oturum QR\'ını okutun.',
 
     // Oturumlu etkinlikte öğrenci QR üretmez, kulübün oturum QR'ını okutur.
+    'studentAppointments.modal.showTicket': 'Biletimi Göster',
     'studentAppointments.modal.scanQr': 'Oturum QR\'ını Okut',
     'studentAppointments.modal.scanReady':
         '{{current}}. oturum açık. Kulübün ekranındaki QR\'ı okutarak giriş yap.',
@@ -243,8 +283,7 @@ kExtraTranslations = <String, Map<String, String>>{
         'Etkinlik kaldırıldığı için oturum girişi yapılamıyor.',
 
     // Konum
-    'location.permissionDenied':
-        'Konum izni verilmedi. Etkinlik konum doğrulaması yapıyorsa giriş reddedilebilir.',
+    'location.permissionDenied': 'Konum izni kapalı. Giriş için konumu aç.',
     'location.gettingLocation': 'Konum alınıyor...',
 
     // ── Kulüp tarafı ────────────────────────────────────────────────
@@ -272,7 +311,8 @@ kExtraTranslations = <String, Map<String, String>>{
         'Aktif etkinlik bulunmuyor. Alttaki + düğmesinden yeni etkinlik oluşturabilirsin.',
     'clubEvents.empty.pending': 'Beklemede olan etkinlik bulunmuyor.',
     'clubEvents.empty.past': 'Geçmiş etkinlik bulunmuyor.',
-    'clubEvents.feedback.loadError': 'Etkinlikler yüklenirken bir hata oluştu.',
+    'clubEvents.feedback.loadError':
+        'Etkinlikler yüklenemedi. Lütfen tekrar dene.',
     'clubEvents.feedback.updateError':
         'İşlem tamamlanamadı. Lütfen tekrar dene.',
     'clubEvents.feedback.deleted': 'Etkinlik kaldırıldı.',
@@ -313,6 +353,8 @@ kExtraTranslations = <String, Map<String, String>>{
         'Tüm oturumlar tamamlandı ({{total}}/{{total}})',
     // İlerleme artık çubukla anlatılıyor; bu metinler yalnızca durumu söyler,
     // "2/4" gibi bir sayı taşımaz.
+    'clubEvents.session.blockedByCheckin':
+        'Önce kapı check-in\'ini bitir — oturum başlatılamaz',
     'clubEvents.session.stateNotStarted': 'Oturumlar henüz başlamadı',
     'clubEvents.session.stateActive': 'Oturum devam ediyor',
     'clubEvents.session.stateLastActive': 'Son oturum devam ediyor',
@@ -354,9 +396,31 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubEvents.session.finished':
         'Tüm oturumlar tamamlandı. Artık katılımcılara belge gönderebilirsin.',
     'clubEvents.session.qrTitle': '{{session}}. Oturum QR\'ı',
+    'clubEvents.session.qrRotatingHint':
+        'Öğrenciler bu QR\'ı telefon kamerasıyla okutsun. Kod {{seconds}} sn sonra yenilenecek.',
     'clubEvents.session.qrHint':
         'Bu kodu ekrana yansıt; öğrenciler kendi telefonlarından okutsun.',
     'clubEvents.session.qrError': 'QR görseli yüklenemedi.',
+    'clubEvents.entry.stateNotStarted': 'Check-in başlatılmadı',
+    'clubEvents.entry.stateRunning': 'Check-in açık',
+    'clubEvents.entry.stateFinished': 'Check-in bitti',
+    'clubEvents.entry.tally': ' — {{attended}}/{{total}} öğrenci giriş yaptı',
+    'clubEvents.entry.start': 'Check-in\'i Başlat',
+    'clubEvents.entry.finish': 'Check-in\'i Bitir',
+    'clubEvents.entry.restart': 'Check-in\'i Yeniden Başlat',
+    'clubEvents.entry.title': 'Kapı Girişi',
+    'clubEvents.entry.subtitle':
+        'Kapıda gösterilen QR. Öğrenciler kendi telefonlarından okutur.',
+    'clubEvents.entry.open': 'Giriş QR\'ını Aç',
+    'clubEvents.entry.show': 'Giriş QR\'ını Göster',
+    'clubEvents.entry.close': 'Girişi Kapat',
+    'clubEvents.entry.qrTitle': 'Etkinlik Giriş QR\'ı',
+    'clubEvents.entry.qrHint':
+        'Öğrenciler bu kodu kendi telefonlarıyla okutur. Giriş açık kaldığı sürece kayıtları onaylanır.',
+    'clubEvents.session.allowWithoutCheckin':
+        'Check-in yapmayanlar da yoklamaya katılsın',
+    'clubEvents.session.allowWithoutCheckinHint':
+        'Kapı girişini kaçıran öğrenciler oturum QR\'ını doğrudan okutabilir.',
 
     'clubEvents.scan.action': 'Öğrenci QR\'ı Okut',
     'clubEvents.scan.subtitle':
@@ -400,13 +464,13 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubEvents.certificate.autoSent':
         'Etkinlik bittiği için belge {{count}} öğrenciye otomatik gönderildi.',
     'clubEvents.certificate.partial':
-        'Belge {{count}} öğrenciye gönderildi, {{failed}} öğrencide hata '
-        'alındı. Belgenin üzerindeki gönder tuşuyla tekrar deneyebilirsin.',
+        'Belge {{count}} öğrenciye gönderildi, {{failed}} öğrenciye ulaşmadı. '
+        'Tekrar deneyebilirsin.',
     'clubEvents.certificate.redistribute': 'Bu belgeyi dağıt',
     'clubEvents.certificate.distributedCount': '{{count}} öğrenciye gönderildi',
     'clubEvents.certificate.notDistributed': 'Henüz kimseye gönderilmedi',
     'clubEvents.certificate.sourceMissing':
-        'Belge dosyası okunamadı. Belgeyi silip yeniden yüklemen gerekiyor.',
+        'Belge okunamadı. Silip yeniden yükle.',
     'clubEvents.certificate.linkLabel': 'Belge adresi veya dosya yolu',
     'clubEvents.certificate.linkHint':
         'Belgeyi kopyaladıysan buraya yapıştır (https://... bağlantısı ya da '
@@ -417,31 +481,25 @@ kExtraTranslations = <String, Map<String, String>>{
         'Önce belgenin adresini ya da dosya yolunu yapıştır.',
     'clubEvents.certificate.fetching': 'Belge indiriliyor...',
     'clubEvents.certificate.linkError':
-        'Belge bu adresten indirilemedi. Bağlantının herkese açık olduğundan '
-        'emin ol.',
-    'clubEvents.certificate.linkInvalid':
-        'Yapıştırılan metin bir belge adresi ya da cihazdaki bir dosya yolu '
-        'değil.',
+        'Belge bu adresten indirilemedi. Bağlantıyı kontrol et.',
+    'clubEvents.certificate.linkInvalid': 'Bu bir belge adresi değil.',
     'clubEvents.certificate.tooLarge': 'Belge en fazla 10 MB olabilir.',
     'clubEvents.certificate.invalidType':
-        'Yalnızca PDF, JPG veya PNG belge yükleyebilirsin.',
+        'Yalnızca PDF, JPG veya PNG yükleyebilirsin.',
     'clubEvents.certificate.pickerError':
-        'Dosya seçici açılamadı. Uygulamanın dosya erişim iznini kontrol et.',
+        'Dosya seçici açılamadı. Dosya iznini kontrol et.',
     'clubEvents.certificate.readError':
-        'Seçilen dosya okunamadı. Dosyayı önce telefonuna indirip tekrar dene.',
+        'Dosya okunamadı. Başka bir dosya dene.',
     'clubEvents.certificate.sending':
         'Belgeler gönderiliyor ({{done}}/{{total}})...',
     'clubEvents.certificate.sent': 'Belge {{count}} öğrenciye gönderildi.',
-    'clubEvents.certificate.error':
-        'Belge dağıtımı sırasında hata oluştu. Lütfen tekrar dene.',
-    'clubEvents.certificate.permissionError':
-        'Yetki hatası: storage.rules ve firestore.rules dosyalarını yayınla.',
+    'clubEvents.certificate.error': 'Belge gönderilemedi. Lütfen tekrar dene.',
+    'clubEvents.certificate.permissionError': 'Belge gönderme yetkin yok.',
     'clubEvents.certificate.authError':
-        'Oturum doğrulanamadı. Lütfen tekrar giriş yap.',
-    'clubEvents.certificate.quotaError': 'Storage kotası dolu.',
+        'Oturumun sona ermiş. Tekrar giriş yap.',
+    'clubEvents.certificate.quotaError': 'Depolama alanı dolu.',
     'clubEvents.certificate.storageError':
-        'Storage\'a ulaşılamadı. Firebase Console\'da Storage etkin mi ve '
-        'kova adı doğru mu kontrol et.',
+        'Belgelere şu anda ulaşılamıyor. Lütfen tekrar dene.',
     'clubEvents.certificate.uploaded': 'Yüklenen belge',
     'clubEvents.certificate.view': 'Görüntülemek için dokun',
 
@@ -522,7 +580,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubCreateEvent.location.captured': 'Konum alındı.',
     'clubCreateEvent.location.error': 'Konum alınamadı.',
     'clubCreateEvent.location.missingCoordinates':
-        'Konum adı girdin ama koordinat seçmedin.',
+        'Konumu haritadan da seç.',
     'clubCreateEvent.feedback.invalidEventDate': 'Etkinlik tarihini seç.',
     'clubCreateEvent.feedback.deadlineAfterEventDate':
         'Son başvuru tarihi etkinlik tarihinden sonra olamaz.',
@@ -533,7 +591,18 @@ kExtraTranslations = <String, Map<String, String>>{
     // Üretilen sözlükte "Etkinlik Adi" olarak kalmıştı.
     'form.eventTitle': 'Etkinlik Adı',
     'form.sessionCount': 'Oturum Sayısı',
-    'form.targetSector': 'Hedef Sektör / Alan',
+    'form.checkinMode': 'Check-in / Yoklama Modu',
+    'checkinMode.checkin_attendance': 'Check-in + Yoklama',
+    'checkinMode.attendance_only': 'Sadece Yoklama',
+    'checkinMode.checkin_only': 'Sadece Check-in',
+    'checkinMode.checkin_attendanceDesc':
+        'Kapıda konum doğrulamalı QR ile giriş yapılır; yoklama için önce bu giriş gerekir.',
+    'checkinMode.attendance_onlyDesc':
+        'Kapı girişi yoktur; oturum QR\'ları doğrudan çalışır.',
+    'checkinMode.checkin_onlyDesc':
+        'Oturum yoklaması yoktur; kapıda QR okutulunca giriş tamamlanır.',
+    'clubCreateEvent.feedback.sessionCountRequired':
+        'Yoklamalı etkinlikte oturum sayısı en az 2 olmalı.',
     'clubCreateEvent.subtitle':
         'Etkinlik bilgilerini doldur, hemen yayınlayalım.',
     'clubCreateEvent.editTitle': 'Etkinliği Düzenle',
@@ -552,8 +621,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'placeholder.sessionCountExample': 'Örnek: 5',
     'placeholder.certificateThresholdExample': 'Örnek: 80',
     'clubCreateEvent.feedback.imageTooLargeDetail':
-        'Görsel {{size}} KB — en fazla {{limit}} KB olabilir. Daha küçük bir '
-        'görsel seç ya da adresini yapıştır.',
+        'Görsel çok büyük ({{size}} KB). En fazla {{limit}} KB olabilir.',
     'form.imageUrl': 'Görsel Adresi',
     'form.locationName': 'Konum Adı',
     'form.locationRadius': 'Giriş Yarıçapı',
@@ -576,29 +644,36 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubDocuments.submit': 'Belgeleri Gönder',
     'clubDocuments.formatHint':
         'Desteklenen formatlar: PDF, JPEG, PNG — her belge en fazla 5 MB.',
-    'clubDocuments.feedback.permissionError':
-        'Yetki hatası: Storage kuralları belge yüklemeye izin vermiyor.',
+    'clubDocuments.feedback.permissionError': 'Belge yükleme yetkin yok.',
 
     'clubScan.otherEvent': 'Bu QR kod başka bir etkinliğe ait.',
     'clubScan.notOwner': 'Bu etkinlik senin kulübüne ait değil.',
     'clubScan.pastEvent':
         'QR okutma yalnızca devam eden/yaklaşan etkinliklerde kullanılabilir.',
-    'clubScan.notRegistered': 'Bu öğrencinin kaydı bu etkinlikte bulunamadı.',
+    'clubScan.notRegistered': 'Bu öğrencinin bu etkinlikte kaydı yok.',
     'clubScan.alreadyCheckedIn': '{{name}} zaten giriş yapmış.',
     'clubScan.sessionNotStarted': 'Önce oturumu başlat.',
     'clubScan.alreadyInSession':
         '{{name}} bu oturumda ({{current}}/{{total}}) zaten giriş yaptı.',
-    'clubScan.missingLocation':
-        'QR kodda konum bilgisi yok — öğrenci QR\'ını yeniden oluşturmalı.',
+    'clubScan.missingLocation': 'QR kodda konum yok. Öğrenci kodu yenilemeli.',
     'clubScan.tooFar':
         'Öğrenci etkinlik konumunun dışında — {{distance}} uzakta (en fazla {{radius}} m).',
     'clubScan.success': '{{name}} için giriş onaylandı.',
+    'clubScan.noDoorCheckin':
+        'Bu etkinlikte kapı check-in\'i yok — oturum QR\'ını gösterin, öğrenciler okutsun.',
+    'clubScan.doorClosed':
+        'Kapı kapalı. Önce etkinlik ekranından check-in\'i başlat.',
     'clubScan.sessionSuccess':
         '{{name}} için {{current}}. oturum girişi onaylandı (katılım {{attended}}/{{total}}).',
 
     'clubPending.notApprovedYet':
         'Onay henüz gelmedi. Yönetici belgelerini incelediğinde burası '
         'kendiliğinden güncellenir.',
+    // Onay beklerken hatalı belgeyi düzeltme yolu (bkz. club_pending_screen).
+    'clubPending.editDocuments': 'Belgeleri Düzenle',
+    'clubPending.editDocumentsHint':
+        'Yanlış belge yüklediysen inceleme sürerken değiştirebilirsin.',
+    'clubDocuments.backToPending': 'Onay ekranına dön',
     'clubDocuments.issueTitle': 'Yönetici belgelerde eksik buldu',
 
     'admin.action.needsDocuments': 'Belge Eksik',
@@ -623,6 +698,7 @@ kExtraTranslations = <String, Map<String, String>>{
     // okunaklı olsun diye burada güncelleniyor.
     'admin.nav.pending': 'Onaylar',
     'admin.nav.stats': 'İstatistik',
+    'admin.nav.clubs': 'Kulüpler',
     'admin.nav.ban': 'Engelle',
     'admin.action.approve': 'Onayla',
     'admin.action.block': 'Engelle',
@@ -645,6 +721,30 @@ kExtraTranslations = <String, Map<String, String>>{
     'admin.stats.universityCounts':
         '{{students}} öğr. · {{clubs}} kulüp · {{male}}E/{{female}}K',
 
+    // Kulüp listesi (admin_clubs_screen.dart)
+    'admin.clubs.title': 'Kulüp Listesi',
+    'admin.clubs.searchPlaceholder': 'Kulüp, şehir veya üniversite ara...',
+    'admin.clubs.empty': 'Eşleşen kulüp bulunamadı.',
+    'admin.clubs.cityCount': '{{count}} kulüp',
+    'admin.clubs.unnamed': 'İsimsiz Kulüp',
+    'admin.clubs.summaryCounts':
+        '{{clubs}} kulüp · {{cities}} şehir · {{universities}} üniversite',
+    'admin.clubs.summary': 'Kulüp Özeti',
+    'admin.clubs.info': 'Kulüp Bilgileri',
+    'admin.clubs.summaryText':
+        '{{club}}, {{city}} şehrinde {{university}} bünyesinde açılmış bir '
+        'kulüp. Çalışma alanı: {{fields}}. Yönetici kaydındaki durumu: '
+        '{{status}}.',
+    'admin.clubs.filter.all': 'Tümü',
+    'admin.clubs.filter.approved': 'Onaylı',
+    'admin.clubs.filter.pending': 'Onay bekleyen',
+    'admin.clubs.filter.documents': 'Belge bekleyen',
+    'admin.clubs.filter.banned': 'Engelli',
+    'admin.clubs.status.approved': 'Onaylı',
+    'admin.clubs.status.pending': 'Onay bekliyor',
+    'admin.clubs.status.documents': 'Belge bekleniyor',
+    'admin.clubs.status.banned': 'Engelli',
+
     'admin.ban.searchPlaceholder': 'Öğrenci, üniversite, şehir ara...',
     'admin.ban.empty': 'Eşleşen öğrenci bulunamadı.',
     'admin.ban.studentCount': '{{count}} öğrenci',
@@ -653,6 +753,45 @@ kExtraTranslations = <String, Map<String, String>>{
     'admin.ban.confirmBan':
         '{{name}} engellensin mi? Oturumu kapatılır ve giriş yapamaz.',
     'admin.ban.confirmUnban': '{{name}} için engel kaldırılsın mı?',
+    'admin.ban.tab.students': 'Öğrenciler',
+    'admin.ban.tab.clubs': 'Kulüpler',
+    'admin.ban.searchPlaceholderClubs': 'Kulüp, üniversite, şehir ara...',
+    'admin.ban.emptyClubs': 'Eşleşen kulüp bulunamadı.',
+    'admin.ban.clubCount': '{{count}} kulüp',
+    'admin.ban.filter.all': 'Tümü',
+    'admin.ban.filter.active': 'Aktif',
+    'admin.ban.filter.banned': 'Engelli',
+    'admin.ban.bannedLabel': 'Engelli',
+    'admin.ban.confirmClubBan':
+        '{{name}} engellensin mi? Kulüp panele erişemez; belgeleri silinmez.',
+    'admin.ban.confirmClubUnban':
+        '{{name}} için engel kaldırılsın mı? Kulüp, belgeleri duruyorsa '
+        'inceleme kuyruğuna, durmuyorsa belge yükleme adımına döner.',
+    'admin.ban.banSuccess': '{{name}} engellendi.',
+    'admin.ban.unbanSuccess': '{{name}} için engel kaldırıldı.',
+    'admin.ban.banError': 'Engelleme tamamlanamadı. Lütfen tekrar dene.',
+    'admin.ban.unbanError': 'Engel kaldırılamadı. Lütfen tekrar dene.',
+
+    // Kulübe yönetici notu (club_message_panel.dart)
+    'admin.clubs.ban': 'Kulübü Engelle',
+    'admin.clubs.unban': 'Engeli Kaldır',
+    'admin.message.title': 'Kulübe Mesaj Gönder',
+    'admin.message.hint':
+        'Eksik belge ya da düzeltilmesi gereken bir durum varsa sebebini '
+        'yaz; kulüp bu mesajı onay bekleme ekranında görecek. Başvuru '
+        'kuyrukta kalır.',
+    'admin.message.placeholder':
+        'Örn: Akademik danışman onayı okunmuyor, tekrar yükleyin.',
+    'admin.message.send': 'Mesajı Gönder',
+    'admin.message.sent': 'Mesaj kulübe iletildi.',
+    'admin.message.empty': 'Göndermeden önce bir mesaj yaz.',
+    'admin.message.error': 'Mesaj gönderilemedi. Lütfen tekrar dene.',
+    'admin.message.none': 'Bu kulübe henüz mesaj gönderilmedi.',
+    'admin.message.logTitle': 'Gönderilen mesajlar',
+    'clubPending.messages.title': 'Yöneticiden Mesaj',
+    'clubPending.messages.hint':
+        'Başvurunla ilgili yöneticinin ilettiği notlar aşağıda. Eksik bir '
+        'belge belirtildiyse düzeltip yeniden yükleyebilirsin.',
 
     // Kulüp / yönetici tarafı (bu turda iskelet)
     // Bağlantı durumu
@@ -661,8 +800,7 @@ kExtraTranslations = <String, Map<String, String>>{
         'Bağlantın geri geldiğinde kaldığın yerden devam edebilirsin.',
     'offline.loginBlocked':
         'İnternet bağlantısı yok. Giriş yapabilmek için bağlantını kontrol et.',
-    'offline.actionBlocked':
-        'İnternet bağlantısı kesildi. Bağlantın geri geldiğinde tekrar dene.',
+    'offline.actionBlocked': 'İnternet bağlantısı yok. Bağlanınca tekrar dene.',
     'offline.restored': 'İnternet bağlantısı geri geldi.',
 
     // Kulüp logosu (hesap ekranı + etkinlik penceresi rozeti)
@@ -671,19 +809,124 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubCreateEvent.image.autoShort':
         'Görsel eklemezsen kapakta gri Regipass logosu görünür.',
 
+    // Hesap sayfasının sağ üstündeki iki simge ve arkalarındaki alt sayfalar
+    // (bkz. lib/features/shared/account_settings_sheet.dart)
+    'account.settings': 'Hesap Ayarlarım',
+    'account.contact': 'İletişim',
+    'support.title': 'Regipass Destek Hattı',
+    'support.callPrompt': 'Bu numara aransın mı?',
+    'support.call': 'Ara',
+    'support.callFailed':
+        'Arama başlatılamadı; numara panoya kopyalandı.',
+
+    // Ücretli etkinlik iletişim satırları (bkz. event_widgets.dart)
+    'eventModal.phoneCopied': 'Numara kopyalandı',
+    'eventModal.emailCopied': 'E-posta kopyalandı',
+
+    // Kulüp hesap ekranındaki belge kartı (bkz.
+    // lib/features/club/club_documents_card.dart)
+    'clubAccount.documents.approvedTitle': 'Onaylanan Belgeler',
+    'clubAccount.documents.title': 'Belgelerim',
+    'clubAccount.documents.hint':
+        'Başvurunda gönderdiğin belgeler. Adına dokunarak açabilirsin.',
+    'clubAccount.documents.badge.approved': 'Onaylandı',
+    'clubAccount.documents.badge.review': 'İncelemede',
+    'clubAccount.documents.badge.incomplete': 'Eksik',
+    'clubAccount.documents.missing': 'Yüklenmedi',
+    'clubAccount.documents.open': 'Belgeyi aç',
+
+    // Hesap ekranındaki hesap ayarları bölümü (bkz.
+    // lib/features/shared/account_security.dart)
+    'accountSecurity.title': 'Güvenlik',
+    'accountSecurity.changePassword': 'Şifreyi Değiştir',
+    'accountSecurity.changePasswordDesc':
+        'Mevcut şifreni girerek yeni bir şifre belirle.',
+    'accountSecurity.setPassword': 'Şifre Belirle',
+    'accountSecurity.deleteAccount': 'Hesabımı Sil',
+    'accountSecurity.deleteAccountDesc':
+        'Hesabın ve tüm kayıtların kalıcı olarak silinir.',
+    'accountSecurity.phoneReauth.title': 'Telefonunla Doğrula',
+    'accountSecurity.phoneReauth.subtitle':
+        'Hesabına kayıtlı numaraya bir doğrulama kodu göndereceğiz.',
+    'accountSecurity.phoneReauth.confirm': 'Kodu Onayla',
+    'accountSecurity.error.noPhone':
+        'Hesabında doğrulanmış bir telefon numarası yok.',
+    'accountSecurity.error.phoneMismatch': 'Bu numara hesabına ait değil.',
+    'accountSecurity.error.wrongPassword': 'Mevcut şifren hatalı.',
+    'accountSecurity.error.generic':
+        'İşlem tamamlanamadı. Lütfen tekrar dene.',
+
+    'changePassword.subtitle': 'Güvenliğin için önce mevcut şifreni gir.',
+    'changePassword.subtitleVerified':
+        'Kimliğin doğrulandı. Şimdi yeni şifreni belirle.',
+    'changePassword.currentPassword': 'Mevcut Şifre',
+    'changePassword.newPassword': 'Yeni Şifre',
+    'changePassword.newPasswordConfirm': 'Yeni Şifre (Tekrar)',
+    'changePassword.forgotCurrent':
+        'Şifremi hatırlamıyorum, telefonumla doğrula',
+    'changePassword.submit': 'Şifreyi Güncelle',
+    'changePassword.feedback.success': 'Şifren güncellendi.',
+    'changePassword.feedback.currentRequired': 'Mevcut şifreni gir.',
+    'changePassword.feedback.sameAsCurrent':
+        'Yeni şifren eskisiyle aynı olamaz.',
+    'changePassword.feedback.phoneVerified':
+        'Telefonun doğrulandı. Yeni şifreni belirleyebilirsin.',
+
+    'deleteAccount.subtitle': 'Bu işlem geri alınamaz.',
+    'deleteAccount.warning':
+        'Hesabın, profilin ve etkinlik kayıtların kalıcı olarak silinir. Aynı '
+        'e-postayla yeniden kaydolabilirsin ama eski kayıtların geri gelmez.',
+    'deleteAccount.passwordLabel': 'Şifren',
+    'deleteAccount.verifyByPhone': 'Telefonumla doğrula',
+    'deleteAccount.submit': 'Hesabımı Kalıcı Olarak Sil',
+    'deleteAccount.feedback.passwordRequired':
+        'Hesabını silmek için şifreni gir.',
+    'deleteAccount.feedback.verifyFirst':
+        'Önce telefonunla kimliğini doğrula.',
+    'deleteAccount.feedback.phoneVerified':
+        'Kimliğin doğrulandı. Hesabını silebilirsin.',
+    'deleteAccount.notice.done': 'Hesabın kalıcı olarak silindi.',
+
     'screen.comingSoon': 'Bu bölüm hazırlanıyor.',
     'screen.comingSoonDesc':
         'Kulüp ve yönetici ekranları bir sonraki aşamada tamamlanacak.',
+    // Ücretli etkinlik onay logu — yalnızca ücretli etkinliklerde, etkinlik
+    // detayında gösterilir (bkz. domain/paid_event_consent.dart).
+    'paidEventConsent.log.title': 'Ücretli Etkinlik Onay Kaydı',
+    'paidEventConsent.log.club': 'Kulüp onayı — etkinlik oluşturma',
+    'paidEventConsent.log.students': 'Öğrenci kayıt onayları',
+    'paidEventConsent.log.missing': 'Onay kaydı bulunmuyor.',
+    'paidEventConsent.log.studentsEmpty': 'Henüz onay veren öğrenci yok.',
+    'paidEventConsent.log.showText': 'Onaylanan metni göster',
+    'paidEventConsent.log.hideText': 'Metni gizle',
+    'paidEventConsent.log.legacyText':
+        'Bu onayın metni kaydedilmemiş (metin kaydı eklenmeden önce alınmış onay).',
+    'paidEventConsent.log.tileLabel': 'Ödeme onayı',
+    'paidEventConsent.log.note':
+        'Bu kayıtlar etkinlik verisinde saklanır; onay metni ve '
+        'gün/saat/dakika/saniye damgası kayıt anında dondurulur.',
   },
   'en': <String, String>{
     'auth.error.roleAlreadyExists':
-        'This account already has that role. Please sign in instead.',
+        'This account type already exists. Please sign in.',
     'auth.error.emailRegisteredWrongPassword':
-        'This email is already registered but the password is wrong.',
+        'This email is registered, but the password is wrong.',
+    'auth.feedback.termsRequired':
+        'To continue, you must approve the User and Club Agreement and the '
+        'Data Protection Notice.',
+    'legal.consent.summaryTitle': 'Documents you approved',
+    'legal.consent.acceptedAt': 'Consent time',
+    'legal.consent.tileLabel': 'Document consent',
+    'legal.consent.notRecorded': 'Not recorded',
+    'legal.consent.marketingOn': 'marketing consent given',
+    'legal.consent.marketingOff': 'marketing consent not given',
 
     'auth.notice.unverifiedPhoneRemoved':
-        'Your record was deleted because your phone number was not verified '
-        'within 3 days. You can create a new account if you like.',
+        'Your account was deleted because it was not verified within the '
+        'given time. You can sign up again.',
+    'phoneVerify.deleteWarning':
+        'If you do not verify your phone number within 3 minutes, your '
+        'account will be deleted.',
 
     'nav.explore': 'Explore',
     'auth.noAccount': "Don't have an account?",
@@ -691,8 +934,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'common.back': 'Back',
 
     'forgotPassword.title': 'Reset your password',
-    'forgotPassword.emailRequired':
-        'Enter your email address first, then tap "Forgot my password".',
+    'forgotPassword.emailRequired': 'Enter your email address first.',
     'forgotPassword.phoneQuestion':
         'The phone number registered to this account is shown below. The verification code will be sent to it.',
     'forgotPassword.enterPhoneHint':
@@ -701,26 +943,24 @@ kExtraTranslations = <String, Map<String, String>>{
     'forgotPassword.phoneMismatch':
         "This number doesn't match the account for that email. Please check it.",
     'forgotPassword.noPhone':
-        'No verified phone was found for this email. You can still enter your number and try.',
+        "We can't display your saved number here. Type the phone number registered to this account and the code will be sent to it.",
     'forgotPassword.tooManyAttempts':
         'Too many attempts. Please try again later.',
     'forgotPassword.newPasswordHint': 'Verified. Choose your new password.',
     'forgotPassword.savePassword': 'Save password',
     'forgotPassword.success': 'Your password has been updated.',
     'forgotPassword.continue': 'Back to sign in',
-    'forgotPassword.genericError':
-        'Could not complete the request. Please try again.',
-    'auth.error.networkFailed':
-        'Could not connect. Check your internet connection.',
+    'forgotPassword.genericError': 'Something went wrong. Please try again.',
+    'account.sharedPhoneNotice':
+        'This phone is shared by the student and club accounts linked to the same email and is already verified. It cannot be changed here.',
+    'auth.error.networkFailed': 'No connection. Check your internet.',
     'explore.guestTitle': "You're browsing as a guest",
     'explore.guestDesc':
         'You can browse events. Sign in to register, generate a QR code and receive certificates.',
     'explore.signInToJoin': 'Sign in to join',
     'explore.empty': 'There are no events to show right now.',
-    'explore.loadError': 'Events could not be loaded.',
-    'explore.permissionDenied':
-        'Events are not open to guest users yet.\n'
-        'An administrator needs to publish the event read rule in firestore.rules.',
+    'explore.loadError': 'Events could not load. Please try again.',
+    'explore.permissionDenied': 'Sign in to see the events.',
 
     'student.nav.account': 'My Account',
     'student.notifications.title': 'Notifications',
@@ -763,10 +1003,10 @@ kExtraTranslations = <String, Map<String, String>>{
     'admin.notify.required': 'This field cannot be empty.',
     'admin.notify.send': 'Send',
     'admin.notify.sent': 'Notice sent to {{university}}.',
-    'admin.notify.sendError': 'The notice could not be sent. Please try again.',
+    'admin.notify.sendError':
+        'The announcement could not be sent. Please try again.',
     'admin.notify.sendDenied':
-        'The notice could not be sent: this account is not allowed to write. '
-        'Re-deploy the Firestore rules if they are out of date.',
+        'You do not have permission to send announcements.',
 
     'clubAccount.section.manager': 'Representative Details',
     'clubAccount.section.club': 'Club Details',
@@ -782,14 +1022,19 @@ kExtraTranslations = <String, Map<String, String>>{
 
     'form.photoFromGallery': 'Choose from gallery',
     'form.photoFromCamera': 'Take a photo',
-    'form.phoneOperatorPrefix': 'Turkish mobile numbers must start with 5.',
+    'form.phoneOperatorPrefix':
+        '{{country}} mobile numbers must start with {{prefixes}}.',
+    'form.phoneDigits': 'Must be {{digits}} digits',
+    'form.phoneCountryDigits':
+        '{{country}} numbers must be {{digits}} digits long.',
     'form.phoneTaken':
-        'This number belongs to another account. Please enter a different one.',
+        'This number belongs to another account. Enter a different one.',
     // Another account requested a code for this number but has not verified
     // it yet; the reservation expires by itself after 15 minutes.
     'form.phonePending':
-        'Another account just requested a verification code for this number. '
-        'If the number is yours, try again in 15 minutes.',
+        'This number is being verified. Try again in 15 minutes.',
+    'form.phoneChecking': 'Checking this number…',
+    'form.phoneAvailable': 'This number is available.',
 
     'eventModal.info': 'Event Details',
     'eventModal.club': 'Club',
@@ -817,32 +1062,47 @@ kExtraTranslations = <String, Map<String, String>>{
     'common.logout': 'Log out',
     'common.select': 'Select',
     'common.search': 'Search...',
+    'common.done': 'Done',
 
-    'scan.permissionDenied':
-        'Camera permission denied. Enable camera access in settings.',
+    'scan.permissionDenied': 'Camera access is off. Turn it on in Settings.',
     'scan.pointCamera': 'Point the camera at the QR code.',
     'scan.ready': 'Ready for the next student.',
     'scan.successTitle': 'Check-in Successful',
     'scan.failTitle': 'Check-in Failed',
     'scan.notRegipassQr': 'This is not a Regipass check-in code.',
-    'scan.missingEventInfo': 'The QR code is missing event information.',
+    'scan.missingEventInfo': 'The QR code is incomplete or damaged.',
     'scan.notSessionQr': 'This is not a session check-in code.',
-    'scan.missingSessionInfo': 'The QR code is missing session information.',
+    'clubScan.needsDoorCheckin':
+        '{{name}} has not checked in at the door - check-in is required first.',
+    'scan.notDoorQr': 'This is not a door entry code.',
+    'scan.doorClosed': 'Door entry is not open yet.',
+    'scan.needsDoorCheckin': 'You need to scan the door entry QR first.',
+    'scan.doorSuccess':
+        'Your door entry was recorded. You can now join session attendance.',
+    'scan.doorOnlySuccess': 'Your event entry was recorded. Enjoy the event!',
+    'scan.locationRequired':
+        'This check-in needs your location. Turn it on and try again.',
+    'scan.tooFar':
+        'You are outside the event location ({{distance}}; maximum {{radius}} m).',
+    'scan.missingSessionInfo': 'The QR code is incomplete or damaged.',
     'scan.eventNotFound': 'Event not found.',
     'scan.notSessionBased': 'This event is not session-based.',
     'scan.sessionsCompleted': 'All sessions for this event are completed.',
     'scan.qrExpired': 'This QR is no longer valid — the session has advanced.',
+    'scan.qrSlotExpired':
+        'This code has expired — the on-screen QR refreshes every 20 seconds. Scan the current one.',
     'scan.notRegistered': 'You are not registered for this event.',
     'scan.alreadyCheckedInSession':
         'You already checked in for this session ({{current}}/{{total}}).',
-    'scan.checkinSaveFailed': 'Could not save the check-in, please try again.',
+    'scan.checkinSaveFailed': 'The check-in could not be saved. Try again.',
     'scan.permissionError':
-        'Permission error — the check-in could not be saved for this session.',
+        'This check-in could not be saved. Tell the club staff.',
     'scan.sessionSuccess':
         'You are in session {{current}} (attendance {{attended}}/{{total}}).',
     'scan.otherEventQr':
         'This QR belongs to another event. Scan the session QR of the event you joined.',
 
+    'studentAppointments.modal.showTicket': 'Show My Ticket',
     'studentAppointments.modal.scanQr': 'Scan Session QR',
     'studentAppointments.modal.scanReady':
         'Session {{current}} is open. Scan the QR on the club\'s screen to check in.',
@@ -856,9 +1116,8 @@ kExtraTranslations = <String, Map<String, String>>{
         'The event was removed, so session check-in is not possible.',
 
     'location.permissionDenied':
-        'Location permission denied. Check-in may be rejected if the event verifies location.',
+        'Location access is off. Turn it on to check in.',
     'location.gettingLocation': 'Getting location...',
-    'account.switchRole': 'Switch account',
 
     // Account screen phone field + verification pop-up
     'account.phoneChangeHint':
@@ -869,18 +1128,15 @@ kExtraTranslations = <String, Map<String, String>>{
         'The number was not verified; your saved number is unchanged.',
     // Phone verification errors (not present in the generated dictionary)
     'phoneVerify.error.browserCanceled':
-        'Security check was not completed: the browser window that opened was '
-        'closed. Please tap "Send Code" again and wait until the window '
-        'closes by itself.',
+        'Verification was interrupted. Send the code again.',
     'phoneVerify.error.browserAlreadyOpen':
-        'A verification is already in progress. Please finish the open '
-        'verification window, or try again in a few seconds.',
+        'A verification is already in progress. Try again in a few seconds.',
     'phoneVerify.error.network':
-        'Could not reach the network. Check your connection and try again.',
+        'Check your internet connection and try again.',
     'phoneVerify.error.deviceCheckFailed':
-        'Device verification could not be completed, so the SMS was not sent. '
-        'Try again on a device with Google Play Services; if the problem '
-        'persists, update the app.',
+        'The SMS could not be sent. Please try again later.',
+    'auth.error.emailAlreadyRegistered':
+        'An account with this email exists. Sign in or reset your password.',
     'phoneVerifySheet.title': 'Verify Phone Number',
     'phoneVerifySheet.subtitle':
         'We will send a 6-digit verification code to this number. You can close '
@@ -910,7 +1166,7 @@ kExtraTranslations = <String, Map<String, String>>{
         'No active events. Use the + button below to create one.',
     'clubEvents.empty.pending': 'No events on hold.',
     'clubEvents.empty.past': 'No past events.',
-    'clubEvents.feedback.loadError': 'Events could not be loaded.',
+    'clubEvents.feedback.loadError': 'Events could not load. Please try again.',
     'clubEvents.feedback.updateError':
         'The action could not be completed. Please try again.',
     'clubEvents.feedback.deleted': 'Event removed.',
@@ -952,6 +1208,8 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubEvents.session.start': 'Start Session',
     'clubEvents.session.advance': 'Advance Session (session {{next}})',
     // Progress is shown by the bar now; these lines carry no counters.
+    'clubEvents.session.blockedByCheckin':
+        'Finish door check-in first — sessions cannot start yet',
     'clubEvents.session.stateNotStarted': 'Sessions have not started yet',
     'clubEvents.session.stateActive': 'A session is running',
     'clubEvents.session.stateLastActive': 'The last session is running',
@@ -991,9 +1249,31 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubEvents.session.finished':
         'All sessions completed. You can now send certificates to participants.',
     'clubEvents.session.qrTitle': 'Session {{session}} QR',
+    'clubEvents.session.qrRotatingHint':
+        'Students scan this QR with their phone camera. The code refreshes in {{seconds}} s.',
     'clubEvents.session.qrHint':
         'Project this code; students scan it from their own phones.',
     'clubEvents.session.qrError': 'The QR image could not be loaded.',
+    'clubEvents.entry.stateNotStarted': 'Check-in not started',
+    'clubEvents.entry.stateRunning': 'Check-in open',
+    'clubEvents.entry.stateFinished': 'Check-in finished',
+    'clubEvents.entry.tally': ' — {{attended}}/{{total}} students checked in',
+    'clubEvents.entry.start': 'Start Check-in',
+    'clubEvents.entry.finish': 'Finish Check-in',
+    'clubEvents.entry.restart': 'Restart Check-in',
+    'clubEvents.entry.title': 'Door Entry',
+    'clubEvents.entry.subtitle':
+        'The QR shown at the door. Students scan it with their own phones.',
+    'clubEvents.entry.open': 'Open Entry QR',
+    'clubEvents.entry.show': 'Show Entry QR',
+    'clubEvents.entry.close': 'Close Entry',
+    'clubEvents.entry.qrTitle': 'Event Entry QR',
+    'clubEvents.entry.qrHint':
+        'Students scan this code with their own phones. Entries are confirmed while it stays open.',
+    'clubEvents.session.allowWithoutCheckin':
+        'Let students without check-in join attendance',
+    'clubEvents.session.allowWithoutCheckinHint':
+        'Students who missed door entry can scan the session QR directly.',
 
     'clubEvents.scan.action': 'Scan Student QR',
     'clubEvents.scan.subtitle':
@@ -1016,13 +1296,13 @@ kExtraTranslations = <String, Map<String, String>>{
         'The event has ended, so the document was sent automatically to '
         '{{count}} students.',
     'clubEvents.certificate.partial':
-        'The document reached {{count}} students; {{failed}} failed. Use the '
-        'send button on the document to try again.',
+        'Sent to {{count}} students; {{failed}} did not receive it. You can '
+        'try again.',
     'clubEvents.certificate.redistribute': 'Distribute this document',
     'clubEvents.certificate.distributedCount': 'Sent to {{count}} students',
     'clubEvents.certificate.notDistributed': 'Not sent to anyone yet',
     'clubEvents.certificate.sourceMissing':
-        'The document file could not be read. Delete it and upload it again.',
+        'The document could not be read. Delete it and upload again.',
     'clubEvents.certificate.linkLabel': 'Document link or file path',
     'clubEvents.certificate.linkHint':
         'If you copied the document, paste it here (an https://... link or a '
@@ -1034,33 +1314,27 @@ kExtraTranslations = <String, Map<String, String>>{
         'Paste the document link or file path first.',
     'clubEvents.certificate.fetching': 'Downloading the document...',
     'clubEvents.certificate.linkError':
-        'The document could not be downloaded from this link. Make sure the '
-        'link is publicly accessible.',
-    'clubEvents.certificate.linkInvalid':
-        'The pasted text is neither a document link nor a file path on this '
-        'device.',
+        'The document could not be downloaded. Check the link.',
+    'clubEvents.certificate.linkInvalid': 'That is not a document link.',
     'clubEvents.certificate.tooLarge': 'The file can be at most 10 MB.',
     'clubEvents.certificate.invalidType':
-        'Only PDF, JPG or PNG files can be uploaded.',
+        'You can upload only PDF, JPG or PNG files.',
     'clubEvents.certificate.pickerError':
-        'The file picker could not be opened. Check the app\'s file access '
-        'permission.',
+        'The file picker could not open. Check the file permission.',
     'clubEvents.certificate.readError':
-        'The selected file could not be read. Download it to your phone first, '
-        'then try again.',
+        'The file could not be read. Try another file.',
     'clubEvents.certificate.sending':
         'Sending certificates ({{done}}/{{total}})...',
     'clubEvents.certificate.sent': 'Certificate sent to {{count}} students.',
     'clubEvents.certificate.error':
-        'Something went wrong while distributing. Please try again.',
+        'The document could not be sent. Please try again.',
     'clubEvents.certificate.permissionError':
-        'Permission error: publish storage.rules and firestore.rules.',
+        'You do not have permission to send documents.',
     'clubEvents.certificate.authError':
-        'Your session could not be verified. Please sign in again.',
-    'clubEvents.certificate.quotaError': 'The Storage quota is full.',
+        'Your session has ended. Please sign in again.',
+    'clubEvents.certificate.quotaError': 'Storage is full.',
     'clubEvents.certificate.storageError':
-        'Storage could not be reached. Check that Storage is enabled and the '
-        'bucket name is correct in the Firebase Console.',
+        'Documents are unreachable right now. Please try again.',
     'clubEvents.certificate.uploaded': 'Uploaded document',
     'clubEvents.certificate.view': 'Tap to view',
     'clubEvents.certificate.lockedSubtitle':
@@ -1143,6 +1417,18 @@ kExtraTranslations = <String, Map<String, String>>{
         'once the event ends.\n'
         '2 or more: session tracking opens and you set the attendance '
         'percentage required for a certificate.',
+    'form.checkinMode': 'Check-in / Attendance Mode',
+    'checkinMode.checkin_attendance': 'Check-in + Attendance',
+    'checkinMode.attendance_only': 'Attendance Only',
+    'checkinMode.checkin_only': 'Check-in Only',
+    'checkinMode.checkin_attendanceDesc':
+        'Students check in through a location-verified door QR before session attendance.',
+    'checkinMode.attendance_onlyDesc':
+        'There is no door entry; session QR codes work directly.',
+    'checkinMode.checkin_onlyDesc':
+        'There is no session attendance; scanning the door QR completes entry.',
+    'clubCreateEvent.feedback.sessionCountRequired':
+        'An event with attendance needs at least 2 sessions.',
     'clubCreateEvent.image.pick': 'Choose From Device',
     'notification.openTarget': 'View',
     'clubCreateEvent.location.nameHint':
@@ -1160,7 +1446,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubCreateEvent.location.captured': 'Location captured.',
     'clubCreateEvent.location.error': 'Location could not be read.',
     'clubCreateEvent.location.missingCoordinates':
-        'You entered a location name but no coordinates.',
+        'Pick the spot on the map too.',
     'clubCreateEvent.feedback.invalidEventDate': 'Choose the event date.',
     'clubCreateEvent.feedback.deadlineAfterEventDate':
         'The deadline cannot be after the event date.',
@@ -1175,8 +1461,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'form.afterTimeHint': 'after {{time}}',
     'form.eventHours': 'Event Time',
     'clubCreateEvent.feedback.imageTooLargeDetail':
-        'The image is {{size}} KB — the limit is {{limit}} KB. Pick a smaller '
-        'one or paste an image address instead.',
+        'The image is too large ({{size}} KB). The limit is {{limit}} KB.',
     'form.imageUrl': 'Image Address',
     'form.locationName': 'Location Name',
     'form.locationRadius': 'Check-in Radius',
@@ -1198,28 +1483,35 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubDocuments.formatHint':
         'Supported formats: PDF, JPEG, PNG — up to 5 MB each.',
     'clubDocuments.feedback.permissionError':
-        'Permission error: storage rules do not allow document upload.',
+        'You do not have permission to upload documents.',
 
     'clubScan.otherEvent': 'This QR belongs to a different event.',
     'clubScan.notOwner': 'This event does not belong to your club.',
     'clubScan.pastEvent': 'QR check-in only works for ongoing/upcoming events.',
-    'clubScan.notRegistered':
-        'This student has no registration for this event.',
+    'clubScan.notRegistered': 'This student is not signed up for this event.',
     'clubScan.alreadyCheckedIn': '{{name}} has already checked in.',
     'clubScan.sessionNotStarted': 'Start the session first.',
     'clubScan.alreadyInSession':
         '{{name}} already checked in for this session ({{current}}/{{total}}).',
     'clubScan.missingLocation':
-        'The QR has no location data — the student must regenerate it.',
+        'The QR code has no location. The student should refresh it.',
     'clubScan.tooFar':
         'The student is outside the event location — {{distance}} away (max {{radius}} m).',
     'clubScan.success': 'Check-in confirmed for {{name}}.',
+    'clubScan.noDoorCheckin':
+        'This event has no door check-in — show the session QR instead and let students scan it.',
+    'clubScan.doorClosed': 'Entry is closed. Start check-in from the event screen first.',
     'clubScan.sessionSuccess':
         'Session {{current}} confirmed for {{name}} (attendance {{attended}}/{{total}}).',
 
     'clubPending.notApprovedYet':
         'Approval has not arrived yet. This page updates itself once an '
         'administrator reviews your documents.',
+    'clubPending.editDocuments': 'Edit Documents',
+    'clubPending.editDocumentsHint':
+        'Uploaded the wrong file? You can replace it while the review is '
+        'still pending.',
+    'clubDocuments.backToPending': 'Back to approval screen',
     'clubDocuments.issueTitle': 'An administrator found the documents lacking',
 
     'admin.action.needsDocuments': 'Documents Missing',
@@ -1241,6 +1533,7 @@ kExtraTranslations = <String, Map<String, String>>{
 
     'admin.nav.pending': 'Approvals',
     'admin.nav.stats': 'Statistics',
+    'admin.nav.clubs': 'Clubs',
     'admin.nav.ban': 'Block',
     'admin.action.approve': 'Approve',
     'admin.action.block': 'Block',
@@ -1263,6 +1556,29 @@ kExtraTranslations = <String, Map<String, String>>{
     'admin.stats.universityCounts':
         '{{students}} std. · {{clubs}} clubs · {{male}}M/{{female}}F',
 
+    // Club directory (admin_clubs_screen.dart)
+    'admin.clubs.title': 'Club Directory',
+    'admin.clubs.searchPlaceholder': 'Search club, city or university...',
+    'admin.clubs.empty': 'No matching club found.',
+    'admin.clubs.cityCount': '{{count}} clubs',
+    'admin.clubs.unnamed': 'Unnamed Club',
+    'admin.clubs.summaryCounts':
+        '{{clubs}} clubs · {{cities}} cities · {{universities}} universities',
+    'admin.clubs.summary': 'Club Summary',
+    'admin.clubs.info': 'Club Details',
+    'admin.clubs.summaryText':
+        '{{club}} was founded at {{university}} in {{city}}. Field of work: '
+        '{{fields}}. Status on record: {{status}}.',
+    'admin.clubs.filter.all': 'All',
+    'admin.clubs.filter.approved': 'Approved',
+    'admin.clubs.filter.pending': 'Pending approval',
+    'admin.clubs.filter.documents': 'Awaiting documents',
+    'admin.clubs.filter.banned': 'Blocked',
+    'admin.clubs.status.approved': 'Approved',
+    'admin.clubs.status.pending': 'Pending approval',
+    'admin.clubs.status.documents': 'Awaiting documents',
+    'admin.clubs.status.banned': 'Blocked',
+
     'admin.ban.searchPlaceholder': 'Search student, university, city...',
     'admin.ban.empty': 'No matching student found.',
     'admin.ban.studentCount': '{{count}} students',
@@ -1271,6 +1587,46 @@ kExtraTranslations = <String, Map<String, String>>{
     'admin.ban.confirmBan':
         'Block {{name}}? They will be signed out and cannot log in.',
     'admin.ban.confirmUnban': 'Remove the block for {{name}}?',
+    'admin.ban.tab.students': 'Students',
+    'admin.ban.tab.clubs': 'Clubs',
+    'admin.ban.searchPlaceholderClubs': 'Search club, university, city...',
+    'admin.ban.emptyClubs': 'No matching club found.',
+    'admin.ban.clubCount': '{{count}} clubs',
+    'admin.ban.filter.all': 'All',
+    'admin.ban.filter.active': 'Active',
+    'admin.ban.filter.banned': 'Blocked',
+    'admin.ban.bannedLabel': 'Blocked',
+    'admin.ban.confirmClubBan':
+        'Block {{name}}? The club loses access to its panel; its documents '
+        'are kept.',
+    'admin.ban.confirmClubUnban':
+        'Remove the block for {{name}}? The club returns to the review queue '
+        'if its documents are still there, otherwise to the upload step.',
+    'admin.ban.banSuccess': '{{name}} has been blocked.',
+    'admin.ban.unbanSuccess': 'The block on {{name}} has been lifted.',
+    'admin.ban.banError': 'The block could not be applied. Please try again.',
+    'admin.ban.unbanError': 'The block could not be removed. Please try again.',
+
+    // Admin note to a club (club_message_panel.dart)
+    'admin.clubs.ban': 'Block Club',
+    'admin.clubs.unban': 'Unblock',
+    'admin.message.title': 'Send Message to Club',
+    'admin.message.hint':
+        'If a document is missing or something needs fixing, write the '
+        'reason here; the club sees it on its approval screen and the '
+        'application stays in the queue.',
+    'admin.message.placeholder':
+        'e.g. The advisor approval is unreadable, please upload it again.',
+    'admin.message.send': 'Send Message',
+    'admin.message.sent': 'Message delivered to the club.',
+    'admin.message.empty': 'Write a message before sending.',
+    'admin.message.error': 'The message could not be sent. Please try again.',
+    'admin.message.none': 'No message has been sent to this club yet.',
+    'admin.message.logTitle': 'Sent messages',
+    'clubPending.messages.title': 'Message From The Admin',
+    'clubPending.messages.hint':
+        'Notes the admin sent about your application are below. If a '
+        'document is missing, fix it and upload it again.',
 
     // Connectivity
     'offline.banner': 'No internet connection',
@@ -1279,7 +1635,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'offline.loginBlocked':
         'No internet connection. Check your connection to sign in.',
     'offline.actionBlocked':
-        'The internet connection was lost. Try again once you are back online.',
+        'You are offline. Try again once you are back online.',
     'offline.restored': 'Internet connection restored.',
 
     // Club logo (account screen + event window badge)
@@ -1288,8 +1644,102 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubCreateEvent.image.autoShort':
         'With no image, the cover shows a gray Regipass logo.',
 
+    // Account screen top-right icons and their sheets
+    'account.settings': 'My Account Settings',
+    'account.contact': 'Contact',
+    'support.title': 'Regipass Support Line',
+    'support.callPrompt': 'Call this number?',
+    'support.call': 'Call',
+    'support.callFailed':
+        'The call could not be started; the number was copied instead.',
+
+    // Paid event contact rows
+    'eventModal.phoneCopied': 'Number copied',
+    'eventModal.emailCopied': 'Email copied',
+
+    // Club account screen document card
+    'clubAccount.documents.approvedTitle': 'Approved Documents',
+    'clubAccount.documents.title': 'My Documents',
+    'clubAccount.documents.hint':
+        'The documents you submitted with your application. Tap a name to '
+        'open it.',
+    'clubAccount.documents.badge.approved': 'Approved',
+    'clubAccount.documents.badge.review': 'In review',
+    'clubAccount.documents.badge.incomplete': 'Incomplete',
+    'clubAccount.documents.missing': 'Not uploaded',
+    'clubAccount.documents.open': 'Open document',
+
+    // Account screen settings section
+    'accountSecurity.title': 'Security',
+    'accountSecurity.changePassword': 'Change Password',
+    'accountSecurity.changePasswordDesc':
+        'Enter your current password to set a new one.',
+    'accountSecurity.setPassword': 'Set a Password',
+    'accountSecurity.deleteAccount': 'Delete My Account',
+    'accountSecurity.deleteAccountDesc':
+        'Your account and all of your records are permanently deleted.',
+    'accountSecurity.phoneReauth.title': 'Verify with your phone',
+    'accountSecurity.phoneReauth.subtitle':
+        'We will send a verification code to the number registered to your '
+        'account.',
+    'accountSecurity.phoneReauth.confirm': 'Confirm Code',
+    'accountSecurity.error.noPhone':
+        'There is no verified phone number on your account.',
+    'accountSecurity.error.phoneMismatch':
+        'This number does not belong to your account.',
+    'accountSecurity.error.wrongPassword': 'Your current password is wrong.',
+    'accountSecurity.error.generic':
+        'The action could not be completed. Please try again.',
+
+    'changePassword.subtitle': 'For your security, enter your current password.',
+    'changePassword.subtitleVerified':
+        'Your identity is verified. Now set your new password.',
+    'changePassword.currentPassword': 'Current Password',
+    'changePassword.newPassword': 'New Password',
+    'changePassword.newPasswordConfirm': 'New Password (Repeat)',
+    'changePassword.forgotCurrent':
+        "I don't remember my password, verify with my phone",
+    'changePassword.submit': 'Update Password',
+    'changePassword.feedback.success': 'Your password has been updated.',
+    'changePassword.feedback.currentRequired':
+        'Enter your current password.',
+    'changePassword.feedback.sameAsCurrent':
+        'Your new password cannot be the same as the old one.',
+    'changePassword.feedback.phoneVerified':
+        'Your phone is verified. You can set your new password.',
+
+    'deleteAccount.subtitle': 'This action cannot be undone.',
+    'deleteAccount.warning':
+        'Your account, profile and event registrations are deleted '
+        'permanently. You can sign up again with the same email, but your old '
+        'records will not come back.',
+    'deleteAccount.passwordLabel': 'Your password',
+    'deleteAccount.verifyByPhone': 'Verify with my phone',
+    'deleteAccount.submit': 'Permanently Delete My Account',
+    'deleteAccount.feedback.passwordRequired':
+        'Enter your password to delete your account.',
+    'deleteAccount.feedback.verifyFirst':
+        'Verify your identity with your phone first.',
+    'deleteAccount.feedback.phoneVerified':
+        'Your identity is verified. You can delete your account.',
+    'deleteAccount.notice.done':
+        'Your account has been permanently deleted.',
+
     'screen.comingSoon': 'This section is under construction.',
     'screen.comingSoonDesc':
         'Club and admin screens will be completed in the next stage.',
+    'paidEventConsent.log.title': 'Paid Event Consent Record',
+    'paidEventConsent.log.club': 'Club consent — event creation',
+    'paidEventConsent.log.students': 'Student registration consents',
+    'paidEventConsent.log.missing': 'No consent record found.',
+    'paidEventConsent.log.studentsEmpty': 'No student has consented yet.',
+    'paidEventConsent.log.showText': 'Show the accepted text',
+    'paidEventConsent.log.hideText': 'Hide the text',
+    'paidEventConsent.log.legacyText':
+        'The text of this consent was not stored (recorded before text logging was added).',
+    'paidEventConsent.log.tileLabel': 'Payment consent',
+    'paidEventConsent.log.note':
+        'These records live in the event data; the consent text and the '
+        'day/hour/minute/second stamp are frozen at the moment of consent.',
   },
 };

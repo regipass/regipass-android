@@ -113,6 +113,30 @@ Kural yazma iznini `request.auth.token.phone_number == phoneE164` şartına
 bağladığı için bu geriye dönük yazım da güvenli: kimse sahibi olmadığı bir
 numarayı işgal edemez.
 
+## Bir e-postaya tek rol, tek telefon
+
+**Bir e-posta adresine yalnızca TEK hesap ve TEK rol bağlanabilir.** Kayıt
+sırasında e-posta zaten kullanımdaysa akış durdurulur ve kullanıcıya "bu
+e-posta adresine bağlı bir hesap bulunmaktadır" uyarısı gösterilir
+(bkz. `lib/features/auth/register_screen.dart`).
+
+Telefon doğrulaması Firebase Auth kimliğine bağlıdır, dolayısıyla bir hesabın
+tek doğrulanmış numarası olur:
+
+- Kulüp ve öğrenci, ikisi de bilgi formu tamamlandıktan sonra SMS doğrulaması
+  yapmak zorundadır; doğrulama bitmeden panele (kulüpte belge adımına)
+  geçilemez.
+- Telefon değiştirildiğinde doğrulama sıfırlanır ve yeni numara ancak SMS kodu
+  onaylandıktan sonra profile yazılır.
+- Şifre sıfırlama ekranında rol seçimi **yoktur**: bir e-posta = bir Firebase
+  Auth hesabı = bir şifre = bir rol.
+
+> **Tarihsel not.** Bu kural gelmeden önce aynı e-posta tek `uid` altında hem
+> öğrenci hem kulüp rolü taşıyabiliyordu; telefon ve şifre iki rol arasında
+> paylaşılıyordu. `ProfileRepository._writeSharedPhone` ve `AppUser.roles`
+> haritası o dönemden kalan, mevcut çift rollü kayıtları bozmamak için duran
+> kodlardır. Yeni kayıtlarda ikinci rol hiç oluşmaz.
+
 ## Web ile ortak koleksiyon
 
 `phone_owners` koleksiyonunu **hem web hem mobil** kullanır; kural da ikisi
@@ -154,6 +178,33 @@ yapar, dolayısıyla davranış aynı kalır.
    olabilir. `phone_verify_screen.dart` ayrıca sorgu geçtikten sonra
    `reserve(...)` ile numarayı `pending` olarak rezerve eder ve pop-up
    kapatılırsa `release(...)` ile bırakır.
+
+## SMS öncesi ön kontrol sırası
+
+Sahiplik sorgusu tek başına yetmiyor: hane sayısı tutan bir **sabit hat** ya
+da yanlış ülkeden yazılmış bir numara dizinde "serbest" görünür, kod
+gönderilir ve SMS hiç ulaşmaz. Bu yüzden `verifyPhoneNumber` çağrılmadan önce
+üç kapı sırayla geçilir (`lib/features/shared/phone_guard.dart`):
+
+| # | kapı | nerede | takılırsa |
+| --- | --- | --- | --- |
+| 1 | Hane sayısı ülkenin `min..max` aralığında mı | yerel (`domain/phone_precheck.dart`) | SMS istenmez |
+| 2 | Ulusal numara ülkenin cep operatörü ön ekleriyle başlıyor mu | yerel (`data/mobile_prefixes.dart`) | SMS istenmez |
+| 3 | Numara başka bir hesaba mı ait | `phone_owners` sorgusu | SMS istenmez |
+
+Sıra ucuzdan pahalıya: ağa çıkmadan elenebilecek numara için sorgu yapılmaz.
+Üçü de geçtikten sonra numara `pending` olarak rezerve edilir ve kodu
+Firebase gönderir.
+
+**Ön ek tablosu bilinçli olarak dar.** `kMobilePrefixes` yalnızca listesinden
+emin olduğumuz ülkeleri taşır (bugün: Türkiye — `50, 53, 54, 55, 56`).
+Tabloda olmayan ülkede 2. kapı hiç çalışmaz; eksik/eskimiş bir listeyle
+gerçek bir numarayı bloklamak, denetimi atlamaktan daha kötüdür. Yeni ülke
+eklerken kaynak numaralandırma planı yorumda belirtilmeli.
+
+Aynı iki yerel kapı telefon alanının kendi anlık uyarısını da besler
+(`PhoneFieldController.isValid` / `hasInvalidPrefix`), böylece alanın
+"geçerli" dediği numara gönderim anında elenmez.
 
 ## Gizlilik notu
 

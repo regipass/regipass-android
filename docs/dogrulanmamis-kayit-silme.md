@@ -1,6 +1,6 @@
-# Telefonu doğrulanmayan kaydın silinmesi (3 gün)
+# Telefonu doğrulanmayan kaydın silinmesi (3 dakika)
 
-Hesap açıldıktan sonra **3 gün** içinde SMS doğrulaması tamamlanmazsa öğrenci
+Hesap açıldıktan sonra **3 dakika** içinde SMS doğrulaması tamamlanmazsa öğrenci
 kaydı veritabanında tutulmaz, silinir.
 
 | Parça | Yer |
@@ -62,4 +62,4 @@ temizlemek için zamanlanmış bir Cloud Function gerekir — proje şu an
 ## Geriye dönük etki
 
 Kural mevcut kayıtlara da uygulanır: `phoneVerified` alanı false olan ve 3
-günden eski her öğrenci kaydı, sahibi uygulamayı açtığı ilk seferde silinir.
+dakikadan eski her öğrenci kaydı, sahibi uygulamayı açtığı ilk seferde silinir.

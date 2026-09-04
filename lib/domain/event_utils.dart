@@ -46,6 +46,20 @@ String formatDateTime(int? valueMs, {String locale = 'tr'}) {
   ).format(DateTime.fromMillisecondsSinceEpoch(valueMs));
 }
 
+/// Saniyeli tam zaman damgası — gün, saat, dakika, saniye.
+///
+/// KVKK Aydınlatma Metni (madde 7), onay kayıtlarının "onay zamanı" ile
+/// birlikte saklanmasını şart koşuyor; olası bir uyuşmazlıkta onayın tam
+/// olarak ne zaman verildiği ispatlanabilmeli. Bu yüzden onay satırlarında
+/// dakika değil saniye çözünürlüğü gösterilir.
+String formatDateTimeWithSeconds(int? valueMs, {String locale = 'tr'}) {
+  if (valueMs == null || valueMs <= 0) return '-';
+  return DateFormat(
+    'dd MMMM yyyy HH:mm:ss',
+    locale == 'en' ? 'en_US' : 'tr_TR',
+  ).format(DateTime.fromMillisecondsSinceEpoch(valueMs));
+}
+
 /// Etkinliğin süresi doldu mu?
 ///
 /// Karşılaştırma yerel saatle, son başvuru anına kadar yapılır.

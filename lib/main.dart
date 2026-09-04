@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 import 'app/app.dart';
+import 'app/system_ui.dart';
 import 'app/theme.dart';
 import 'features/landing/splash_screen.dart';
 import 'firebase_options.dart';
@@ -23,7 +24,7 @@ void main() {
   // Sistem çubuklarını beklemeden uygula. Önceden bu Future'ın, Firebase'in,
   // tarih verisinin ve SharedPreferences'ın tamamı bitmeden runApp çağrılmıyor;
   // bu da logo ekranının bile gecikmiş görünmesine neden oluyordu.
-  unawaited(SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky));
+  unawaited(applyVisibleSystemBars());
 
   // Açılış perdesi cihazın görünümünü izliyor (bkz. splash_screen.dart), sistem
   // çubukları da ilk kareden itibaren aynı tarafta olmalı; aksi halde koyu
@@ -33,22 +34,7 @@ void main() {
       Brightness.dark;
 
   SystemChrome.setSystemUIOverlayStyle(
-    SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: dark ? Brightness.light : Brightness.dark,
-      statusBarBrightness: dark ? Brightness.dark : Brightness.light,
-      systemStatusBarContrastEnforced: false,
-      systemNavigationBarColor: dark
-          ? BrandColors.darkSurface
-          : BrandColors.white,
-      systemNavigationBarDividerColor: dark
-          ? BrandColors.darkBorder
-          : BrandColors.grayLight,
-      systemNavigationBarIconBrightness: dark
-          ? Brightness.light
-          : Brightness.dark,
-      systemNavigationBarContrastEnforced: false,
-    ),
+    systemBarsStyle(brightness: dark ? Brightness.dark : Brightness.light),
   );
 
   // İlk Flutter karesinde splash görünür; Firebase ve cihaz depoları onun

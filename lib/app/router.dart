@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 
 import '../core/constants.dart';
 import '../domain/routing.dart';
+import '../features/admin/admin_clubs_screen.dart';
 import '../features/admin/admin_notifications_screen.dart';
 import '../features/admin/admin_screens.dart';
 import '../features/admin/admin_shell.dart';
@@ -240,6 +241,10 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
             builder: (_, _) => const AdminStatsScreen(),
           ),
           GoRoute(
+            path: Routes.adminClubs,
+            builder: (_, _) => const AdminClubsScreen(),
+          ),
+          GoRoute(
             path: Routes.adminBan,
             builder: (_, _) => const AdminBanScreen(),
           ),
@@ -262,11 +267,23 @@ String? resolveRedirectForTest(Session session, String location) =>
     _resolveRedirect(session, location);
 
 String? _resolveRedirect(Session session, String location) {
+  // Kayıt ekranı "bu e-postaya ait hesapta bu rol zaten var mı" diye
+  // bakıyor. Soruyu sorabilmek için oturum bir an açılır; bu oturum bir
+  // GİRİŞ değildir ve rol zaten varsa hemen kapatılır. Bu aralıkta
+  // yönlendirme yapılırsa kullanıcı uyarıyı hiç görmeden panele düşer.
+  if (session.isProbingAccount) return null;
+
   // Profil dokümanları henüz yüklenmediyse karar verilemez; mevcut ekran
   // (açılışta LoginScreen) yükleniyor göstergesini çizer.
   if (session.isLoading) return null;
 
   // ── Şifre sıfırlama ─────────────────────────────────────────────
+  // SMS kodu Firebase Auth oturumu açar; şifre ve hedef hesap seçimi
+  // tamamlanana kadar rol seçimi/panel ekranı bu akışı kesmemeli.
+  if (session.isResettingPassword) {
+    return location == Routes.forgotPassword ? null : Routes.forgotPassword;
+  }
+
   // Bu rota hem oturumsuz hem oturumlu erişime açık olmalı: SMS kodu
   // doğrulandığı anda kullanıcı Auth'a giriş yapmış olur (şifre değiştirmek
   // oturum gerektiriyor). Aksi hâlde router onu tam o anda panele fırlatır
@@ -290,14 +307,30 @@ String? _resolveRedirect(Session session, String location) {
   }
   if (isAdminRoute(location)) return Routes.landing;
 
+  // ── Henüz kaydedilmemiş rol ─────────────────────────────────────
+  // Yeni hesapta (veya mevcut hesaba ikinci rol eklerken) rol seçimi yalnız
+  // bellekte tutulur. Bu aşamada kullanıcı sadece ilgili bilgi formuna
+  // girebilir; form başarıyla kaydedilince pendingRole temizlenir.
+  final String? pendingTarget = onboardingRouteForPendingRole(
+    session.pendingRole,
+  );
+  if (pendingTarget != null) {
+    return location == pendingTarget ? null : pendingTarget;
+  }
+
   // ── Rol seçimi ──────────────────────────────────────────────────
-  // Hesapta hiç rol yoksa (ilk Google girişi) ya da her iki rol de varsa
-  // ve kullanıcı bu cihazda henüz seçim yapmadıysa seçim ekranı gösterilir.
+  // TEK durumda gösterilir: hesapta hiç TAMAMLANMIŞ rol yok (ilk
+  // Google/Apple/e-posta kaydı ya da eski yarım iskelet). Kullanıcı burada
+  // hesabının TÜRÜNÜ seçer.
+  //
+  // Eskiden ikinci bir dal daha vardı: her iki rolü de olan hesaba "hangisiyle
+  // devam edeceksin" diye soruluyordu. Bir e-postaya artık tek rol
+  // bağlanabildiği için (bkz. RegisterScreen ve docs/telefon-sahiplik-kurali.md)
+  // o soru kalktı. Kural gelmeden önce açılmış çift rollü hesaplar soru
+  // sorulmadan `resolvedRole`a — yani `lastRole`a — düşer; hiçbir belge
+  // silinmediği için ikinci rolün verisi Firestore'da durur.
   final String? role = session.resolvedRole;
   if (role == null) {
-    return location == Routes.roleSelect ? null : Routes.roleSelect;
-  }
-  if (session.hasBothRoles && session.activeRole == null) {
     return location == Routes.roleSelect ? null : Routes.roleSelect;
   }
   if (location == Routes.roleSelect) {
@@ -321,6 +354,15 @@ String? _resolveRedirect(Session session, String location) {
     if (target == Routes.phoneVerify && location == Routes.phoneChange) {
       return null;
     }
+
+    // Onay beklerken yanlış belge yüklendiği fark edilirse kulüp belge
+    // ekranına geri dönebilmeli (club-pending üzerindeki "Belgeleri Düzenle").
+    // Bu istisna olmasa kapı kullanıcıyı tam o anda bekleme ekranına geri
+    // fırlatır ve hatalı belge düzeltilemez.
+    if (target == Routes.clubPending && location == Routes.clubDocuments) {
+      return null;
+    }
+
     return location == target ? null : target;
   }
 

@@ -8,11 +8,14 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../app/theme.dart';
+import '../../core/constants.dart';
 import '../../core/input_guard.dart';
 import '../../core/password_policy.dart';
 import '../../core/sanitize.dart';
 import '../../data/department_data.dart';
 import '../../data/location_data.dart';
+import '../../domain/legal_docs.dart';
+import '../../domain/routing.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/profiles.dart';
 import '../../services/firebase_refs.dart';
@@ -21,6 +24,7 @@ import '../../state/providers.dart';
 import '../auth/auth_actions.dart';
 import '../shared/common_widgets.dart';
 import '../shared/gender_picker.dart';
+import '../shared/legal_consent.dart';
 import '../shared/live_phone_field.dart';
 import '../shared/media_viewer.dart';
 import '../shared/phone_field.dart';
@@ -86,6 +90,7 @@ class _StudentInfoScreenState extends ConsumerState<StudentInfoScreen> {
   /// Formun hangi hesap için doldurulduğu. Hesap değişince sıfırlanır.
   String? _prefilledFor;
   bool _saving = false;
+  bool _usesSharedPhone = false;
 
   /// Telefon alanının altında gösterilen "bu numara başka bir hesaba ait"
   /// uyarısı. Kullanıcı numarayı değiştirince temizlenir.
@@ -116,35 +121,47 @@ class _StudentInfoScreenState extends ConsumerState<StudentInfoScreen> {
 
   /// Mevcut profil bir kez forma doldurulur; sonraki snapshot güncellemeleri
   /// kullanıcının yazdıklarının üzerine yazmamalı.
-  void _prefill(StudentProfile? profile, User? user) {
+  void _prefill(StudentProfile? profile, ClubProfile? linkedClub, User? user) {
     // Hesap değiştiyse form yeniden doldurulmalı: aynı ekran nesnesi
     // ayakta kalıp önceki kullanıcının bilgilerini taşıyabiliyor.
     final String uid = user?.uid ?? '';
     if (_prefilledFor != uid) {
       _prefilled = false;
       _prefilledFor = uid;
+      _usesSharedPhone = false;
     }
 
-    if (_prefilled || profile == null) return;
+    if (_prefilled) return;
     _prefilled = true;
-    _editMode = profile.onboardingCompleted;
+    _editMode = profile?.onboardingCompleted ?? false;
+    _usesSharedPhone = linkedClub?.onboardingCompleted == true;
 
-    _firstName.text = profile.firstName;
-    _lastName.text = profile.lastName;
-    _studentNumber.text = profile.studentNumber;
-    _phone.setValue(profile.phone);
+    if (profile != null) {
+      _firstName.text = profile.firstName;
+      _lastName.text = profile.lastName;
+      _studentNumber.text = profile.studentNumber;
+      _phone.setValue(profile.phone);
 
-    _city = profile.city;
-    _university = profile.university;
-    _department = profile.department;
-    _classYear = profile.classYear;
-    // Eski kayıtlarda alan boş olabilir; o hâlde hiçbir seçenek işaretlenmez
-    // ve kullanıcı kaydetmeden önce seçmek zorunda kalır.
-    _gender = profile.gender == 'male' || profile.gender == 'female'
-        ? profile.gender
-        : '';
+      _city = profile.city;
+      _university = profile.university;
+      _department = profile.department;
+      _classYear = profile.classYear;
+      // Eski kayıtlarda alan boş olabilir; o hâlde hiçbir seçenek
+      // işaretlenmez ve kullanıcı kaydetmeden önce seçmek zorunda kalır.
+      _gender = profile.gender == 'male' || profile.gender == 'female'
+          ? profile.gender
+          : '';
+    }
 
-    // Yeni Google kullanıcısında profil boşsa adı hesap adından türet.
+    if (_usesSharedPhone) {
+      final String sharedPhone = (user?.phoneNumber ?? '').isNotEmpty
+          ? user!.phoneNumber!
+          : linkedClub!.phone;
+      if (sharedPhone.isNotEmpty) _phone.setValue(sharedPhone);
+    }
+
+    // Yeni sosyal kullanıcıda henüz profil belgesi yoktur; adı doğrudan Auth
+    // sağlayıcısındaki görünen addan türet.
     if (_firstName.text.isEmpty && (user?.displayName ?? '').isNotEmpty) {
       final List<String> parts = user!.displayName!.trim().split(
         RegExp(r'\s+'),
@@ -187,43 +204,60 @@ class _StudentInfoScreenState extends ConsumerState<StudentInfoScreen> {
     });
   }
 
-  /// Seçilen fotoğrafı Storage'a yükler, "kaldır" işaretliyse mevcudu siler.
-  Future<({String url, String path})> _resolvePhoto(
-    String uid,
-    StudentProfile? profile,
-  ) async {
+  /// Yeni fotoğrafı benzersiz bir Storage yoluna hazırlar. Eski dosya profil
+  /// transaction'ı başarıyla tamamlanmadan silinmez; yeni yükleme de kayıt
+  /// başarısız olursa çağıran tarafından geri alınır.
+  Future<({String url, String path, String uploadedPath, String stalePath})>
+  _preparePhoto(String uid, StudentProfile? profile) async {
     if (_pickedPhoto != null) {
       final String ext = (_pickedPhoto!.name.split('.').lastOrNull ?? 'jpg')
           .toLowerCase();
-      final String path = 'student_photos/$uid/profile.$ext';
+      final String uploadId = DateTime.now().microsecondsSinceEpoch.toString();
+      final String path = 'student_photos/$uid/profile-$uploadId.$ext';
       final Reference storageRef = fbStorage.ref(path);
 
-      await storageRef.putFile(File(_pickedPhoto!.path));
-      final String url = await storageRef.getDownloadURL();
-
-      // Farklı uzantıyla yeniden yüklendiyse eski dosyayı temizle.
-      final String oldPath = profile?.photoPath ?? '';
-      if (oldPath.isNotEmpty && oldPath != path) {
-        try {
-          await fbStorage.ref(oldPath).delete();
-        } catch (_) {
-          // Eski dosya yoksa yok say.
-        }
-      }
-
-      return (url: url, path: path);
-    }
-
-    if (_removePhoto && (profile?.photoPath ?? '').isNotEmpty) {
       try {
-        await fbStorage.ref(profile!.photoPath).delete();
+        await storageRef.putFile(File(_pickedPhoto!.path));
+        final String url = await storageRef.getDownloadURL();
+        return (
+          url: url,
+          path: path,
+          uploadedPath: path,
+          stalePath: profile?.photoPath ?? '',
+        );
       } catch (_) {
-        // Yok say.
+        // Yükleme tamamlanıp URL alınırken hata olmuş olabilir.
+        try {
+          await storageRef.delete();
+        } catch (_) {}
+        rethrow;
       }
-      return (url: '', path: '');
     }
 
-    return (url: profile?.photoUrl ?? '', path: profile?.photoPath ?? '');
+    if (_removePhoto) {
+      return (
+        url: '',
+        path: '',
+        uploadedPath: '',
+        stalePath: profile?.photoPath ?? '',
+      );
+    }
+
+    return (
+      url: profile?.photoUrl ?? '',
+      path: profile?.photoPath ?? '',
+      uploadedPath: '',
+      stalePath: '',
+    );
+  }
+
+  Future<void> _deletePhotoBestEffort(String path) async {
+    if (path.isEmpty) return;
+    try {
+      await fbStorage.ref(path).delete();
+    } catch (_) {
+      // Profil doğruluğu Storage temizliğine bağlı değildir.
+    }
   }
 
   Future<void> _save() async {
@@ -334,6 +368,10 @@ class _StudentInfoScreenState extends ConsumerState<StudentInfoScreen> {
     // ekranında SMS isteyip kodu girdikten sonra hataya çarpıyordu.
     if (!await _phoneIsAvailable(uid: user.uid, phoneE164: _phone.e164)) return;
 
+    ({String url, String path, String uploadedPath, String stalePath})?
+    preparedPhoto;
+    bool profileSaved = false;
+
     try {
       if (needsPassword) {
         await ref
@@ -341,10 +379,7 @@ class _StudentInfoScreenState extends ConsumerState<StudentInfoScreen> {
             .linkPassword(user, _password.text);
       }
 
-      final ({String path, String url}) photo = await _resolvePhoto(
-        user.uid,
-        profile,
-      );
+      preparedPhoto = await _preparePhoto(user.uid, profile);
       final String phone = _phone.e164;
 
       // Numara değişmediyse önceki doğrulama korunur; Auth hesabında bu numara
@@ -363,6 +398,23 @@ class _StudentInfoScreenState extends ConsumerState<StudentInfoScreen> {
         }
       }
 
+      // Onay yalnızca kayıt ekranında verilir. Kaynak sırası:
+      //   1. bellekteki taze onay (aynı oturumda kaydolan kullanıcı),
+      //   2. users/{uid} belgesindeki kayıt (kayıt anında yazıldı; kullanıcı
+      //      formu yarıda bırakıp uygulamayı kapattıysa bellek boştur).
+      // İkisi de boşsa (hesap ekranından gelen düzenleme) alanlara hiç
+      // dokunulmaz, profildeki mevcut kayıt korunur.
+      final PendingConsent? pendingConsent = ref.read(pendingConsentProvider);
+      final AppUser? appUser = session.appUser;
+      final bool? termsAccepted =
+          pendingConsent?.termsAccepted ??
+          (appUser?.termsAccepted == true ? true : null);
+      final int? termsAcceptedAtMs =
+          pendingConsent?.acceptedAtMs ?? appUser?.termsAcceptedAtMs;
+      final bool? marketingConsent =
+          pendingConsent?.marketingConsent ??
+          (appUser?.termsAccepted == true ? appUser?.marketingConsent : null);
+
       await ref
           .read(profileRepositoryProvider)
           .saveStudentProfile(
@@ -377,11 +429,25 @@ class _StudentInfoScreenState extends ConsumerState<StudentInfoScreen> {
             studentNumber: studentNumber,
             classYear: _classYear,
             gender: _gender,
-            photoUrl: photo.url,
-            photoPath: photo.path,
+            photoUrl: preparedPhoto.url,
+            photoPath: preparedPhoto.path,
             phoneVerified: phoneVerified,
             hasPassword: true,
+            termsAccepted: termsAccepted,
+            termsAcceptedAtMs: termsAcceptedAtMs,
+            marketingConsent: marketingConsent,
+            termsVersion: kLegalDocsVersion,
           );
+      profileSaved = true;
+      if (pendingConsent != null) {
+        ref.read(pendingConsentProvider.notifier).clear();
+      }
+
+      // Yeni profil artık dosyaya işaret ediyor (ya da kaldırma kaydedildi);
+      // bundan sonra önceki dosyayı silmek güvenlidir.
+      if (preparedPhoto.stalePath != preparedPhoto.path) {
+        await _deletePhotoBestEffort(preparedPhoto.stalePath);
+      }
 
       // Formu düzenleme modunda açan öğrencinin eski kayıtları olabilir;
       // kulübün gördüğü kopya alanlar (isim, bölüm, telefon) da tazelenir.
@@ -404,11 +470,25 @@ class _StudentInfoScreenState extends ConsumerState<StudentInfoScreen> {
         // Yoksay — bkz. docs/kayit-profil-senkronu.md
       }
 
+      // Firestore batch'i başarıyla tamamlandıktan sonra rol artık kalıcıdır.
+      // pendingRole temizlenene kadar router bu ekranda kaldığı için iki belge
+      // akışı arasında yarım bir panele geçiş olmaz.
+      try {
+        await ref.read(activeRoleProvider.notifier).select(UserRole.student);
+      } catch (_) {
+        // Firestore kaydı tamamlandı; yerel tercih yazılamasa da lastRole
+        // sonraki açılışta doğru hesabı çözer.
+      }
+      ref.read(pendingOnboardingRoleProvider.notifier).clear();
+
       // Onboarding'de yönlendirmeyi router yapar; düzenleme modunda profil
       // zaten tamam olduğu için router bir şey değiştirmez, geri dönmek bu
       // ekranın işi.
       if (_editMode && mounted && context.canPop()) context.pop();
     } catch (error) {
+      if (!profileSaved && preparedPhoto != null) {
+        await _deletePhotoBestEffort(preparedPhoto.uploadedPath);
+      }
       if (!mounted) return;
       _setFeedback(context.t('feedback.saveErrorRetry'), FeedbackTone.error);
       setState(() => _saving = false);
@@ -438,10 +518,18 @@ class _StudentInfoScreenState extends ConsumerState<StudentInfoScreen> {
     return false;
   }
 
+  void _changeRole() {
+    if (_saving || _editMode) return;
+
+    final GoRouter router = GoRouter.of(context);
+    ref.read(pendingOnboardingRoleProvider.notifier).clear();
+    router.go(Routes.roleSelect);
+  }
+
   @override
   Widget build(BuildContext context) {
     final Session session = ref.watch(sessionProvider);
-    _prefill(session.studentProfile, session.user);
+    _prefill(session.studentProfile, session.clubProfile, session.user);
 
     final bool needsPassword = _needsPassword(
       session.user,
@@ -449,9 +537,16 @@ class _StudentInfoScreenState extends ConsumerState<StudentInfoScreen> {
     );
     final String existingPhotoUrl = session.studentProfile?.photoUrl ?? '';
 
-    return Scaffold(
+    final Widget content = Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: _editMode,
+        leading: _editMode
+            ? null
+            : IconButton(
+                tooltip: context.t('common.back'),
+                onPressed: _saving ? null : _changeRole,
+                icon: const Icon(Icons.arrow_back),
+              ),
         titleSpacing: _editMode ? 0 : 16,
         title: Row(
           children: <Widget>[
@@ -476,217 +571,274 @@ class _StudentInfoScreenState extends ConsumerState<StudentInfoScreen> {
             ? null
             : <Widget>[
                 TextButton(
-                  onPressed: () async {
-                    await logout(ref);
-                  },
+                  onPressed: _saving
+                      ? null
+                      : () async {
+                          await logout(ref);
+                        },
                   child: Text(context.t('common.logout')),
                 ),
               ],
       ),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: <Widget>[
-            Text(
-              context.t('studentInfo.subtitle'),
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: 20),
-
-            _PhotoPicker(
-              picked: _pickedPhoto,
-              existingUrl: _removePhoto ? '' : existingPhotoUrl,
-              onPick: _pickPhoto,
-              onRemove: () => setState(() {
-                _pickedPhoto = null;
-                _removePhoto = true;
-              }),
-            ),
-            const SizedBox(height: 20),
-
-            TextField(
-              controller: _firstName,
-              enabled: !_saving,
-              textCapitalization: TextCapitalization.words,
-              textInputAction: TextInputAction.next,
-              onSubmitted: (_) => _lastNameFocus.requestFocus(),
-              inputFormatters: guardedInput(InputLimits.name),
-              decoration: InputDecoration(
-                labelText: context.t('form.firstName'),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _lastName,
-              focusNode: _lastNameFocus,
-              enabled: !_saving,
-              textCapitalization: TextCapitalization.words,
-              textInputAction: TextInputAction.next,
-              onSubmitted: (_) => _phoneFocus.requestFocus(),
-              inputFormatters: guardedInput(InputLimits.name),
-              decoration: InputDecoration(
-                labelText: context.t('form.lastName'),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            LivePhoneField(
-              controller: _phone,
-              label: context.t('form.phone'),
-              enabled: !_saving,
-              focusNode: _phoneFocus,
-              errorText: _phoneError,
-              onChanged: () {
-                if (_phoneError != null) setState(() => _phoneError = null);
-              },
-            ),
-            const SizedBox(height: 12),
-
-            SearchableField(
-              label: context.t('form.city'),
-              value: _city,
-              options: kTurkeyCities,
-              enabled: !_saving,
-              noResultText: context.t('search.city.noResult'),
-              onSelected: (String value) => setState(() {
-                _city = value;
-                // Şehir değişince üniversite seçimi geçersizleşir.
-                _university = '';
-              }),
-            ),
-            const SizedBox(height: 12),
-
-            SearchableField(
-              label: context.t('form.university'),
-              value: _university,
-              options: _universitiesForCity,
-              enabled: !_saving,
-              emptyListText: context.t('search.university.emptyListByCity'),
-              noResultText: context.t('search.university.noResult'),
-              hint: _city.isEmpty
-                  ? context.t('form.universityPlaceholderSelectCityFirst')
-                  : context.t('form.universityPlaceholderWithSearch'),
-              onSelected: (String value) => setState(() => _university = value),
-            ),
-            const SizedBox(height: 12),
-
-            SearchableField(
-              label: context.t('form.department'),
-              value: _department,
-              options: kCommonDepartments,
-              enabled: !_saving,
-              noResultText: context.t('search.department.noResult'),
-              onSelected: (String value) => setState(() => _department = value),
-            ),
-            const SizedBox(height: 12),
-
-            SearchableField(
-              label: context.t('form.classYear'),
-              value: _classYear,
-              options: kClassYears,
-              enabled: !_saving,
-              noResultText: context.t('search.classYear.noResult'),
-              onSelected: (String value) => setState(() => _classYear = value),
-            ),
-            const SizedBox(height: 12),
-
-            TextField(
-              controller: _studentNumber,
-              enabled: !_saving,
-              keyboardType: TextInputType.number,
-              inputFormatters: guardedInput(InputLimits.studentNumber),
-              decoration: InputDecoration(
-                labelText: context.t('form.studentNumber'),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Cinsiyet zorunlu: yönetici istatistiklerindeki dağılım bu
-            // alandan hesaplanıyor, boş bırakılan kayıt orada "belirtilmemiş"
-            // kovasında birikiyordu.
-            GenderPicker(
-              value: _gender,
-              enabled: !_saving,
-              onChanged: (String value) => setState(() => _gender = value),
-            ),
-
-            if (needsPassword) ...<Widget>[
-              const SizedBox(height: 24),
-              const Divider(),
-              const SizedBox(height: 16),
+        child: GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+          child: ListView(
+            padding: const EdgeInsets.all(20),
+            children: <Widget>[
               Text(
-                context.t('auth.feedback.passwordRequired'),
+                context.t('studentInfo.subtitle'),
                 style: Theme.of(context).textTheme.bodySmall,
               ),
+              const SizedBox(height: 20),
+
+              _PhotoPicker(
+                picked: _pickedPhoto,
+                existingUrl: _removePhoto ? '' : existingPhotoUrl,
+                onPick: _pickPhoto,
+                onRemove: () => setState(() {
+                  _pickedPhoto = null;
+                  _removePhoto = true;
+                }),
+              ),
+              const SizedBox(height: 20),
+
+              TextField(
+                controller: _firstName,
+                enabled: !_saving,
+                textCapitalization: TextCapitalization.words,
+                textInputAction: TextInputAction.next,
+                onSubmitted: (_) => _lastNameFocus.requestFocus(),
+                inputFormatters: guardedInput(InputLimits.name),
+                decoration: InputDecoration(
+                  labelText: context.t('form.firstName'),
+                ),
+              ),
               const SizedBox(height: 12),
               TextField(
-                controller: _password,
+                controller: _lastName,
+                focusNode: _lastNameFocus,
                 enabled: !_saving,
-                obscureText: true,
-                inputFormatters: lengthOnlyInput(InputLimits.password),
-                onChanged: (_) => setState(() {}),
+                textCapitalization: TextCapitalization.words,
+                textInputAction: TextInputAction.next,
+                onSubmitted: (_) => _phoneFocus.requestFocus(),
+                inputFormatters: guardedInput(InputLimits.name),
                 decoration: InputDecoration(
-                  labelText: context.t('form.password'),
+                  labelText: context.t('form.lastName'),
                 ),
               ),
               const SizedBox(height: 12),
+
+              LivePhoneField(
+                controller: _phone,
+                label: context.t('form.phone'),
+                enabled: !_saving && !_usesSharedPhone,
+                focusNode: _phoneFocus,
+                errorText: _phoneError,
+                onChanged: () {
+                  if (_phoneError != null) setState(() => _phoneError = null);
+                },
+              ),
+              if (_usesSharedPhone) ...<Widget>[
+                const SizedBox(height: 6),
+                Text(
+                  context.t('account.sharedPhoneNotice'),
+                  style: TextStyle(
+                    color: context.inkMuted,
+                    fontSize: 12,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 12),
+
+              SearchableField(
+                label: context.t('form.city'),
+                value: _city,
+                options: kTurkeyCities,
+                enabled: !_saving,
+                noResultText: context.t('search.city.noResult'),
+                onSelected: (String value) => setState(() {
+                  _city = value;
+                  // Şehir değişince üniversite seçimi geçersizleşir.
+                  _university = '';
+                }),
+              ),
+              const SizedBox(height: 12),
+
+              SearchableField(
+                label: context.t('form.university'),
+                value: _university,
+                options: _universitiesForCity,
+                enabled: !_saving,
+                emptyListText: context.t('search.university.emptyListByCity'),
+                noResultText: context.t('search.university.noResult'),
+                hint: _city.isEmpty
+                    ? context.t('form.universityPlaceholderSelectCityFirst')
+                    : context.t('form.universityPlaceholderWithSearch'),
+                onSelected: (String value) =>
+                    setState(() => _university = value),
+              ),
+              const SizedBox(height: 12),
+
+              SearchableField(
+                label: context.t('form.department'),
+                value: _department,
+                options: kCommonDepartments,
+                enabled: !_saving,
+                noResultText: context.t('search.department.noResult'),
+                onSelected: (String value) =>
+                    setState(() => _department = value),
+              ),
+              const SizedBox(height: 12),
+
+              SearchableField(
+                label: context.t('form.classYear'),
+                value: _classYear,
+                options: kClassYears,
+                enabled: !_saving,
+                searchable: false,
+                noResultText: context.t('search.classYear.noResult'),
+                onSelected: (String value) =>
+                    setState(() => _classYear = value),
+              ),
+              const SizedBox(height: 12),
+
               TextField(
-                controller: _passwordConfirm,
+                controller: _studentNumber,
                 enabled: !_saving,
-                obscureText: true,
-                inputFormatters: lengthOnlyInput(InputLimits.password),
+                keyboardType: TextInputType.number,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) =>
+                    FocusManager.instance.primaryFocus?.unfocus(),
+                inputFormatters: guardedInput(InputLimits.studentNumber),
                 decoration: InputDecoration(
-                  labelText: context.t('form.passwordConfirm'),
+                  labelText: context.t('form.studentNumber'),
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                isStrongPassword(_password.text)
-                    ? context.t('auth.passwordPolicyValid')
-                    : context.t('auth.passwordPolicyHint'),
-                style: TextStyle(
-                  fontSize: 12.5,
-                  color: isStrongPassword(_password.text)
-                      ? BrandColors.success
-                      : context.inkMuted,
-                ),
-              ),
-            ],
+              const SizedBox(height: 16),
 
-            const SizedBox(height: 28),
-            // Buton içeriği sabit yükseklikte: metin ile göstergenin doğal
-            // boyutları farklı olduğu için kaydederken buton zıplıyordu.
-            FilledButton(
-              onPressed: _saving ? null : _save,
-              child: SizedBox(
-                height: 22,
-                child: Center(
-                  child: _saving
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: BrandColors.white,
-                          ),
-                        )
-                      : Text(context.t('common.save')),
+              // Cinsiyet zorunlu: yönetici istatistiklerindeki dağılım bu
+              // alandan hesaplanıyor, boş bırakılan kayıt orada "belirtilmemiş"
+              // kovasında birikiyordu.
+              GenderPicker(
+                value: _gender,
+                enabled: !_saving,
+                onChanged: (String value) => setState(() => _gender = value),
+              ),
+
+              if (needsPassword) ...<Widget>[
+                const SizedBox(height: 24),
+                const Divider(),
+                const SizedBox(height: 16),
+                Text(
+                  context.t('auth.feedback.passwordRequired'),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _password,
+                  enabled: !_saving,
+                  obscureText: true,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) =>
+                      FocusManager.instance.primaryFocus?.unfocus(),
+                  inputFormatters: lengthOnlyInput(InputLimits.password),
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(
+                    labelText: context.t('form.password'),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _passwordConfirm,
+                  enabled: !_saving,
+                  obscureText: true,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) =>
+                      FocusManager.instance.primaryFocus?.unfocus(),
+                  inputFormatters: lengthOnlyInput(InputLimits.password),
+                  decoration: InputDecoration(
+                    labelText: context.t('form.passwordConfirm'),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  isStrongPassword(_password.text)
+                      ? context.t('auth.passwordPolicyValid')
+                      : context.t('auth.passwordPolicyHint'),
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    color: isStrongPassword(_password.text)
+                        ? BrandColors.success
+                        : context.inkMuted,
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 28),
+              // Buton içeriği sabit yükseklikte: metin ile göstergenin doğal
+              // boyutları farklı olduğu için kaydederken buton zıplıyordu.
+              FilledButton(
+                onPressed: _saving ? null : _save,
+                child: SizedBox(
+                  height: 22,
+                  child: Center(
+                    child: _saving
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: BrandColors.white,
+                            ),
+                          )
+                        : Text(context.t('common.save')),
+                  ),
                 ),
               ),
-            ),
 
-            // Geri bildirim butonun ALTINDA: listenin tepesinde belirdiğinde
-            // altındaki her şeyi aşağı itiyor ve kaydete basan parmağın
-            // altından buton kayıyordu.
-            if (_feedback != null) ...<Widget>[
+              // Geri bildirim butonun ALTINDA: listenin tepesinde belirdiğinde
+              // altındaki her şeyi aşağı itiyor ve kaydete basan parmağın
+              // altından buton kayıyordu.
+              if (_feedback != null) ...<Widget>[
+                const SizedBox(height: 12),
+                FeedbackBanner(message: _feedback, tone: _tone),
+              ],
+
+              const SizedBox(height: 24),
+              const Divider(),
               const SizedBox(height: 12),
-              FeedbackBanner(message: _feedback, tone: _tone),
+              ConsentSummary(
+                termsAccepted:
+                    ref.watch(pendingConsentProvider)?.termsAccepted ??
+                    session.studentProfile?.termsAccepted ??
+                    session.appUser?.termsAccepted ??
+                    false,
+                marketingConsent:
+                    ref.watch(pendingConsentProvider)?.marketingConsent ??
+                    session.studentProfile?.marketingConsent ??
+                    session.appUser?.marketingConsent ??
+                    false,
+                acceptedAtMs:
+                    ref.watch(pendingConsentProvider)?.acceptedAtMs ??
+                    session.studentProfile?.termsAcceptedAtMs ??
+                    session.appUser?.termsAcceptedAtMs,
+              ),
+              const SizedBox(height: 12),
             ],
-
-            const SizedBox(height: 24),
-          ],
+          ),
         ),
       ),
+    );
+
+    return PopScope(
+      canPop: _editMode,
+      onPopInvokedWithResult: (bool didPop, Object? _) {
+        if (!didPop && !_editMode) _changeRole();
+      },
+      child: content,
     );
   }
 }

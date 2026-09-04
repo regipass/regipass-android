@@ -32,6 +32,11 @@ class AdminShell extends ConsumerWidget {
       labelKey: 'admin.nav.stats',
     ),
     (
+      route: Routes.adminClubs,
+      icon: Icons.groups_outlined,
+      labelKey: 'admin.nav.clubs',
+    ),
+    (
       route: Routes.adminBan,
       icon: Icons.block_outlined,
       labelKey: 'admin.nav.ban',

@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
-import '../core/constants.dart';
 import 'firebase_refs.dart';
 
 /// Kimlik doğrulama akışları — js/modules/auth/login-modal.js ve
@@ -52,7 +51,8 @@ class AuthRepository {
     );
     await _googleInit;
 
-    final GoogleSignInAccount account = await GoogleSignIn.instance.authenticate();
+    final GoogleSignInAccount account = await GoogleSignIn.instance
+        .authenticate();
     final GoogleSignInAuthentication auth = account.authentication;
 
     final String? idToken = auth.idToken;
@@ -93,11 +93,47 @@ class AuthRepository {
   /// için bu adım zorunlu.
   Future<UserCredential> signInWithPhoneCredential(
     PhoneAuthCredential credential,
-  ) =>
-      fbAuth.signInWithCredential(credential);
+  ) => fbAuth.signInWithCredential(credential);
 
   /// Oturum açmış kullanıcının şifresini değiştirir.
-  Future<void> updatePassword(String newPassword) async {
+  Future<void> updatePassword(String newPassword) =>
+      _requireUser().updatePassword(newPassword);
+
+  // ── Hassas işlemler (şifre değiştirme, hesap silme) ─────────────────
+
+  /// Oturumdaki hesabı **mevcut şifresiyle** yeniden doğrular.
+  ///
+  /// İki işi birden yapar. Biri güvenlik: istemci elindeki bir şifrenin doğru
+  /// olup olmadığını başka türlü anlayamaz, "eski şifreyi bilme şartı"nın tek
+  /// gerçek karşılığı budur. Diğeri teknik: `updatePassword` ve `delete`
+  /// Firebase'de hassas işlemdir; son girişin üzerinden birkaç dakikadan
+  /// fazla geçtiyse `requires-recent-login` ile düşerler.
+  ///
+  /// Yanlış şifrede `invalid-credential` (bazı sürümlerde `wrong-password`)
+  /// atar — çağıran taraf bunu "mevcut şifren hatalı" diye çevirmeli.
+  Future<void> reauthenticateWithPassword(String password) async {
+    final User user = _requireUser();
+    final String email = user.email ?? '';
+    if (email.isEmpty) {
+      throw FirebaseAuthException(
+        code: 'missing-email',
+        message: 'Hesaba bağlı e-posta yok.',
+      );
+    }
+    await user.reauthenticateWithCredential(
+      EmailAuthProvider.credential(email: email, password: password),
+    );
+  }
+
+  /// Aynı doğrulamanın SMS'li yolu — eski şifresini hatırlamayan kullanıcı
+  /// için. Numara doğrulama sırasında Auth hesabına bağlandığı için (bkz.
+  /// `phone_verify_sheet.dart`) bu kimlik bilgisi aynı hesabı işaret eder;
+  /// başka bir numaranın kodu `user-mismatch` ile reddedilir.
+  Future<void> reauthenticateWithPhoneCredential(
+    PhoneAuthCredential credential,
+  ) => _requireUser().reauthenticateWithCredential(credential);
+
+  User _requireUser() {
     final User? user = fbAuth.currentUser;
     if (user == null) {
       throw FirebaseAuthException(
@@ -105,7 +141,7 @@ class AuthRepository {
         message: 'Oturum bulunamadı.',
       );
     }
-    await user.updatePassword(newPassword);
+    return user;
   }
 
   Future<void> signOut() async {
@@ -117,61 +153,28 @@ class AuthRepository {
     await fbAuth.signOut();
   }
 
-  /// `users/{uid}` ve ilgili profil dokümanını oluşturur/günceller.
-  /// (login-modal.js#upsertBaseUser ile birebir aynı yük.)
-  Future<void> upsertBaseUser(User user, String role) async {
-    final Doc ref = userDoc(user.uid);
-    final Snap snap = await ref.get();
-
-    final Map<String, dynamic> existing = snap.data() ?? <String, dynamic>{};
-    final Object? rawRoles = existing['roles'];
-    final Map<String, dynamic> existingRoles =
-        rawRoles is Map ? Map<String, dynamic>.from(rawRoles) : <String, dynamic>{};
-
-    final Map<String, dynamic> payload = <String, dynamic>{
-      'uid': user.uid,
-      'email': user.email ?? '',
-      'displayName': user.displayName ?? '',
-      'photoURL': user.photoURL ?? '',
-      'role': role,
-      'lastRole': role,
-      'roles': <String, dynamic>{...existingRoles, role: true},
-      'lastLoginAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    };
-
-    if (!snap.exists) {
-      payload['createdAt'] = FieldValue.serverTimestamp();
-      payload['onboardingCompleted'] = false;
-    }
-
-    await ref.set(payload, SetOptions(merge: true));
-
-    // Profil dokümanı yoksa iskeletini oluştur.
-    final Doc profileRef =
-        role == UserRole.student ? studentProfileDoc(user.uid) : clubProfileDoc(user.uid);
-
-    if (!(await profileRef.get()).exists) {
-      await profileRef.set(<String, dynamic>{
+  /// Yalnızca mevcut `users/{uid}` belgesinin giriş bilgilerini tazeler.
+  ///
+  /// İlk hesap ve profil yazımı onboarding formunun nihai kaydında yapılır;
+  /// belge henüz yoksa [DocumentReference.update] `not-found` ile başarısız
+  /// olur ve burada yarım bir hesap iskeleti oluşturulmaz.
+  Future<void> recordExistingUserLogin(User user) =>
+      userDoc(user.uid).update(<String, dynamic>{
         'uid': user.uid,
         'email': user.email ?? '',
-        'role': role,
-        'onboardingCompleted': false,
-        'createdAt': FieldValue.serverTimestamp(),
+        'lastLoginAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
-    }
-  }
 
   /// Firestore kurallarındaki `isClubUser` kontrolü `users` dokümanına bakar.
   /// Rol değişiminde bu kaydı senkron tutmak gerekir
   /// (club-create-event.js#loadContext'teki yazma).
   Future<void> syncActiveRoleToUserDoc(String uid, String role) =>
-      userDoc(uid).set(<String, dynamic>{
+      userDoc(uid).update(<String, dynamic>{
         'role': role,
         'lastRole': role,
         'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      });
 
   /// Google/Apple ile gelen hesaba şifre bağlar (info.js#ensureManualPassword).
   Future<void> linkPassword(User user, String password) async {

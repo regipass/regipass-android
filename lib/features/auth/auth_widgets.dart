@@ -570,26 +570,33 @@ class AuthFixedBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final double keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
 
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints constraints) =>
-          SingleChildScrollView(
-            physics: const ClampingScrollPhysics(),
-            padding: EdgeInsets.only(bottom: keyboardInset),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minHeight: (constraints.maxHeight - keyboardInset).clamp(
-                  0,
-                  double.infinity,
-                ),
-              ),
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-                  child: child,
+    // Klavye payı kaydırma görünümünün İÇİNE değil, DIŞINA veriliyor: böylece
+    // görünür alan gerçekten klavyenin üstünde biten bir pencere olur.
+    // Payı içeriye (padding) vermek yalnızca boşluk ekliyordu; pencere hâlâ
+    // klavyenin altına uzandığı için Flutter odaktaki alanı "zaten görünüyor"
+    // sayıyor ve telefon alanı klavyenin altında kalıyordu.
+    //
+    // Pay yalnızca klavye yüksekliği değiştiğinde oynar; klavye kapalıyken
+    // düzen tam olarak eskisi gibi ortalanır.
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 160),
+      curve: Curves.easeOut,
+      padding: EdgeInsets.only(bottom: keyboardInset),
+      child: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) =>
+            SingleChildScrollView(
+              physics: const ClampingScrollPhysics(),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                    child: child,
+                  ),
                 ),
               ),
             ),
-          ),
+      ),
     );
   }
 }

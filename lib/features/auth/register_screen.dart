@@ -8,12 +8,15 @@ import '../../core/constants.dart';
 import '../../core/input_guard.dart';
 import '../../core/password_policy.dart';
 import '../../core/sanitize.dart';
+import '../../domain/legal_docs.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/profiles.dart';
+import '../../services/auth_repository.dart';
 import '../../state/connectivity.dart';
 import '../../state/providers.dart';
 import '../shared/common_widgets.dart';
 import '../shared/glowing_border.dart';
+import '../shared/legal_consent.dart';
 import 'auth_actions.dart';
 import 'auth_widgets.dart';
 
@@ -43,6 +46,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool _obscure = true;
   String? _feedback;
   FeedbackTone _tone = FeedbackTone.error;
+
+  // KVKK/sözleşme onayı — yalnızca birinci kutu zorunlu (bkz.
+  // LegalConsentSection dokümantasyonu). İkincisi pazarlama izni, isteğe
+  // bağlı kalmalı çünkü Açık Rıza Metni'nin kendisi bunu öyle tarif ediyor.
+  bool _termsAccepted = false;
+  bool _marketingConsent = false;
 
   bool get _hasRole => _selectedRole.isNotEmpty;
 
@@ -87,16 +96,62 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
   }
 
-  /// Rolü kaydeder ve temel dokümanları oluşturur.
-  /// Yönlendirmeyi router yapar (bilgi formuna düşer).
-  Future<void> _finishSignUp(User user) async {
-    await ref.read(activeRoleProvider.notifier).select(_selectedRole);
-    await ref.read(authRepositoryProvider).upsertBaseUser(user, _selectedRole);
+  /// Rolü yalnız geçici onboarding durumu olarak seçer.
+  ///
+  /// Auth çağrısından önce yapılır: Firebase oturum akışı yeni kullanıcıyı
+  /// hemen yayınlasa bile router doğru bilgi formunda kalır. Kalıcı rol ve
+  /// profil, formun sonundaki tek batch yazımına kadar oluşturulmaz.
+  PendingOnboardingRoleNotifier _beginPendingSignUp() {
+    final PendingOnboardingRoleNotifier pendingRole = ref.read(
+      pendingOnboardingRoleProvider.notifier,
+    );
+    pendingRole.select(_selectedRole);
+    // Onay anı burada damgalanır: aranan bilgi Firestore yazımının değil,
+    // kullanıcının kaydol düğmesine bastığı ANIN zamanı (bkz. KVKK metni
+    // madde 7). Profil belgesine, bilgi formu kaydedilirken kopyalanır.
+    ref
+        .read(pendingConsentProvider.notifier)
+        .set(
+          termsAccepted: _termsAccepted,
+          marketingConsent: _marketingConsent,
+        );
+    return pendingRole;
+  }
+
+  /// Onayı hesap oluşur oluşmaz `users/{uid}` belgesine yazar.
+  ///
+  /// Profil belgesi bilgi formu bitene kadar oluşmadığı için onayın ilk ve
+  /// (o ana kadar) tek kalıcı kopyası burasıdır — kullanıcı formu yarıda
+  /// bırakıp uygulamayı kapatsa bile onay anı kaybolmaz.
+  ///
+  /// En iyi çaba: yazım başarısız olsa bile kayıt akışı sürer, çünkü onay
+  /// bilgi formu kaydedilirken profil belgesine ikinci kez yazılır.
+  Future<void> _persistConsent(String uid) async {
+    final PendingConsent? consent = ref.read(pendingConsentProvider);
+    if (consent == null) return;
+
+    try {
+      await ref
+          .read(profileRepositoryProvider)
+          .recordConsent(
+            uid: uid,
+            termsAccepted: consent.termsAccepted,
+            marketingConsent: consent.marketingConsent,
+            acceptedAtMs: consent.acceptedAtMs,
+            termsVersion: kLegalDocsVersion,
+          );
+    } catch (_) {
+      // Yoksay — bkz. yukarıdaki not.
+    }
   }
 
   Future<void> _registerWithEmail() {
     if (!_hasRole) {
       _setFeedback(context.t('auth.feedback.selectRoleFirst'));
+      return Future<void>.value();
+    }
+    if (!_termsAccepted) {
+      _setFeedback(context.t('auth.feedback.termsRequired'));
       return Future<void>.value();
     }
 
@@ -113,59 +168,133 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
 
     return _run(() async {
+      final authRepository = ref.read(authRepositoryProvider);
+      final PendingOnboardingRoleNotifier pendingRole = _beginPendingSignUp();
+
       try {
-        final UserCredential result = await ref
-            .read(authRepositoryProvider)
-            .createWithEmail(email, password);
-        await _finishSignUp(result.user!);
+        final UserCredential created = await authRepository.createWithEmail(
+          email,
+          password,
+        );
+        // Yeni hesap: router seçilen rolün bilgi formuna taşır.
+        final String? uid = created.user?.uid;
+        if (uid != null) await _persistConsent(uid);
       } on FirebaseAuthException catch (error) {
-        // E-posta zaten kayıtlıysa: giriş yapıp bu hesaba İKİNCİ rolü ekle.
-        // (register.js#handleExistingAccount ile aynı davranış.)
+        pendingRole.clear();
+
+        // BİR E-POSTAYA TEK HESAP. E-posta kullanımdaysa kayıt burada DURUR:
+        // ne giriş yapılır ne de rol eklenir.
+        //
+        // Eskiden burası "aynı hesaba ikinci rol ekle" yoluna sapıyordu —
+        // çift rollü hesapların kaynağı tam olarak burasıydı. O yol, rolün
+        // zaten var olup olmadığını sormak için bir an oturum açmak zorunda
+        // kaldığından (profil belgeleri yalnızca sahibine açık) kayıt ekranı
+        // fiilen bir giriş ekranına dönüşebiliyordu. Artık ne yoklama
+        // oturumu açılıyor ne de rol ekleniyor.
         if (error.code == 'email-already-in-use') {
-          await _addRoleToExistingAccount(email, password);
+          _setFeedbackKey('auth.error.emailAlreadyRegistered');
           return;
         }
+        rethrow;
+      } catch (_) {
+        pendingRole.clear();
         rethrow;
       }
     });
   }
 
-  Future<void> _addRoleToExistingAccount(String email, String password) async {
-    final UserCredential result = await ref
-        .read(authRepositoryProvider)
-        .signInWithEmail(email, password);
-    final User user = result.user!;
-
-    final AppUser? appUser = await ref
-        .read(profileRepositoryProvider)
-        .fetchUser(user.uid);
-
-    final bool alreadyHasRole = _selectedRole == UserRole.student
-        ? (appUser?.hasStudentRole ?? false)
-        : (appUser?.hasClubRole ?? false);
-
+  void _setFeedbackKey(String key) {
     if (!mounted) return;
+    _setFeedback(context.t(key));
+  }
 
-    if (alreadyHasRole) {
-      _setFeedback(context.t('auth.error.roleAlreadyExists'));
-      return;
+  /// Hesapta HERHANGİ bir tamamlanmış rol var mı?
+  ///
+  /// Bir e-postaya tek hesap bağlanabildiği için soru "seçilen rol var mı"
+  /// değil "bu e-postada zaten bir hesap kurulmuş mu". Profil belgeleri
+  /// yalnızca sahibine açık olduğundan (firestore.rules) bu ancak oturum
+  /// açıldıktan sonra sorulabiliyor; Google/Apple akışında oturum zaten
+  /// açılmak zorunda.
+  Future<bool> _hasAnyCompletedRole(String uid) async {
+    final profileRepository = ref.read(profileRepositoryProvider);
+    final List<bool> completed = await Future.wait<bool>(<Future<bool>>[
+      profileRepository
+          .fetchStudentProfile(uid)
+          .then((StudentProfile? p) => p?.onboardingCompleted == true),
+      profileRepository
+          .fetchClubProfile(uid)
+          .then((ClubProfile? p) => p?.onboardingCompleted == true),
+    ]);
+    return completed.any((bool done) => done);
+  }
+
+  /// Yoklama bitti, oturum kapatılır.
+  ///
+  /// `logout()` değil düz `signOut()`: `logout` tamamlanmamış hesapların
+  /// Firestore artıklarını siliyor ve burada silinecek olan, kullanıcının
+  /// yalnızca varlığını doğruladığımız BAŞKA bir kaydı olurdu.
+  Future<void> _closeProbeSession(AuthRepository authRepository) async {
+    try {
+      await authRepository.signOut();
+    } catch (_) {
+      // Çevrimdışıyken oturum kapanmayabilir. Bayrak kalkınca router hesabın
+      // gerçek durumuna göre karar verir; uyarı da ekranda kalır.
     }
-
-    await _finishSignUp(user);
   }
 
   /// Sosyal kayıt. Rol burada zaten seçili olduğu için `completePostAuth`
   /// yerine doğrudan seçilen rol uygulanır — aksi hâlde rol seçim ekranına
   /// düşer ve kullanıcı aynı soruyu iki kez yanıtlardı.
+  ///
+  /// E-posta yolundaki kural burada da geçerli: e-postada zaten bir hesap
+  /// varsa bu bir kayıt değildir, oturum açık bırakılmaz. Fark şu ki
+  /// Google/Apple'da e-postanın kullanımda olduğunu önceden bilemiyoruz —
+  /// sağlayıcı aynı hesaba giriş yaptırıyor — bu yüzden önce girip sonra
+  /// sormak ve gerekirse oturumu kapatmak zorundayız.
+  /// [authProbeProvider] bu aralıkta router'ı yerinde tutar.
   Future<void> _registerWithProvider(Future<UserCredential> Function() signIn) {
     if (!_hasRole) {
       _setFeedback(context.t('auth.feedback.selectRoleFirst'));
       return Future<void>.value();
     }
+    if (!_termsAccepted) {
+      _setFeedback(context.t('auth.feedback.termsRequired'));
+      return Future<void>.value();
+    }
 
     return _run(() async {
-      final UserCredential result = await signIn();
-      if (result.user != null) await _finishSignUp(result.user!);
+      final authRepository = ref.read(authRepositoryProvider);
+      final AuthProbeNotifier probe = ref.read(authProbeProvider.notifier);
+      final PendingOnboardingRoleNotifier pendingRole = ref.read(
+        pendingOnboardingRoleProvider.notifier,
+      );
+      final String selectedRole = _selectedRole;
+
+      probe.begin();
+      bool keepSession = false;
+      try {
+        final UserCredential result = await signIn();
+        final User? user = result.user;
+        if (user == null) return;
+
+        if (await _hasAnyCompletedRole(user.uid)) {
+          _setFeedbackKey('auth.error.emailAlreadyRegistered');
+          return;
+        }
+
+        pendingRole.select(selectedRole);
+        ref
+            .read(pendingConsentProvider.notifier)
+            .set(
+              termsAccepted: _termsAccepted,
+              marketingConsent: _marketingConsent,
+            );
+        await _persistConsent(user.uid);
+        keepSession = true;
+      } finally {
+        if (!keepSession) await _closeProbeSession(authRepository);
+        probe.end();
+      }
     });
   }
 
@@ -244,7 +373,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   label: context.t('auth.role.student'),
                   icon: Icons.school_outlined,
                   selected: _selectedRole == UserRole.student,
-                  enabled: !_loading,
+                  enabled: !_loading && _termsAccepted,
                   onTap: () => setState(() => _selectedRole = UserRole.student),
                 ),
               ),
@@ -254,7 +383,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   label: context.t('auth.role.club'),
                   icon: Icons.groups_outlined,
                   selected: _selectedRole == UserRole.club,
-                  enabled: !_loading,
+                  enabled: !_loading && _termsAccepted,
                   onTap: () => setState(() => _selectedRole = UserRole.club),
                 ),
               ),
@@ -305,13 +434,31 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           _PasswordHint(password: _passwordController.text),
 
           const SizedBox(height: 16),
+          LegalConsentSection(
+            termsAccepted: _termsAccepted,
+            marketingConsent: _marketingConsent,
+            onTermsChanged: _loading
+                ? null
+                : (bool value) => setState(() => _termsAccepted = value),
+            onMarketingChanged: _loading
+                ? null
+                : (bool value) => setState(() => _marketingConsent = value),
+            // Giriş/kayıt sahnesi her modda kendi sabit koyu paletinde kalır
+            // (bkz. app/theme.dart#BrandSurfaces) — context.ink/inkMuted
+            // burada kullanılmaz.
+            textColor: BrandColors.white,
+            mutedColor: BrandColors.loginMuted,
+          ),
+
+          const SizedBox(height: 16),
           // Etiket giriş ekranıyla aynı ("Giriş Yap") — istenen buydu.
           // Butonun yaptığı iş kayıt: seçilen rolle hesap oluşturur, e-posta
-          // zaten kayıtlıysa o hesaba ikinci rolü ekler.
+          // zaten kayıtlıysa o hesaba ikinci rolü ekler. Onay kutusu
+          // işaretlenmeden düğme pasif kalır (bkz. LegalConsentSection).
           AuthPrimaryButton(
             label: context.t('auth.emailLogin'),
             loading: _loading,
-            onPressed: _registerWithEmail,
+            onPressed: _termsAccepted ? _registerWithEmail : null,
           ),
 
           const SizedBox(height: 18),
@@ -323,7 +470,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               label: context.t('auth.googleContinue'),
               icon: Icons.g_mobiledata_rounded,
               leading: const GoogleMark(size: 25),
-              enabled: !_loading,
+              enabled: !_loading && _termsAccepted,
               borderless: true,
               onPressed: () => _registerWithProvider(
                 ref.read(authRepositoryProvider).signInWithGoogle,
@@ -335,7 +482,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             child: AuthSocialButton(
               label: context.t('auth.appleContinue'),
               icon: Icons.apple,
-              enabled: !_loading,
+              enabled: !_loading && _termsAccepted,
               borderless: true,
               onPressed: () => _registerWithProvider(
                 ref.read(authRepositoryProvider).signInWithApple,

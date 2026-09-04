@@ -4,10 +4,13 @@ import 'package:file_picker/file_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
 import '../../core/constants.dart';
+import '../../domain/routing.dart';
 import '../../l10n/app_strings.dart';
+import '../../models/profiles.dart';
 import '../../services/firebase_refs.dart';
 import '../../state/providers.dart';
 import '../auth/auth_actions.dart';
@@ -19,12 +22,17 @@ import 'club_shell.dart';
 const int kMaxClubDocumentBytes = 5 * 1024 * 1024;
 
 /// Kabul edilen türler — storage.rules ile birebir aynı olmalı.
-const List<String> kClubDocumentExtensions = <String>['pdf', 'jpg', 'jpeg', 'png'];
+const List<String> kClubDocumentExtensions = <String>[
+  'pdf',
+  'jpg',
+  'jpeg',
+  'png',
+];
 
 /// club-documents.html + js/pages/club-documents.js karşılığı.
 ///
-/// Dört belge de seçilmeden gönderim açılmaz; hepsi yüklendikten sonra kulüp
-/// inceleme kuyruğuna alınır ve router bekleme ekranına yönlendirir.
+/// Her belge seçilir seçilmez sisteme kaydedilir. Dördüncü belge tamamlanınca
+/// kulüp otomatik olarak inceleme kuyruğuna alınır.
 class ClubDocumentsScreen extends ConsumerStatefulWidget {
   const ClubDocumentsScreen({super.key});
 
@@ -37,8 +45,13 @@ class _ClubDocumentsScreenState extends ConsumerState<ClubDocumentsScreen> {
   /// Seçilen dosyalar: belge türü -> dosya.
   final Map<String, PlatformFile> _selected = <String, PlatformFile>{};
 
+  /// Firestore anlık görüntüsü gelene kadar, az önce kaydedilen belgeyi
+  /// ekranda yüklü göstermek için yerel yansıma.
+  final Map<String, Map<String, dynamic>> _saved =
+      <String, Map<String, dynamic>>{};
+  final Set<String> _removed = <String>{};
+
   bool _uploading = false;
-  double _progress = 0;
   String? _feedback;
   FeedbackTone _tone = FeedbackTone.info;
 
@@ -77,10 +90,7 @@ class _ClubDocumentsScreenState extends ConsumerState<ClubDocumentsScreen> {
       return;
     }
 
-    setState(() {
-      _selected[docType] = file;
-      _feedback = null;
-    });
+    await _upload(docType, file);
   }
 
   /// Seçilen belgeyi açar — "ne yüklemiştim" kontrolü için.
@@ -100,104 +110,95 @@ class _ClubDocumentsScreenState extends ConsumerState<ClubDocumentsScreen> {
   }
 
   String _contentTypeFor(String extension) => switch (extension.toLowerCase()) {
-        'pdf' => 'application/pdf',
-        'png' => 'image/png',
-        _ => 'image/jpeg',
-      };
+    'pdf' => 'application/pdf',
+    'png' => 'image/png',
+    _ => 'image/jpeg',
+  };
 
-  /// Daha önce yüklenmiş belgeler (yönetici "belge eksik" dediğinde
-  /// silinmiyor, profilde duruyor).
-  Map<String, Map<String, dynamic>> get _existing =>
-      ref.read(sessionProvider).clubProfile?.documents ??
-      const <String, Map<String, dynamic>>{};
+  /// Sunucudan gelen kayıtla bu ekranda az önce yapılan işlemleri birleştirir.
+  Map<String, Map<String, dynamic>> get _existing {
+    final Map<String, Map<String, dynamic>> documents =
+        <String, Map<String, dynamic>>{
+          ...?ref.read(sessionProvider).clubProfile?.documents,
+          ..._saved,
+        };
+    for (final String docType in _removed) {
+      documents.remove(docType);
+    }
+    return documents;
+  }
 
-  /// Bir belge türü hazır mı: ya yeni dosya seçilmiş ya da zaten yüklü.
-  bool _isReady(String docType) =>
-      _selected.containsKey(docType) || _existing.containsKey(docType);
-
-  Future<void> _submit() async {
+  Future<void> _upload(String docType, PlatformFile file) async {
     final String? uid = ref.read(sessionProvider).user?.uid;
     if (uid == null) return;
 
     final Map<String, Map<String, dynamic>> existing = _existing;
-
-    if (!kClubDocTypes.every(_isReady)) {
-      _setFeedback(
-        context.t('clubDocuments.feedback.missing'),
-        FeedbackTone.error,
-      );
-      return;
-    }
-
-    // Yalnızca yeniden seçilenler yüklenir; ilerleme çubuğu da onları sayar.
-    final List<String> toUpload =
-        kClubDocTypes.where(_selected.containsKey).toList();
-
     setState(() {
+      _selected[docType] = file;
       _uploading = true;
-      _progress = 0;
+      _feedback = null;
     });
     _setFeedback(context.t('clubDocuments.feedback.saving'));
 
+    Reference? storageRef;
     try {
-      final Map<String, dynamic> documents = <String, dynamic>{};
-      int done = 0;
+      final String ext = (file.extension ?? 'dat').toLowerCase();
+      final String contentType = _contentTypeFor(ext);
+      final String path =
+          'club_documents/$uid/$docType-${DateTime.now().millisecondsSinceEpoch}.$ext';
+      storageRef = fbStorage.ref(path);
+      await storageRef.putFile(
+        File(file.path!),
+        SettableMetadata(contentType: contentType),
+      );
 
-      for (final String docType in kClubDocTypes) {
-        final PlatformFile? file = _selected[docType];
+      final Map<String, dynamic> document = <String, dynamic>{
+        'name': file.name,
+        'url': await storageRef.getDownloadURL(),
+        'path': path,
+        'contentType': contentType,
+        'size': file.size,
+        'uploadedAt': DateTime.now().millisecondsSinceEpoch,
+      };
+      final Map<String, dynamic> documents = <String, dynamic>{
+        ...existing,
+        docType: document,
+      };
+      await ref
+          .read(profileRepositoryProvider)
+          .saveClubDocuments(uid, documents);
 
-        // Değiştirilmeyen belge olduğu gibi korunur — tek bir belge hatalıysa
-        // kulübün dördünü birden yeniden yüklemesi gerekmesin.
-        if (file == null) {
-          documents[docType] = existing[docType];
-          continue;
-        }
-
-        final String ext = (file.extension ?? 'dat').toLowerCase();
-        final String contentType = _contentTypeFor(ext);
-        final String path =
-            'club_documents/$uid/$docType-${DateTime.now().millisecondsSinceEpoch}.$ext';
-
-        final Reference storageRef = fbStorage.ref(path);
-        await storageRef.putFile(
-          File(file.path!),
-          SettableMetadata(contentType: contentType),
-        );
-
-        documents[docType] = <String, dynamic>{
-          'name': file.name,
-          'url': await storageRef.getDownloadURL(),
-          'path': path,
-          'contentType': contentType,
-          'size': file.size,
-          'uploadedAt': DateTime.now().millisecondsSinceEpoch,
-        };
-
-        done += 1;
-        if (mounted) {
-          setState(() => _progress = done / toUpload.length);
-          _setFeedback(
-            context.t('clubDocuments.feedback.uploading', <String, Object?>{
-              'done': done,
-              'total': toUpload.length,
-            }),
-          );
+      // Değiştirilen belgenin eski dosyası artık referanssızdır; yeni kayıt
+      // güvenle yazıldıktan sonra depolamadan da kaldırılır.
+      final String oldPath = '${existing[docType]?['path'] ?? ''}';
+      if (oldPath.isNotEmpty && oldPath != path) {
+        try {
+          await fbStorage.ref(oldPath).delete();
+        } catch (_) {
+          // Yeni belge kullanılmaya devam eder; eski nesne sonraki temizlikte
+          // kaldırılabilir.
         }
       }
 
-      await ref
-          .read(profileRepositoryProvider)
-          .submitClubDocuments(uid, documents);
-
-      // Yönlendirmeyi router yapar: clubStatus inceleme moduna geçtiğinde
-      // kulüp bekleme ekranına düşer.
       if (mounted) {
+        setState(() {
+          _selected.remove(docType);
+          _saved[docType] = Map<String, dynamic>.from(document);
+          _removed.remove(docType);
+        });
         _setFeedback(
-          context.t('clubDocuments.feedback.success'),
+          context.t('clubDocuments.feedback.uploaded'),
           FeedbackTone.success,
         );
       }
     } catch (error) {
+      // Dosya depolamaya yazıldı ama profil kaydı başarısız olduysa erişimsiz
+      // bir nesne bırakma.
+      if (storageRef != null) {
+        try {
+          await storageRef.delete();
+        } catch (_) {}
+      }
       if (!mounted) return;
       final String message = '$error';
       _setFeedback(
@@ -206,7 +207,60 @@ class _ClubDocumentsScreenState extends ConsumerState<ClubDocumentsScreen> {
             : context.t('clubDocuments.feedback.error'),
         FeedbackTone.error,
       );
-      setState(() => _uploading = false);
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
+
+  Future<void> _remove(String docType) async {
+    // Bir yükleme hatasından sonra dosya yalnızca cihazda seçili kalabilir;
+    // henüz sisteme gitmediği için bu durumda yerelden kaldırmak yeterlidir.
+    if (_selected.containsKey(docType)) {
+      setState(() => _selected.remove(docType));
+      return;
+    }
+
+    final String? uid = ref.read(sessionProvider).user?.uid;
+    final Map<String, Map<String, dynamic>> existing = _existing;
+    final Map<String, dynamic>? document = existing[docType];
+    if (uid == null || document == null) return;
+
+    setState(() => _uploading = true);
+    try {
+      final String path = '${document['path'] ?? ''}';
+      if (path.isNotEmpty) {
+        try {
+          await fbStorage.ref(path).delete();
+        } on FirebaseException catch (error) {
+          // Nesne daha önce silindiyse profil kaydı yine de temizlenmeli.
+          if (error.code != 'object-not-found') rethrow;
+        }
+      }
+
+      final Map<String, dynamic> documents = <String, dynamic>{...existing}
+        ..remove(docType);
+      await ref
+          .read(profileRepositoryProvider)
+          .saveClubDocuments(uid, documents);
+
+      if (mounted) {
+        setState(() {
+          _saved.remove(docType);
+          _removed.add(docType);
+        });
+        _setFeedback(
+          context.t('clubDocuments.feedback.deleted'),
+          FeedbackTone.success,
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      _setFeedback(
+        context.t('clubDocuments.feedback.deleteError'),
+        FeedbackTone.error,
+      );
+    } finally {
+      if (mounted) setState(() => _uploading = false);
     }
   }
 
@@ -214,11 +268,28 @@ class _ClubDocumentsScreenState extends ConsumerState<ClubDocumentsScreen> {
     await logout(ref);
   }
 
+  /// Onay bekleme ekranına dönüş.
+  ///
+  /// Buraya genelde o ekrandaki "Belgeleri Düzenle" düğmesiyle gelinir, o
+  /// yüzden önce yığın açılır. Yığın yoksa (ör. oturum değişiminde router
+  /// sayfayı yeniden kurmuşsa) doğrudan rotaya gidilir; kullanıcı bu ekranda
+  /// mahsur kalmasın.
+  void _backToPending() {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go(Routes.clubPending);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final bool complete = kClubDocTypes.every(_isReady);
-    final String issue =
-        ref.watch(sessionProvider).clubProfile?.documentIssue ?? '';
+    final ClubProfile? profile = ref.watch(sessionProvider).clubProfile;
+    final String issue = profile?.documentIssue ?? '';
+
+    // Belgeler tamamlanmış ve inceleme sürüyorsa bu ekrana yalnızca düzeltme
+    // için gelinmiştir; dönüş yolu görünür olmalı.
+    final bool underReview = profile?.clubStatus == ClubStatus.pendingReview;
 
     return Scaffold(
       appBar: ClubAppBar(
@@ -234,6 +305,17 @@ class _ClubDocumentsScreenState extends ConsumerState<ClubDocumentsScreen> {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: <Widget>[
+            if (underReview) ...<Widget>[
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: _uploading ? null : _backToPending,
+                  icon: const Icon(Icons.arrow_back, size: 18),
+                  label: Text(context.t('clubDocuments.backToPending')),
+                ),
+              ),
+              const SizedBox(height: 4),
+            ],
             Text(
               context.t('clubDocuments.subtitle'),
               style: Theme.of(context).textTheme.bodySmall,
@@ -299,7 +381,7 @@ class _ClubDocumentsScreenState extends ConsumerState<ClubDocumentsScreen> {
                 enabled: !_uploading,
                 onPick: () => _pick(docType),
                 onPreview: () => _preview(docType),
-                onRemove: () => setState(() => _selected.remove(docType)),
+                onRemove: () => _remove(docType),
               ),
               const SizedBox(height: 12),
             ],
@@ -333,23 +415,9 @@ class _ClubDocumentsScreenState extends ConsumerState<ClubDocumentsScreen> {
 
             if (_uploading) ...<Widget>[
               const SizedBox(height: 20),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(999),
-                child: LinearProgressIndicator(
-                  value: _progress,
-                  minHeight: 6,
-                  backgroundColor: context.hairline,
-                  valueColor:
-                      const AlwaysStoppedAnimation<Color>(BrandColors.red),
-                ),
-              ),
+              const LinearProgressIndicator(minHeight: 6),
             ],
 
-            const SizedBox(height: 24),
-            FilledButton(
-              onPressed: _uploading || !complete ? null : _submit,
-              child: Text(context.t('clubDocuments.submit')),
-            ),
             const SizedBox(height: 24),
           ],
         ),
@@ -509,7 +577,7 @@ class _DocumentField extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          if (hasFile)
+          if (ready)
             Material(
               color: BrandColors.danger,
               shape: const CircleBorder(),
@@ -518,11 +586,7 @@ class _DocumentField extends StatelessWidget {
                 onTap: enabled ? onRemove : null,
                 child: const Padding(
                   padding: EdgeInsets.all(5),
-                  child: Icon(
-                    Icons.remove,
-                    size: 16,
-                    color: BrandColors.white,
-                  ),
+                  child: Icon(Icons.remove, size: 16, color: BrandColors.white),
                 ),
               ),
             )

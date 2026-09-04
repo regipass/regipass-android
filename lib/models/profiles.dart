@@ -83,6 +83,10 @@ class AppUser {
     required this.onboardingCompleted,
     required this.clubStatus,
     required this.clubName,
+    required this.termsAccepted,
+    required this.termsAcceptedAtMs,
+    required this.marketingConsent,
+    required this.termsVersion,
   });
 
   factory AppUser.fromMap(String uid, Map<String, dynamic> data) {
@@ -102,6 +106,10 @@ class AppUser {
       onboardingCompleted: data['onboardingCompleted'] == true,
       clubStatus: data['clubStatus'] as String?,
       clubName: asString(data['clubName']),
+      termsAccepted: data['termsAccepted'] == true,
+      termsAcceptedAtMs: asEpochMilliseconds(data['termsAcceptedAt']),
+      marketingConsent: data['marketingConsent'] == true,
+      termsVersion: asString(data['termsVersion']),
     );
   }
 
@@ -118,6 +126,19 @@ class AppUser {
   final bool onboardingCompleted;
   final String? clubStatus;
   final String clubName;
+
+  /// Kayıt ekranındaki onayın kaydı. Profil belgesi henüz yokken (bilgi formu
+  /// doldurulmadan) onayın tek kalıcı kopyası burasıdır: kullanıcı formu
+  /// yarıda bırakıp uygulamayı kapatsa bile onay anı kaybolmaz.
+  final bool termsAccepted;
+
+  /// Onaya tıklanan an — saniye çözünürlüğünde (bkz. KVKK metni madde 7).
+  final int? termsAcceptedAtMs;
+
+  final bool marketingConsent;
+
+  /// Onaylanan belge sürümü (bkz. [kLegalDocsVersion]).
+  final String termsVersion;
 
   bool get hasStudentRole => roles['student'] == true;
   bool get hasClubRole => roles['club'] == true;
@@ -144,6 +165,9 @@ class StudentProfile {
     required this.banned,
     required this.hasPassword,
     required this.createdAtMs,
+    required this.termsAccepted,
+    required this.termsAcceptedAtMs,
+    required this.marketingConsent,
   });
 
   factory StudentProfile.fromMap(String uid, Map<String, dynamic> data) {
@@ -166,6 +190,9 @@ class StudentProfile {
       banned: data['banned'] == true,
       hasPassword: data['hasPassword'] == true,
       createdAtMs: asEpochMilliseconds(data['createdAt']),
+      termsAccepted: data['termsAccepted'] == true,
+      termsAcceptedAtMs: asEpochMilliseconds(data['termsAcceptedAt']),
+      marketingConsent: data['marketingConsent'] == true,
     );
   }
 
@@ -201,8 +228,75 @@ class StudentProfile {
   /// anlık görüntüde `null` görünür — okuyan taraf bunu hesaba katmalı.
   final int? createdAtMs;
 
+  /// Kayıt ekranındaki zorunlu onay (Kullanıcı ve Kulüp Sözleşmesi + KVKK
+  /// Aydınlatma Metni). Bilgi formu bu onay olmadan kaydedilemez, bu yüzden
+  /// tamamlanmış her profilde true olması beklenir.
+  final bool termsAccepted;
+  final int? termsAcceptedAtMs;
+
+  /// KVKK Açık Rıza Metni'ndeki isteğe bağlı pazarlama paylaşımı onayı.
+  final bool marketingConsent;
+
   /// dashboard.js#getStudentDisplayName ile aynı sıra.
   String get fullName => '$firstName $lastName'.trim();
+}
+
+/// Yöneticinin tek bir kulübe yazdığı not.
+///
+/// Web karşılığı: `js/modules/admin/club-messages.js`. Kayıtlar ayrı bir
+/// koleksiyonda değil, kulüp profilinin içindeki `adminMessages` dizisinde
+/// durur — kulüp kendi `club_profiles` belgesini zaten okuyabiliyor ve
+/// projede Cloud Functions yok.
+///
+/// Zaman damgası istemciden gelir: `serverTimestamp()` bir dizi elemanının
+/// içinde çalışmaz (`arrayUnion`). Belge düzeyindeki `lastAdminMessageAt`
+/// alanı sunucu saatiyle tutulur.
+class AdminMessage {
+  const AdminMessage({
+    required this.id,
+    required this.message,
+    required this.createdAtMs,
+    required this.createdBy,
+  });
+
+  factory AdminMessage.fromMap(Map<String, dynamic> data) {
+    final int createdAtMs = asInt(data['createdAtMs']) ?? 0;
+    final String id = asString(data['id']).trim();
+
+    return AdminMessage(
+      // Eski/eksik kayıtlarda kimlik yoksa zaman damgası kimlik yerine geçer;
+      // liste anahtarı olarak kullanılabilsin diye boş bırakılmıyor.
+      id: id.isNotEmpty ? id : '$createdAtMs',
+      message: asString(data['message']).trim(),
+      createdAtMs: createdAtMs,
+      createdBy: asString(data['createdBy']).trim(),
+    );
+  }
+
+  final String id;
+  final String message;
+  final int createdAtMs;
+  final String createdBy;
+}
+
+/// Ham diziyi **en yenisi başta** olacak şekilde sıralanmış listeye çevirir.
+/// Boş metinli kayıtlar elenir (web'deki `readAdminMessages` ile aynı).
+List<AdminMessage> asAdminMessages(Object? value) {
+  if (value is! List) return const <AdminMessage>[];
+
+  final List<AdminMessage> list = value
+      .whereType<Map<Object?, Object?>>()
+      .map(
+        (Map<Object?, Object?> raw) =>
+            AdminMessage.fromMap(Map<String, dynamic>.from(raw)),
+      )
+      .where((AdminMessage entry) => entry.message.isNotEmpty)
+      .toList();
+
+  list.sort(
+    (AdminMessage a, AdminMessage b) => b.createdAtMs.compareTo(a.createdAtMs),
+  );
+  return list;
 }
 
 /// `club_profiles/{uid}`
@@ -223,10 +317,16 @@ class ClubProfile {
     required this.logoUrl,
     required this.logoPath,
     required this.documentIssue,
+    required this.adminMessages,
     required this.onboardingCompleted,
     required this.clubStatus,
+    required this.banned,
+    required this.phoneVerified,
     required this.hasPassword,
     required this.documents,
+    required this.termsAccepted,
+    required this.termsAcceptedAtMs,
+    required this.marketingConsent,
   });
 
   factory ClubProfile.fromMap(String uid, Map<String, dynamic> data) {
@@ -247,10 +347,13 @@ class ClubProfile {
       logoUrl: asString(data['logoUrl']),
       logoPath: asString(data['logoPath']),
       documentIssue: asString(data['documentIssue']),
+      adminMessages: asAdminMessages(data['adminMessages']),
       onboardingCompleted: data['onboardingCompleted'] == true,
       // Alan yoksa web ile aynı varsayılan: belge bekleniyor.
       clubStatus:
           (data['clubStatus'] as String?) ?? ClubStatus.documentsPending,
+      banned: data['banned'] == true,
+      phoneVerified: data['phoneVerified'] == true,
       hasPassword: data['hasPassword'] == true,
       documents: rawDocs is Map
           ? rawDocs.map(
@@ -260,6 +363,9 @@ class ClubProfile {
               ),
             )
           : const <String, Map<String, dynamic>>{},
+      termsAccepted: data['termsAccepted'] == true,
+      termsAcceptedAtMs: asEpochMilliseconds(data['termsAcceptedAt']),
+      marketingConsent: data['marketingConsent'] == true,
     );
   }
 
@@ -296,8 +402,65 @@ class ClubProfile {
   /// yükleme ekranında bu metni görür ve eksiği tamamlar.
   final String documentIssue;
 
+  /// Yöneticinin bu kulübe yazdığı notlar — en yenisi başta.
+  /// Kulüp bunları onay bekleme ekranında görür.
+  final List<AdminMessage> adminMessages;
+
   final bool onboardingCompleted;
   final String clubStatus;
+
+  /// Ayrı `banned` bayrağı: engel `clubStatus` ile birlikte yazılır ama
+  /// eski kayıtlarda yalnızca biri dolu olabilir (bkz. [isBanned]).
+  final bool banned;
+
+  final bool phoneVerified;
   final bool hasPassword;
   final Map<String, Map<String, dynamic>> documents;
+
+  /// Kayıt ekranındaki zorunlu onay (Kullanıcı ve Kulüp Sözleşmesi + KVKK
+  /// Aydınlatma Metni). Bilgi formu bu onay olmadan kaydedilemez.
+  final bool termsAccepted;
+  final int? termsAcceptedAtMs;
+
+  /// KVKK Açık Rıza Metni'ndeki isteğe bağlı pazarlama paylaşımı onayı.
+  final bool marketingConsent;
+
+  /// Web'deki `clubIsBanned` ile aynı: iki alandan biri yeterli.
+  bool get isBanned => clubStatus == ClubStatus.banned || banned;
+
+  /// Yalnızca engel alanlarını değiştiren kopya.
+  ///
+  /// Yönetici ekranı, yazma bittikten sonra sunucudan yeni anlık görüntü
+  /// gelmeden rozeti ve düğmeyi tazeleyebilsin diye var; başka bir alanı
+  /// kopyalamak gerekmediği için tam bir `copyWith` yazılmadı.
+  ClubProfile withBanState({
+    required String clubStatus,
+    required bool banned,
+  }) => ClubProfile(
+    uid: uid,
+    email: email,
+    firstName: firstName,
+    lastName: lastName,
+    phone: phone,
+    city: city,
+    university: university,
+    clubName: clubName,
+    clubField: clubField,
+    clubFields: clubFields,
+    clubPurpose: clubPurpose,
+    clubContents: clubContents,
+    logoUrl: logoUrl,
+    logoPath: logoPath,
+    documentIssue: documentIssue,
+    adminMessages: adminMessages,
+    onboardingCompleted: onboardingCompleted,
+    clubStatus: clubStatus,
+    banned: banned,
+    phoneVerified: phoneVerified,
+    hasPassword: hasPassword,
+    documents: documents,
+    termsAccepted: termsAccepted,
+    termsAcceptedAtMs: termsAcceptedAtMs,
+    marketingConsent: marketingConsent,
+  );
 }

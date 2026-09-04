@@ -154,6 +154,34 @@ class PhoneDirectoryRepository {
     }
   }
 
+  /// Hesap silinirken numarayı dizinden **tamamen** düşürür.
+  ///
+  /// [release] doğrulanmış kaydı bilerek korur: numaranın sahibi hâlâ o
+  /// hesaptır. Hesabın kendisi yok olurken ise kaydı bırakmak numarayı
+  /// kalıcı olarak kullanılamaz hâle getirirdi — [lookup] onu artık var
+  /// olmayan bir uid'ye ait sanıp `takenByOther` döndürür ve aynı kişi bile
+  /// aynı numarayla yeniden kaydolamazdı.
+  ///
+  /// Kural yalnızca `resource.data.uid == request.auth.uid` olan belgenin
+  /// silinmesine izin verdiği için bu çağrı Auth hesabı silinmeden ÖNCE
+  /// yapılmalıdır. En iyi çaba.
+  Future<void> releaseOwned({
+    required String phoneE164,
+    required String uid,
+  }) async {
+    final String key = phoneE164.trim();
+    if (!_isUsableKey(key)) return;
+
+    try {
+      final Snap snap = await _doc(key).get();
+      if (snap.data()?['uid'] != uid) return;
+
+      await _doc(key).delete();
+    } catch (_) {
+      return;
+    }
+  }
+
   /// Dizini geçmişe dönük doldurur: giriş yapmış kullanıcının Auth hesabında
   /// bağlı olan numarayı, dizinde yoksa (ya da başka bir uid'ye/bekleyen
   /// kayda yazılmışsa) bu hesaba doğrulanmış olarak yazar.

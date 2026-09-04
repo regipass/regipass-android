@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../core/app_log.dart';
+import '../domain/paid_event_consent.dart';
 import '../domain/registration_capacity.dart';
 import '../models/event.dart';
 import '../models/profiles.dart';
@@ -197,34 +198,27 @@ class EventRepository {
     return updated;
   }
 
-  /// Kulübün QR okutmasıyla giriş onayı
-  /// (club-qr-checkin.js / club-events.js#processScannedQrToken).
+  /// Kulübün, öğrencinin **biletini** okutmasıyla yazılan kapı giriş damgası
+  /// (club-qr-checkin.js#processQrToken).
   ///
-  /// `checkedInAtMs` yalnızca ilk girişte yazılır; sonraki oturumlar
-  /// `lastSessionCheckInAtMs` alanını günceller.
+  /// Yalnızca kapı damgası yazılır; oturum alanlarına dokunulmaz. "Check-in +
+  /// Yoklama" modunda gün içindeki yoklama ayrı bir adımdır ve öğrencinin
+  /// salondaki oturum QR'ını kendi telefonuyla okutmasıyla işler
+  /// (bkz. [markOwnSessionCheckIn]). Görevlinin bilet okutması bir yoklama
+  /// saymaz — yoksa aynı öğrenci hem kapıda hem salonda sayılırdı.
+  ///
+  /// `checkedInByClubId` bu yoldan yazılır: girişin kulüp doğrulamasıyla mı
+  /// öğrencinin kendisi tarafından mı yapıldığı buradan ayırt edilir.
   Future<void> markCheckInByClub({
     required EventRegistration registration,
     required String clubId,
-    required bool isMultiSession,
-    required int currentSession,
-  }) async {
-    final int nowMs = DateTime.now().millisecondsSinceEpoch;
-
-    final Map<String, dynamic> payload = <String, dynamic>{
-      'checkedInAtMs': registration.checkedInAtMs ?? nowMs,
-      'checkedInAt': FieldValue.serverTimestamp(),
-      'checkedInByClubId': clubId,
-      'updatedAt': FieldValue.serverTimestamp(),
-    };
-
-    if (isMultiSession) {
-      payload['sessionsAttended'] = registration.sessionsAttended + 1;
-      payload['lastSessionCheckInAtMs'] = nowMs;
-      payload['lastAttendedSession'] = currentSession;
-    }
-
-    await registrationsCol.doc(registration.id).update(payload);
-  }
+  }) =>
+      registrationsCol.doc(registration.id).update(<String, dynamic>{
+        'checkedInAtMs': DateTime.now().millisecondsSinceEpoch,
+        'checkedInAt': FieldValue.serverTimestamp(),
+        'checkedInByClubId': clubId,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
 
   /// Öğrencinin, kulübün ekrana bastığı oturum QR'ını okutmasıyla giriş
   /// (student-qr-checkin.js). `checkedInByClubId` bu yoldan YAZILMAZ —
@@ -247,6 +241,53 @@ class EventRepository {
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }
+
+  /// Öğrencinin kapıdaki ortak QR'ı okutmasıyla yazılan ilk giriş damgası.
+  /// Oturum sayacı bilerek değişmez; Check-in + Yoklama modunda sayım ancak
+  /// ilgili oturum QR'ı okutulduğunda artar.
+  Future<void> markOwnDoorCheckin({
+    required String eventId,
+    required String studentId,
+  }) async {
+    final int nowMs = DateTime.now().millisecondsSinceEpoch;
+    await registrationDoc(eventId, studentId).update(<String, dynamic>{
+      'checkedInAtMs': nowMs,
+      'checkedInAt': FieldValue.serverTimestamp(),
+      // `checkedInVia` ZORUNLU: firestore.rules >
+      // studentCanMarkOwnEventCheckIn hem bu alanın "self-qr" olmasını hem de
+      // yazılan alanların yalnızca bu dördü olmasını şart koşuyor. Alan
+      // yazılmazsa kural girişi permission-denied ile reddeder.
+      // `checkedInByClubId` bu yoldan yazılmaz: girişin kulüp doğrulamasıyla
+      // mı öğrencinin kendisi tarafından mı yapıldığı buradan ayırt edilir.
+      'checkedInVia': 'self-qr',
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// Kapıyı açar/kapatır. Öğrenci verisine hiçbir aşamada dokunulmaz.
+  ///
+  /// `entryStartedAtMs` **bir kez** yazılır (club-events.js#setEntryOpen ile
+  /// aynı davranış): "Check-in'i Bitir" sonrasında etkinliğin Aktif listesinden
+  /// düşmemesi ve aşamanın "hiç başlamadı"ya geri dönmemesi için. Bu sayede
+  /// "Yeniden Başlat" veriyi sıfırlamadan çalışır.
+  Future<void> setEntryOpen(
+    String eventId,
+    bool open, {
+    int alreadyStartedAtMs = 0,
+  }) =>
+      eventDoc(eventId).update(<String, dynamic>{
+        'entryOpen': open,
+        if (open && alreadyStartedAtMs <= 0)
+          'entryStartedAtMs': DateTime.now().millisecondsSinceEpoch,
+        'entryOpenUpdatedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+  Future<void> setAllowSessionWithoutCheckin(String eventId, bool allow) =>
+      eventDoc(eventId).update(<String, dynamic>{
+        'allowSessionWithoutCheckin': allow,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
 
   // ── Oturum yönetimi (kulüp) ─────────────────────────────────────────
 
@@ -547,7 +588,16 @@ class EventRepository {
     required String clubId,
     required ClubProfile? club,
     required String clubFallbackName,
+    required PaidEventConsentAcceptance? paidEventConsent,
   }) async {
+    // Bu denetim yalnızca ekrandaki düğmeye güvenmez: ücretli bir taslak,
+    // onay olmadan bu depodan da oluşturulamaz. firestore.rules onay
+    // alanlarını zorunlu TUTMUYOR (bkz. tool/loadtest/12-ucretli-onay-logu.mjs),
+    // bu yüzden tek sınır burasıdır.
+    if (draft.feeType == 'paid' && paidEventConsent == null) {
+      throw ArgumentError('Paid event creation requires club consent.');
+    }
+
     // Kimlik önceden alınır (yazma yapmadan): etkinlik dokümanı ile kontenjan
     // parçaları TEK toplu yazımda, atomik olarak oluşsun. Ayrı ayrı yazılsaydı
     // arada kalan anda etkinlik "parçalı" görünüp parçaları bulunmayacak,
@@ -580,7 +630,19 @@ class EventRepository {
           'hiddenGlobally': false,
           'currentSession': 0,
           'sessionsCompleted': false,
+          'entryOpen': false,
+          'allowSessionWithoutCheckin': false,
           'quotaShardCount': shards,
+          // Ücretli etkinliğin onay logu ETKİNLİK BELGESİNDE durur: kulübün
+          // kabul ettiği metnin kendisi ve saniyeye kadar inen damgası.
+          // Şema web ile ortak (club-create-event.js#saveEvent); ücretsiz
+          // etkinliğe hiçbir alan yazılmaz.
+          if (draft.feeType == 'paid' && paidEventConsent != null)
+            kPaidConsentLogField: <String, dynamic>{
+              ...paidEventConsent.toLogMap(),
+              // Sunucu damgası istemcinin saatine güvenmeyen ikinci kayıt.
+              'approvedAt': FieldValue.serverTimestamp(),
+            },
           'createdAt': FieldValue.serverTimestamp(),
           'createdAtMs': DateTime.now().millisecondsSinceEpoch,
         });
@@ -604,8 +666,30 @@ class EventRepository {
   }
 
   /// Etkinliği günceller ve kontenjan değiştiyse parçaları yeniden dengeler.
-  Future<void> updateEvent(String eventId, EventDraft draft) async {
-    await eventDoc(eventId).update(draft.toMap());
+  ///
+  /// [paidEventConsent] verilmişse ücretli etkinliğin onay logu TAZELENİR
+  /// (web'deki `saveEvent` de her kayıtta tazeler). Etkinlik ücretsize
+  /// çevrildiyse log anlamını yitirir ve silinir — aksi hâlde ücretsiz bir
+  /// etkinlikte bayat bir ödeme onayı kalırdı.
+  ///
+  /// Ücretsizden ücretliye geçişte onay ZORUNLU: firestore.rules logsuz
+  /// ücretli etkinliği kabul etmez.
+  Future<void> updateEvent(
+    String eventId,
+    EventDraft draft, {
+    PaidEventConsentAcceptance? paidEventConsent,
+  }) async {
+    final bool paid = draft.feeType == 'paid';
+
+    await eventDoc(eventId).update(<String, dynamic>{
+      ...draft.toMap(),
+      if (paid && paidEventConsent != null)
+        kPaidConsentLogField: <String, dynamic>{
+          ...paidEventConsent.toLogMap(),
+          'approvedAt': FieldValue.serverTimestamp(),
+        },
+      if (!paid) kPaidConsentLogField: FieldValue.delete(),
+    });
     await syncQuotaShards(eventId: eventId, quota: draft.quota);
   }
 
@@ -785,6 +869,7 @@ class EventDraft {
     required this.eventStartAtMs,
     required this.eventEndAtMs,
     required this.sessionCount,
+    required this.checkinMode,
     required this.certificateThresholdPercent,
     required this.locationName,
     required this.locationLat,
@@ -816,6 +901,7 @@ class EventDraft {
   final int? eventStartAtMs;
   final int? eventEndAtMs;
   final int sessionCount;
+  final String checkinMode;
   final int? certificateThresholdPercent;
   final String locationName;
   final double? locationLat;
@@ -843,6 +929,7 @@ class EventDraft {
     eventStartAtMs: eventStartAtMs,
     eventEndAtMs: eventEndAtMs,
     sessionCount: sessionCount,
+    checkinMode: checkinMode,
     certificateThresholdPercent: certificateThresholdPercent,
     locationName: locationName,
     locationLat: locationLat,
@@ -875,6 +962,7 @@ class EventDraft {
     'eventStartAtMs': eventStartAtMs,
     'eventEndAtMs': eventEndAtMs,
     'sessionCount': sessionCount,
+    'checkinMode': checkinMode,
     'certificateThresholdPercent': certificateThresholdPercent,
     'locationName': locationName,
     'locationLat': locationLat,

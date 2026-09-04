@@ -92,7 +92,7 @@ service cloud.firestore {
     // ── Dogrulanmamis kaydin omru ("expireAt") ────────────────────────────
     // "expireAt", Firestore TTL politikasinin okudugu tarihtir: tarih gecince
     // belge KENDILIGINDEN silinir (bkz. firestore.indexes.json > fieldOverrides
-    // ve js/modules/auth/account-expiry.js). Telefonunu 3 gun icinde
+    // ve js/modules/auth/account-expiry.js). Telefonunu 3 dakika icinde
     // dogrulamayan ogrenci kaydi boylece veritabaninda kalmaz.
     //
     // Tarih istemcide hesaplanir (TTL gercek bir zaman damgasi ister,
@@ -144,8 +144,8 @@ service cloud.firestore {
     }
 
     // ── Telefon ipuclari (sifre sifirlama ekrani icin) ────────────────────
-    // Anahtar: e-postanin SHA-256'si. Icerik: SADECE maskelenmis metin
-    // ("+90 XXX XXX XX 67"). Tam numara, e-posta veya baska profil alani
+    // Anahtar: e-postanin SHA-256'si. Icerik: maskelenmis telefon ve hesabin
+    // student/club rolleridir. Tam numara, e-posta veya baska profil alani
     // BURADA TUTULMAZ (bkz. js/modules/auth/phone-hint.js).
     //
     // get  : acik — sifresini unutmus kullanici giris YAPMAMIS durumdadir,
@@ -164,9 +164,24 @@ service cloud.firestore {
       allow list: if false;
 
       allow create, update: if isSignedIn()
-        && request.resource.data.keys().hasOnly(["maskedPhone", "updatedAt"])
+        && request.resource.data.keys().hasOnly(["maskedPhone", "roles", "updatedAt"])
         && request.resource.data.maskedPhone is string
-        && request.resource.data.maskedPhone.size() <= 40;
+        && request.resource.data.maskedPhone.size() <= 40
+        && (
+          (
+            "roles" in request.resource.data
+            && request.resource.data.roles is list
+            && request.resource.data.roles.size() >= 1
+            && request.resource.data.roles.size() <= 2
+            && request.resource.data.roles.hasOnly(["student", "club"])
+          )
+          // Eski web istemcisi roles yazmaz. Eski belgeyi güncelleyebilir ama
+          // mobilin eklediği rol listesini sonradan silemez.
+          || (
+            !("roles" in request.resource.data)
+            && !(resource != null && "roles" in resource.data)
+          )
+        );
 
       allow delete: if false;
     }
@@ -385,11 +400,45 @@ service cloud.firestore {
           ])
           && eventDoc(resource.data.eventId).data != null
           && eventDoc(resource.data.eventId).data.sessionsCompleted != true
+          // Yeni Check-in + Yoklama modunda kapı kaydı olmadan oturum
+          // sayacı artırılamaz. Alanı olmayan eski kayıtlar eski akışını
+          // korur; kulübün gec kalanlar için açtığı anahtar istisnadır.
+          && (
+            !eventDoc(resource.data.eventId).data.keys().hasAll(["checkinMode"])
+            || eventDoc(resource.data.eventId).data.checkinMode != "checkin_attendance"
+            || eventDoc(resource.data.eventId).data.allowSessionWithoutCheckin == true
+            || (resource.data.checkedInAtMs is int && resource.data.checkedInAtMs > 0)
+          )
           && request.resource.data.lastAttendedSession == eventDoc(resource.data.eventId).data.currentSession
           && request.resource.data.lastAttendedSession
               > (resource.data.lastAttendedSession is int ? resource.data.lastAttendedSession : 0)
           && request.resource.data.sessionsAttended
               == (resource.data.sessionsAttended is int ? resource.data.sessionsAttended : 0) + 1
+          && request.resource.data.checkedInAtMs is int
+          && request.resource.data.checkedInAtMs > 0;
+      }
+
+      // Kapıda gösterilen ortak QR'ı okuyan öğrenci yalnızca kendi ilk giriş
+      // damgasını yazabilir. QR'ın açık/kapalı olması etkinlik belgesinden
+      // denetlenir; oturum sayaçları bu yoldan değiştirilemez.
+      function studentCanMarkOwnDoorCheckIn() {
+        return isSignedIn()
+          && resource.data.studentId == request.auth.uid
+          && request.resource.data.eventId == resource.data.eventId
+          && request.resource.data.studentId == resource.data.studentId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "checkedInAt",
+            "checkedInAtMs",
+            "updatedAt"
+          ])
+          && eventDoc(resource.data.eventId).data != null
+          && eventDoc(resource.data.eventId).data.doorCheckinOpen == true
+          && (
+            eventDoc(resource.data.eventId).data.keys().hasAll(["checkinMode"])
+            && eventDoc(resource.data.eventId).data.checkinMode == "checkin_attendance"
+            || (eventDoc(resource.data.eventId).data.keys().hasAll(["checkinMode"])
+              && eventDoc(resource.data.eventId).data.checkinMode == "checkin_only")
+          )
           && request.resource.data.checkedInAtMs is int
           && request.resource.data.checkedInAtMs > 0;
       }
@@ -532,6 +581,7 @@ service cloud.firestore {
         )
         || clubCanMarkCheckIn()
         || studentCanMarkOwnSessionCheckIn()
+        || studentCanMarkOwnDoorCheckIn()
         || studentCanRefreshOwnSnapshot();
 
       allow delete: if isSignedIn()

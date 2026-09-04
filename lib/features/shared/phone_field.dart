@@ -9,15 +9,10 @@ import 'package:flutter/services.dart';
 
 import '../../app/theme.dart';
 import '../../core/input_guard.dart';
+import '../../core/keyboard.dart';
 import '../../data/country_codes.dart';
+import '../../domain/phone_precheck.dart';
 import '../../l10n/app_strings.dart';
-
-/// Uzun arama kodları önce denenecek şekilde sıralı liste
-/// (ör. "+1" ile "+1242" karışmasın).
-final List<CountryCode> _byDialDesc = List<CountryCode>.of(kCountryCodes)
-  ..sort(
-    (CountryCode a, CountryCode b) => b.dial.length.compareTo(a.dial.length),
-  );
 
 CountryCode findCountry(String code) => kCountryCodes.firstWhere(
   (CountryCode c) => c.code == code,
@@ -30,13 +25,7 @@ String formatE164ForDisplay(String? e164) {
   final String value = (e164 ?? '').trim();
   if (!value.startsWith('+')) return value;
 
-  CountryCode? match;
-  for (final CountryCode c in _byDialDesc) {
-    if (value.startsWith(c.dial)) {
-      match = c;
-      break;
-    }
-  }
+  final CountryCode? match = countryForE164(value);
   if (match == null) return value;
 
   final String digits = value
@@ -65,13 +54,7 @@ String maskE164ForDisplay(String? e164, {int visibleCount = 2}) {
   final String value = (e164 ?? '').trim();
   if (!value.startsWith('+')) return '';
 
-  CountryCode? match;
-  for (final CountryCode c in _byDialDesc) {
-    if (value.startsWith(c.dial)) {
-      match = c;
-      break;
-    }
-  }
+  final CountryCode? match = countryForE164(value);
   if (match == null) return '';
 
   final String digits = value
@@ -157,14 +140,16 @@ class PhoneFieldController extends ChangeNotifier {
     return raw;
   }
 
-  /// Türkiye cep telefonu numaraları ulusal bölümde 5 ile başlar.
-  bool get hasInvalidPrefix =>
-      _country.code == 'TR' && digits.isNotEmpty && !digits.startsWith('5');
+  /// Yazılan haneler ülkenin cep operatörü ön eklerinden hiçbiriyle
+  /// bağdaşmıyor mu (ör. Türkiye'de "212" ile başlayan sabit hat)? Eksik
+  /// numarada `false` — kullanıcı ilk haneyi yazar yazmaz uyarı çıkmasın.
+  /// Kaynak tablo: data/mobile_prefixes.dart.
+  bool get hasInvalidPrefix => conflictsWithMobilePrefix(digits, _country.code);
 
   bool get isValid =>
-      !hasInvalidPrefix &&
       digits.length >= _country.min &&
-      digits.length <= _country.max;
+      digits.length <= _country.max &&
+      matchesMobilePrefix(digits, _country.code);
 
   String get e164 => '${_country.dial}$digits';
 
@@ -184,18 +169,15 @@ class PhoneFieldController extends ChangeNotifier {
     final String value = (stored ?? '').trim();
     if (value.isEmpty) return;
 
-    if (value.startsWith('+')) {
-      for (final CountryCode c in _byDialDesc) {
-        if (value.startsWith(c.dial)) {
-          _country = c;
-          final String digits = value
-              .substring(c.dial.length)
-              .replaceAll(RegExp(r'\D'), '');
-          text.text = formatNationalDigits(digits, c);
-          notifyListeners();
-          return;
-        }
-      }
+    final CountryCode? match = countryForE164(value);
+    if (match != null) {
+      _country = match;
+      final String digits = value
+          .substring(match.dial.length)
+          .replaceAll(RegExp(r'\D'), '');
+      text.text = formatNationalDigits(digits, match);
+      notifyListeners();
+      return;
     }
 
     text.text = formatNationalDigits(
@@ -216,6 +198,7 @@ class PhoneField extends StatefulWidget {
   const PhoneField({
     required this.controller,
     this.label = 'Telefon',
+    this.floatingLabel = true,
     this.enabled = true,
     this.errorText,
     this.onChanged,
@@ -225,6 +208,13 @@ class PhoneField extends StatefulWidget {
 
   final PhoneFieldController controller;
   final String label;
+
+  /// [label] alanın içinde mi dursun? Koyu giriş sahnesinde başlıklar alanın
+  /// **üstünde** ayrı bir yazı olarak duruyor (bkz. şifre sıfırlama ekranı);
+  /// orada içerideki etiket, başlık aşağı kaymış gibi görünüyordu. `false`
+  /// verildiğinde alan yalnızca yer tutucuyu gösterir.
+  final bool floatingLabel;
+
   final bool enabled;
 
   /// Dışarıdan verilirse alanın odağı çağıran taraftan yönetilebilir — bilgi
@@ -299,17 +289,20 @@ class _PhoneFieldState extends State<PhoneField> {
 
     final PhoneFieldController controller = widget.controller;
     if (controller.text.text.isEmpty) return null;
+    final CountryCode country = controller.country;
     if (controller.hasInvalidPrefix) {
-      return context.t('form.phoneOperatorPrefix');
+      return context.t('form.phoneOperatorPrefix', <String, Object?>{
+        'country': country.name,
+        'prefixes': describeMobilePrefixes(country.code),
+      });
     }
     if (controller.isValid) return null;
     if (!_leftFieldWithContent) return null;
 
-    final CountryCode country = controller.country;
     final String digits = country.min == country.max
         ? '${country.min}'
         : '${country.min}-${country.max}';
-    return '$digits haneli olmalı';
+    return context.t('form.phoneDigits', <String, Object?>{'digits': digits});
   }
 
   Future<void> _pickCountry() async {
@@ -325,90 +318,101 @@ class _PhoneFieldState extends State<PhoneField> {
   Widget build(BuildContext context) {
     final CountryCode country = widget.controller.country;
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        InkWell(
-          onTap: widget.enabled ? _pickCountry : null,
-          borderRadius: BorderRadius.circular(BrandShape.controlRadius),
-          child: Container(
-            height: 52,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              border: Border.all(color: context.hairline),
-              borderRadius: BorderRadius.circular(BrandShape.controlRadius),
-              color: context.surface,
-            ),
-            child: Row(
-              children: <Widget>[
-                Text(country.flag, style: const TextStyle(fontSize: 20)),
-                const SizedBox(width: 6),
-                Text(
-                  country.dial,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                Icon(Icons.expand_more, size: 18, color: context.inkMuted),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: TextField(
-            controller: widget.controller.text,
-            focusNode: _focus,
-            enabled: widget.enabled,
-            keyboardType: TextInputType.phone,
-            inputFormatters: <TextInputFormatter>[
-              TextInputFormatter.withFunction((
-                TextEditingValue oldValue,
-                TextEditingValue newValue,
-              ) {
-                final String raw = newValue.text.replaceAll(RegExp(r'\D'), '');
-                final int maxDigits = country.max + country.trunk.length;
-                final String limited = raw.length > maxDigits
-                    ? raw.substring(0, maxDigits)
-                    : raw;
-                final String formatted = formatNationalDigits(limited, country);
-                final int cursor = newValue.selection.baseOffset.clamp(
-                  0,
-                  newValue.text.length,
-                );
-                final int digitsBeforeCursor = newValue.text
-                    .substring(0, cursor)
-                    .replaceAll(RegExp(r'\D'), '')
-                    .length;
-                return TextEditingValue(
-                  text: formatted,
-                  selection: TextSelection.collapsed(
-                    offset: _formattedOffsetForDigits(
-                      formatted,
-                      digitsBeforeCursor.clamp(0, limited.length),
-                    ),
+    // Klavye açıldığında alan klavyenin altında kalmasın: kaydırılabilir bir
+    // ata varsa görünür alanın ortasına çekilir (bkz. [EnsureVisibleOnFocus]).
+    return EnsureVisibleOnFocus(
+      focusNode: _focus,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          InkWell(
+            onTap: widget.enabled ? _pickCountry : null,
+            borderRadius: BorderRadius.circular(BrandShape.controlRadius),
+            child: Container(
+              height: 52,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                border: Border.all(color: context.hairline),
+                borderRadius: BorderRadius.circular(BrandShape.controlRadius),
+                color: context.surface,
+              ),
+              child: Row(
+                children: <Widget>[
+                  Text(country.flag, style: const TextStyle(fontSize: 20)),
+                  const SizedBox(width: 6),
+                  Text(
+                    country.dial,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
-                  composing: TextRange.empty,
-                );
-              }),
-            ],
-            // Numara klavyesinin "bitti" tuşu: başka alana atlamak yerine
-            // klavyeyi kapatır — telefon formun son yazılan alanı ve rakam
-            // klavyesi açık kaldığında altındaki seçim alanlarını örtüyordu.
-            textInputAction: TextInputAction.done,
-            onSubmitted: (_) => _focus.unfocus(),
-            onChanged: (_) {
-              setState(() {});
-              widget.onChanged?.call();
-            },
-            decoration: InputDecoration(
-              labelText: widget.label,
-              hintText: '5xx xxx xx xx',
-              // Sahiplik uyarısı gibi uzun metinler tek satıra sığmıyor.
-              errorMaxLines: 3,
-              errorText: _resolveError(),
+                  Icon(Icons.expand_more, size: 18, color: context.inkMuted),
+                ],
+              ),
             ),
           ),
-        ),
-      ],
+          const SizedBox(width: 8),
+          Expanded(
+            child: TextField(
+              controller: widget.controller.text,
+              focusNode: _focus,
+              enabled: widget.enabled,
+              keyboardType: TextInputType.phone,
+              inputFormatters: <TextInputFormatter>[
+                TextInputFormatter.withFunction((
+                  TextEditingValue oldValue,
+                  TextEditingValue newValue,
+                ) {
+                  final String raw = newValue.text.replaceAll(
+                    RegExp(r'\D'),
+                    '',
+                  );
+                  final int maxDigits = country.max + country.trunk.length;
+                  final String limited = raw.length > maxDigits
+                      ? raw.substring(0, maxDigits)
+                      : raw;
+                  final String formatted = formatNationalDigits(
+                    limited,
+                    country,
+                  );
+                  final int cursor = newValue.selection.baseOffset.clamp(
+                    0,
+                    newValue.text.length,
+                  );
+                  final int digitsBeforeCursor = newValue.text
+                      .substring(0, cursor)
+                      .replaceAll(RegExp(r'\D'), '')
+                      .length;
+                  return TextEditingValue(
+                    text: formatted,
+                    selection: TextSelection.collapsed(
+                      offset: _formattedOffsetForDigits(
+                        formatted,
+                        digitsBeforeCursor.clamp(0, limited.length),
+                      ),
+                    ),
+                    composing: TextRange.empty,
+                  );
+                }),
+              ],
+              // Numara klavyesinin "bitti" tuşu: başka alana atlamak yerine
+              // klavyeyi kapatır — telefon formun son yazılan alanı ve rakam
+              // klavyesi açık kaldığında altındaki seçim alanlarını örtüyordu.
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _focus.unfocus(),
+              onChanged: (_) {
+                setState(() {});
+                widget.onChanged?.call();
+              },
+              decoration: InputDecoration(
+                labelText: widget.floatingLabel ? widget.label : null,
+                hintText: '5xx xxx xx xx',
+                // Sahiplik uyarısı gibi uzun metinler tek satıra sığmıyor.
+                errorMaxLines: 3,
+                errorText: _resolveError(),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

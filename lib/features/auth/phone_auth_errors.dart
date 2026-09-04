@@ -10,12 +10,40 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/app_strings.dart';
 
-String describePhoneAuthError(BuildContext context, Object error) {
-  final String code = switch (error) {
-    FirebaseAuthException(:final String code) => code,
-    FirebaseException(:final String code) => code,
-    _ => '',
-  };
+/// Kaç yanlış koddan sonra kullanıcıya "yeni kod iste" denir.
+const int kMaxWrongCodeAttempts = 3;
+
+/// Girilen kodun kabul edilmediği hatalar.
+///
+/// Firebase art arda yanlış kod girildiğinde bir noktada oturumu düşürüp
+/// `session-expired` döndürüyor; kullanıcı açısından bu da "yanlış kod"
+/// denemesidir, o yüzden aynı sayaca girer.
+bool isWrongCodeError(Object error) {
+  final String code = _errorCode(error);
+  return code == 'invalid-verification-code' ||
+      code == 'session-expired' ||
+      code == 'code-expired';
+}
+
+String _errorCode(Object error) => switch (error) {
+  FirebaseAuthException(:final String code) => code,
+  FirebaseException(:final String code) => code,
+  _ => '',
+};
+
+/// [wrongCodeAttempts]: bu doğrulama oturumunda şimdiye kadarki yanlış kod
+/// sayısı (bu hata dahil). Sınıra ulaşıldığında "kodun süresi doldu" demek
+/// yanıltıcı olur — kullanıcı kodu yanlış girdiği için yeni kod istemeli.
+String describePhoneAuthError(
+  BuildContext context,
+  Object error, {
+  int wrongCodeAttempts = 0,
+}) {
+  final String code = _errorCode(error);
+
+  if (wrongCodeAttempts >= kMaxWrongCodeAttempts && isWrongCodeError(error)) {
+    return context.t('phoneVerify.error.tooManyWrongCodes');
+  }
 
   return switch (code) {
     'invalid-phone-number' => context.t('phoneVerify.error.invalidPhone'),
@@ -55,8 +83,6 @@ String describePhoneAuthError(BuildContext context, Object error) {
     _ when code.startsWith('error-code:') => context.t(
       'phoneVerify.error.unknownRateLimit',
     ),
-    _ =>
-      '${context.t('phoneVerify.error.generic')}'
-          '${code.isEmpty ? '' : ' ($code)'}',
+    _ => context.t('phoneVerify.error.generic'),
   };
 }

@@ -60,7 +60,11 @@ class _PhoneChangeScreenState extends ConsumerState<PhoneChangeScreen> {
     }
 
     final String newPhone = _phone.e164;
-    final String currentPhone = session.studentProfile?.phone ?? '';
+    final String currentPhone =
+        session.user?.phoneNumber ??
+        session.studentProfile?.phone ??
+        session.clubProfile?.phone ??
+        '';
 
     if (currentPhone == newPhone) {
       _setFeedback(
@@ -113,8 +117,12 @@ class _PhoneChangeScreenState extends ConsumerState<PhoneChangeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final Session session = ref.watch(sessionProvider);
     final String currentPhone =
-        ref.watch(sessionProvider).studentProfile?.phone ?? '';
+        session.user?.phoneNumber ??
+        session.studentProfile?.phone ??
+        session.clubProfile?.phone ??
+        '';
 
     return Scaffold(
       appBar: AppBar(

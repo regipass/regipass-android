@@ -69,5 +69,15 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+
+    # permission_handler varsayılan olarak tüm izin stratejilerini kapatır.
+    # Regipass yalnızca kamerayı doğrudan istiyor; bildirim izni ise
+    # flutter_local_notifications tarafından ses/uyarı/badge seçenekleriyle
+    # isteniyor. Bu bayrak olmadan iOS'ta Permission.camera.request() her
+    # zaman reddedilmiş gibi döner ve sistem penceresi hiç açılmaz.
+    target.build_configurations.each do |config|
+      config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['$(inherited)']
+      config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] << 'PERMISSION_CAMERA=1'
+    end
   end
 end

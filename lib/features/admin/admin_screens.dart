@@ -15,10 +15,13 @@ import '../../core/sanitize.dart';
 import '../../domain/admin_stats.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/profiles.dart';
+import '../../services/admin_repository.dart';
 import '../../state/providers.dart';
 import '../shared/common_widgets.dart';
+import '../shared/legal_consent.dart';
 import 'admin_providers.dart';
 import 'admin_shell.dart';
+import 'club_message_panel.dart';
 
 // ═══════════════════════════════════════════════════════════════════════
 // Onay bekleyen kulüpler (admin-dashboard.js)
@@ -55,13 +58,15 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           final List<ClubProfile> visible = needle.isEmpty
               ? all
               : all
-                  .where((ClubProfile c) => <String>[
+                    .where(
+                      (ClubProfile c) => <String>[
                         c.clubName,
                         c.university,
                         c.city,
                         c.email,
-                      ].any((String f) => f.toLowerCase().contains(needle)))
-                  .toList();
+                      ].any((String f) => f.toLowerCase().contains(needle)),
+                    )
+                    .toList();
 
           return Column(
             children: <Widget>[
@@ -102,6 +107,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     );
   }
 }
+
 class _PendingClubCard extends ConsumerStatefulWidget {
   const _PendingClubCard({required this.club});
 
@@ -114,9 +120,11 @@ class _PendingClubCard extends ConsumerStatefulWidget {
 class _PendingClubCardState extends ConsumerState<_PendingClubCard> {
   bool _busy = false;
   bool _showDocuments = false;
+  bool _showMessages = false;
 
-  void _toast(String message) => ScaffoldMessenger.of(context)
-      .showSnackBar(SnackBar(content: Text(message)));
+  void _toast(String message) => ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(SnackBar(content: Text(message)));
 
   Future<bool> _confirm(String title, String message) async {
     final bool? result = await showDialog<bool>(
@@ -177,6 +185,9 @@ class _PendingClubCardState extends ConsumerState<_PendingClubCard> {
     final String? text = await showDialog<String>(
       context: context,
       builder: (BuildContext dialogContext) => AlertDialog(
+        // Klavye açılınca pencere taşmasın; ayrıca kaydırılabilir olduğu için
+        // metni aşağı sürüklemek klavyeyi kapatır (bkz. lib/core/keyboard.dart).
+        scrollable: true,
         title: Text(dialogContext.t('admin.action.needsDocuments')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -347,6 +358,17 @@ class _PendingClubCardState extends ConsumerState<_PendingClubCard> {
               if (club.university.isNotEmpty) club.university,
             ].join(' · '),
           ),
+          // Sözleşme/KVKK onayının tam anı: başvuruyu inceleyen yönetici,
+          // kulübün metinleri ne zaman onayladığını burada görür.
+          _InfoLine(
+            icon: Icons.verified_user_outlined,
+            text: consentTileValue(
+              context,
+              termsAccepted: club.termsAccepted,
+              acceptedAtMs: club.termsAcceptedAtMs,
+              marketingConsent: club.marketingConsent,
+            ),
+          ),
 
           if (club.clubPurpose.isNotEmpty) ...<Widget>[
             const SizedBox(height: 10),
@@ -362,8 +384,7 @@ class _PendingClubCardState extends ConsumerState<_PendingClubCard> {
           if (club.documents.isNotEmpty) ...<Widget>[
             const SizedBox(height: 10),
             TextButton.icon(
-              onPressed: () =>
-                  setState(() => _showDocuments = !_showDocuments),
+              onPressed: () => setState(() => _showDocuments = !_showDocuments),
               icon: Icon(
                 _showDocuments ? Icons.expand_less : Icons.expand_more,
               ),
@@ -400,6 +421,21 @@ class _PendingClubCardState extends ConsumerState<_PendingClubCard> {
                   onTap: () => _openDocument('${entry.value['url'] ?? ''}'),
                 ),
           ],
+
+          // ── Kulübe not ──────────────────────────────────────────
+          // Onaylamadan da engellemeden de kulüple konuşulabilsin: eksik
+          // belge burada yazılır, başvuru kuyrukta kalır.
+          const SizedBox(height: 6),
+          TextButton.icon(
+            onPressed: () => setState(() => _showMessages = !_showMessages),
+            icon: Icon(_showMessages ? Icons.expand_less : Icons.expand_more),
+            label: Text(context.t('admin.message.title')),
+          ),
+          if (_showMessages)
+            Padding(
+              padding: const EdgeInsets.only(top: 4, bottom: 4),
+              child: ClubMessagePanel(club: club),
+            ),
 
           const SizedBox(height: 12),
           Row(
@@ -642,26 +678,26 @@ class _StatsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-        children: <Widget>[
-          Container(
-            width: 3,
-            height: 15,
-            decoration: BoxDecoration(
-              color: BrandColors.red,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 14.5,
-              fontWeight: FontWeight.w700,
-              color: context.ink,
-            ),
-          ),
-        ],
-      );
+    children: <Widget>[
+      Container(
+        width: 3,
+        height: 15,
+        decoration: BoxDecoration(
+          color: BrandColors.red,
+          borderRadius: BorderRadius.circular(2),
+        ),
+      ),
+      const SizedBox(width: 8),
+      Text(
+        title,
+        style: TextStyle(
+          fontSize: 14.5,
+          fontWeight: FontWeight.w700,
+          color: context.ink,
+        ),
+      ),
+    ],
+  );
 }
 
 /// Pasta yerine yatay çubuk: küçük ekranda oran okumak için daha isabetli
@@ -733,7 +769,10 @@ class _Bar extends StatelessWidget {
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
             const SizedBox(width: 8),
@@ -837,8 +876,16 @@ class _CityCard extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// Öğrenci engelleme (admin-ban.js)
+// Engelleme (admin-ban.js)
 // ═══════════════════════════════════════════════════════════════════════
+//
+// Ekran iki listeyi birden taşır: ÖĞRENCİLER ve KULÜPLER. İkisi de aynı
+// şehir + üniversite ağacında gösterilir; tek fark engelin hangi
+// koleksiyona yazıldığıdır (bkz. admin_providers.dart#BanEntry).
+//
+// Engel tek yönlü değil: engellenmiş bir kayıtta düğme "Engeli Kaldır"a
+// döner. Kulüpte engel kalkınca kulüp, belgeleri duruyorsa inceleme
+// kuyruğuna, durmuyorsa belge yükleme adımına döner.
 
 class AdminBanScreen extends ConsumerStatefulWidget {
   const AdminBanScreen({super.key});
@@ -849,99 +896,217 @@ class AdminBanScreen extends ConsumerStatefulWidget {
 
 class _AdminBanScreenState extends ConsumerState<AdminBanScreen> {
   String _query = '';
+  BanScope _scope = BanScope.students;
+  BanStateFilter _filter = BanStateFilter.all;
 
   @override
   Widget build(BuildContext context) {
-    final AsyncValue<List<StudentProfile>> students =
-        ref.watch(allStudentsProvider);
+    // Kulüp listesi yalnızca sekme açıldığında istenir: yönetici çoğu zaman
+    // öğrenci listesiyle işini görüyor, ikinci sorgu boşuna çalışmasın.
+    final AsyncValue<List<BanEntry>> entries = _scope == BanScope.students
+        ? ref
+              .watch(allStudentsProvider)
+              .whenData((List<StudentProfile> all) => studentBanEntries(all))
+        : ref
+              .watch(allClubsProvider)
+              .whenData((List<ClubProfile> all) => clubBanEntries(all));
+
+    final bool students = _scope == BanScope.students;
 
     return Scaffold(
       appBar: AdminAppBar(title: context.t('admin.nav.ban')),
-      body: students.when(
-        loading: () => const LoadingView(),
-        error: (Object error, StackTrace _) => Padding(
-          padding: const EdgeInsets.all(20),
-          child: FeedbackBanner(
-            message: context.t('admin.feedback.error'),
-            tone: FeedbackTone.error,
+      body: Column(
+        children: <Widget>[
+          _BanScopeTabs(
+            scope: _scope,
+            onChanged: (BanScope value) {
+              if (value == _scope) return;
+              setState(() => _scope = value);
+            },
           ),
-        ),
-        data: (List<StudentProfile> all) {
-          final List<StudentGroup> groups = groupStudents(all, _query);
-
-          return Column(
-            children: <Widget>[
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
-                child: TextField(
-                  onChanged: (String value) => setState(() => _query = value),
-                  inputFormatters: guardedInput(InputLimits.search),
-                  decoration: InputDecoration(
-                    hintText: context.t('admin.ban.searchPlaceholder'),
-                    prefixIcon: const Icon(Icons.search),
-                  ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+            child: TextField(
+              onChanged: (String value) => setState(() => _query = value),
+              inputFormatters: guardedInput(InputLimits.search),
+              decoration: InputDecoration(
+                hintText: context.t(
+                  students
+                      ? 'admin.ban.searchPlaceholder'
+                      : 'admin.ban.searchPlaceholderClubs',
+                ),
+                prefixIcon: const Icon(Icons.search),
+              ),
+            ),
+          ),
+          _BanStateFilters(
+            filter: _filter,
+            onChanged: (BanStateFilter value) =>
+                setState(() => _filter = value),
+          ),
+          Expanded(
+            child: entries.when(
+              loading: () => const LoadingView(),
+              error: (Object error, StackTrace _) => Padding(
+                padding: const EdgeInsets.all(20),
+                child: FeedbackBanner(
+                  message: context.t('admin.feedback.error'),
+                  tone: FeedbackTone.error,
                 ),
               ),
-              Expanded(
-                child: groups.isEmpty
-                    ? ListView(
-                        padding: const EdgeInsets.all(20),
-                        children: <Widget>[
-                          EmptyState(
-                            message: context.t('admin.ban.empty'),
-                            icon: Icons.person_off_outlined,
-                          ),
-                        ],
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                        itemCount: groups.length,
-                        itemBuilder: (BuildContext context, int index) =>
-                            _StudentGroupCard(group: groups[index]),
+              data: (List<BanEntry> all) {
+                final List<BanGroup> groups = groupBanEntries(
+                  all,
+                  query: _query,
+                  filter: _filter,
+                );
+
+                if (groups.isEmpty) {
+                  return ListView(
+                    padding: const EdgeInsets.all(20),
+                    children: <Widget>[
+                      EmptyState(
+                        message: context.t(
+                          students ? 'admin.ban.empty' : 'admin.ban.emptyClubs',
+                        ),
+                        icon: students
+                            ? Icons.person_off_outlined
+                            : Icons.groups_outlined,
                       ),
-              ),
-            ],
-          );
-        },
+                    ],
+                  );
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                  itemCount: groups.length,
+                  itemBuilder: (BuildContext context, int index) =>
+                      _BanGroupCard(group: groups[index], scope: _scope),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _StudentGroupCard extends StatelessWidget {
-  const _StudentGroupCard({required this.group});
+/// Öğrenciler / Kulüpler sekmeleri.
+class _BanScopeTabs extends StatelessWidget {
+  const _BanScopeTabs({required this.scope, required this.onChanged});
 
-  final StudentGroup group;
+  final BanScope scope;
+  final ValueChanged<BanScope> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: SegmentedButton<BanScope>(
+        segments: <ButtonSegment<BanScope>>[
+          ButtonSegment<BanScope>(
+            value: BanScope.students,
+            icon: const Icon(Icons.school_outlined, size: 18),
+            label: Text(context.t('admin.ban.tab.students')),
+          ),
+          ButtonSegment<BanScope>(
+            value: BanScope.clubs,
+            icon: const Icon(Icons.groups_outlined, size: 18),
+            label: Text(context.t('admin.ban.tab.clubs')),
+          ),
+        ],
+        selected: <BanScope>{scope},
+        showSelectedIcon: false,
+        onSelectionChanged: (Set<BanScope> value) => onChanged(value.first),
+      ),
+    );
+  }
+}
+
+/// Tümü / Aktif / Engelli süzgeci.
+class _BanStateFilters extends StatelessWidget {
+  const _BanStateFilters({required this.filter, required this.onChanged});
+
+  final BanStateFilter filter;
+  final ValueChanged<BanStateFilter> onChanged;
+
+  static const List<({BanStateFilter value, String labelKey})> _filters =
+      <({BanStateFilter value, String labelKey})>[
+        (value: BanStateFilter.all, labelKey: 'admin.ban.filter.all'),
+        (value: BanStateFilter.active, labelKey: 'admin.ban.filter.active'),
+        (value: BanStateFilter.banned, labelKey: 'admin.ban.filter.banned'),
+      ];
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 40,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        children: <Widget>[
+          for (final ({BanStateFilter value, String labelKey}) item in _filters)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ChoiceChip(
+                label: Text(context.t(item.labelKey)),
+                selected: filter == item.value,
+                onSelected: (_) => onChanged(item.value),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BanGroupCard extends StatelessWidget {
+  const _BanGroupCard({required this.group, required this.scope});
+
+  final BanGroup group;
+  final BanScope scope;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
+      // Zemin rengi Container'da değil Material'da: ExpansionTile'ın başlığı
+      // bir ListTile ve mürekkep dalgasını en yakın Material'a çiziyor.
+      // Araya renkli bir kutu girdiğinde Flutter "dalga görünmeyecek" diye
+      // hata veriyordu.
       child: Container(
         decoration: BoxDecoration(
-          color: context.surface,
           borderRadius: BorderRadius.circular(BrandShape.controlRadius),
           boxShadow: BrandShape.card,
         ),
-        child: Theme(
-          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-          child: ExpansionTile(
-            tilePadding: const EdgeInsets.symmetric(horizontal: 14),
-            childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
-            title: Text(
-              group.title,
-              style: Theme.of(context).textTheme.titleMedium,
+        child: Material(
+          color: context.surface,
+          borderRadius: BorderRadius.circular(BrandShape.controlRadius),
+          clipBehavior: Clip.antiAlias,
+          child: Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              tilePadding: const EdgeInsets.symmetric(horizontal: 14),
+              childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+              title: Text(
+                group.title,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              subtitle: Text(
+                context.t(
+                  scope == BanScope.students
+                      ? 'admin.ban.studentCount'
+                      : 'admin.ban.clubCount',
+                  <String, Object?>{'count': group.entries.length},
+                ),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              children: <Widget>[
+                for (final BanEntry entry in group.entries)
+                  _BanRow(entry: entry, scope: scope),
+              ],
             ),
-            subtitle: Text(
-              context.t('admin.ban.studentCount', <String, Object?>{
-                'count': group.students.length,
-              }),
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            children: <Widget>[
-              for (final StudentProfile student in group.students)
-                _StudentRow(student: student),
-            ],
           ),
         ),
       ),
@@ -949,21 +1114,23 @@ class _StudentGroupCard extends StatelessWidget {
   }
 }
 
-class _StudentRow extends ConsumerStatefulWidget {
-  const _StudentRow({required this.student});
+class _BanRow extends ConsumerStatefulWidget {
+  const _BanRow({required this.entry, required this.scope});
 
-  final StudentProfile student;
+  final BanEntry entry;
+  final BanScope scope;
 
   @override
-  ConsumerState<_StudentRow> createState() => _StudentRowState();
+  ConsumerState<_BanRow> createState() => _BanRowState();
 }
 
-class _StudentRowState extends ConsumerState<_StudentRow> {
+class _BanRowState extends ConsumerState<_BanRow> {
   bool _busy = false;
 
   Future<void> _toggleBan() async {
-    final StudentProfile student = widget.student;
-    final bool banning = !student.banned;
+    final BanEntry entry = widget.entry;
+    final bool banning = !entry.banned;
+    final bool isStudent = widget.scope == BanScope.students;
 
     final bool? ok = await showDialog<bool>(
       context: context,
@@ -975,8 +1142,13 @@ class _StudentRowState extends ConsumerState<_StudentRow> {
         ),
         content: Text(
           dialogContext.t(
-            banning ? 'admin.ban.confirmBan' : 'admin.ban.confirmUnban',
-            <String, Object?>{'name': student.fullName},
+            switch ((isStudent, banning)) {
+              (true, true) => 'admin.ban.confirmBan',
+              (true, false) => 'admin.ban.confirmUnban',
+              (false, true) => 'admin.ban.confirmClubBan',
+              (false, false) => 'admin.ban.confirmClubUnban',
+            },
+            <String, Object?>{'name': entry.title},
           ),
         ),
         actions: <Widget>[
@@ -996,13 +1168,26 @@ class _StudentRowState extends ConsumerState<_StudentRow> {
 
     setState(() => _busy = true);
     try {
-      await ref
-          .read(adminRepositoryProvider)
-          .setStudentBanned(student.uid, banning);
+      final AdminRepository repository = ref.read(adminRepositoryProvider);
+
+      if (isStudent) {
+        await repository.setStudentBanned(entry.uid, banning);
+      } else {
+        // Kulüp listesi tek seferlik bir sorgudan geliyor; öğrenciler gibi
+        // canlı değil, bu yüzden yazdıktan sonra elle tazeleniyor.
+        await repository.setClubBanned(entry.club!, banning);
+        ref.invalidate(allClubsProvider);
+      }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.t('admin.feedback.error'))),
+          SnackBar(
+            content: Text(
+              context.t(
+                banning ? 'admin.ban.banError' : 'admin.ban.unbanError',
+              ),
+            ),
+          ),
         );
       }
     } finally {
@@ -1012,7 +1197,7 @@ class _StudentRowState extends ConsumerState<_StudentRow> {
 
   @override
   Widget build(BuildContext context) {
-    final StudentProfile student = widget.student;
+    final BanEntry entry = widget.entry;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -1022,28 +1207,40 @@ class _StudentRowState extends ConsumerState<_StudentRow> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text(
-                  student.fullName.isNotEmpty
-                      ? student.fullName
-                      : student.email,
-                  style: TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w600,
-                    // Engellenmiş öğrenci listede hemen ayırt edilsin.
-                    decoration:
-                        student.banned ? TextDecoration.lineThrough : null,
-                    color: student.banned ? context.inkMuted : context.ink,
+                Row(
+                  children: <Widget>[
+                    Flexible(
+                      child: Text(
+                        entry.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                          // Engellenmiş kayıt listede hemen ayırt edilsin.
+                          decoration: entry.banned
+                              ? TextDecoration.lineThrough
+                              : null,
+                          color: entry.banned ? context.inkMuted : context.ink,
+                        ),
+                      ),
+                    ),
+                    if (entry.banned) ...<Widget>[
+                      const SizedBox(width: 6),
+                      StatusPill(
+                        label: context.t('admin.ban.bannedLabel'),
+                        tone: FeedbackTone.error,
+                      ),
+                    ],
+                  ],
+                ),
+                if (entry.meta.isNotEmpty)
+                  Text(
+                    entry.meta,
+                    style: Theme.of(context).textTheme.bodySmall,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                Text(
-                  <String>[
-                    if (student.department.isNotEmpty) student.department,
-                    if (student.studentNumber.isNotEmpty) student.studentNumber,
-                  ].join(' · '),
-                  style: Theme.of(context).textTheme.bodySmall,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
               ],
             ),
           ),
@@ -1058,12 +1255,13 @@ class _StudentRowState extends ConsumerState<_StudentRow> {
             TextButton(
               onPressed: _toggleBan,
               style: TextButton.styleFrom(
-                foregroundColor:
-                    student.banned ? BrandColors.success : BrandColors.danger,
+                foregroundColor: entry.banned
+                    ? BrandColors.success
+                    : BrandColors.danger,
                 minimumSize: const Size(0, 34),
               ),
               child: Text(
-                student.banned
+                entry.banned
                     ? context.t('admin.ban.unbanButton')
                     : context.t('admin.ban.banButton'),
               ),
@@ -1073,4 +1271,3 @@ class _StudentRowState extends ConsumerState<_StudentRow> {
     );
   }
 }
-

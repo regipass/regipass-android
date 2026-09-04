@@ -43,6 +43,85 @@ enum FeedbackTone { info, success, error }
   };
 }
 
+/// Açılmış bir pencerenin ya da alt sayfanın ÜSTÜNDE beliren kısa bildirim.
+///
+/// [showTopFeedback] bir `MaterialBanner` çizer ve banner Scaffold'un
+/// gövdesine yerleşir — yani üstünde açık bir pop-up/alt sayfa varsa perdenin
+/// altında kalır ve hiç görünmez. "Kopyalandı" gibi geri bildirimlerin çoğu
+/// tam da böyle bir pencerenin içinden tetikleniyor; bu yüzden bu bildirim
+/// KÖK katmana (rootOverlay) çizilir ve her şeyin üstünde durur.
+void showFloatingToast(
+  BuildContext context,
+  String message, {
+  IconData icon = Icons.check_circle_outline,
+  Duration duration = const Duration(milliseconds: 1800),
+}) {
+  final OverlayState? overlay = Overlay.maybeOf(context, rootOverlay: true);
+  if (overlay == null) return;
+
+  // Aynı anda iki bildirim üst üste binmesin: yenisi eskisini kaldırır.
+  _activeToast?.remove();
+
+  final ({Color bg, Color fg}) tones = feedbackToneColors(
+    context,
+    FeedbackTone.success,
+  );
+
+  late final OverlayEntry entry;
+  entry = OverlayEntry(
+    builder: (BuildContext overlayContext) => Positioned(
+      left: 24,
+      right: 24,
+      bottom: MediaQuery.of(overlayContext).viewInsets.bottom + 48,
+      child: IgnorePointer(
+        child: Center(
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+              decoration: BoxDecoration(
+                color: tones.bg,
+                borderRadius: BorderRadius.circular(BrandShape.pillRadius),
+                boxShadow: BrandShape.card,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Icon(icon, size: 18, color: tones.fg),
+                  const SizedBox(width: 9),
+                  Flexible(
+                    child: Text(
+                      message,
+                      style: TextStyle(
+                        color: tones.fg,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
+  _activeToast = entry;
+  overlay.insert(entry);
+
+  Timer(duration, () {
+    if (_activeToast != entry) return;
+    _activeToast = null;
+    entry.remove();
+  });
+}
+
+/// Ekrandaki tek bildirim. Kaldırılan bir `OverlayEntry` ikinci kez
+/// kaldırılamaz, o yüzden zamanlayıcı da bu referansı kontrol eder.
+OverlayEntry? _activeToast;
+
 /// Ekranın ÜSTÜNDE, uygulama çubuğunun hemen altında beliren geçici uyarı.
 ///
 /// Neden `SnackBar` değil: SnackBar her zaman ekranın altından çıkar ve

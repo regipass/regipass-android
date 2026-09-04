@@ -12,16 +12,17 @@ import '../../l10n/app_strings.dart';
 import '../../models/profiles.dart';
 import '../../services/phone_directory_repository.dart';
 import '../../state/providers.dart';
-import '../../state/theme_mode.dart';
 import '../auth/auth_actions.dart';
 import '../auth/phone_verify_sheet.dart';
+import '../shared/account_settings_sheet.dart';
 import '../shared/common_widgets.dart';
-import '../shared/account_switch_action.dart';
+import '../shared/legal_consent.dart';
 import '../shared/multi_select_chips.dart';
 import '../shared/profile_photo.dart';
 import '../shared/live_phone_field.dart';
 import '../shared/phone_field.dart';
 import '../shared/searchable_field.dart';
+import 'club_documents_card.dart';
 import 'club_shell.dart';
 
 /// club-account.html + js/pages/club-account.js karşılığı.
@@ -288,6 +289,7 @@ class _ClubAccountScreenState extends ConsumerState<ClubAccountScreen> {
             clubFields: _clubFields,
             clubPurpose: clubPurpose,
             clubContents: clubContents,
+            phoneVerified: profile.phoneVerified,
             hasPassword: profile.hasPassword,
           );
 
@@ -296,7 +298,11 @@ class _ClubAccountScreenState extends ConsumerState<ClubAccountScreen> {
       // Numara değiştiyse yenisi ancak SMS doğrulandıktan sonra yazıldığı
       // için burada eski numara gider, doğrulama sonrası ikinci kez
       // çağrılarak güncellenir.
-      await _syncContactOnEvents(uid: uid, phone: profile.phone, email: profile.email);
+      await _syncContactOnEvents(
+        uid: uid,
+        phone: profile.phone,
+        email: profile.email,
+      );
     } catch (_) {
       if (!mounted) return;
       setState(() => _saving = false);
@@ -350,6 +356,7 @@ class _ClubAccountScreenState extends ConsumerState<ClubAccountScreen> {
         phone: newPhone,
         email: profile.email,
       );
+      await _syncLinkedStudentPhone(uid: profile.uid, phone: newPhone);
     }
   }
 
@@ -368,6 +375,39 @@ class _ClubAccountScreenState extends ConsumerState<ClubAccountScreen> {
           .syncClubContact(clubId: uid, phone: phone, email: email);
     } catch (_) {
       // Yoksay.
+    }
+  }
+
+  /// Kulüp hesabından değişen ortak numara, öğrencinin geçmiş etkinlik
+  /// kayıtlarındaki iletişim kopyasına da yansıtılır. Kulübün öğrencinin
+  /// profilini doğrudan okuyamadığı güvenlik modelinde bu kopya, kulübün
+  /// katılımcı listesi ve dışa aktarımında kullanılan tek kaynak olabilir.
+  Future<void> _syncLinkedStudentPhone({
+    required String uid,
+    required String phone,
+  }) async {
+    try {
+      final StudentProfile? student = await ref
+          .read(profileRepositoryProvider)
+          .fetchStudentProfile(uid);
+      if (student == null || !student.onboardingCompleted) return;
+
+      await ref
+          .read(eventRepositoryProvider)
+          .syncStudentInfoOnRegistrations(
+            studentId: student.uid,
+            firstName: student.firstName,
+            lastName: student.lastName,
+            phone: phone,
+            city: student.city,
+            university: student.university,
+            department: student.department,
+            classYear: student.classYear,
+            email: student.email,
+          );
+    } catch (_) {
+      // Profil ve Auth telefonu çoktan ortak güncellenmiştir; etkinlikteki
+      // denormalize kopya sonraki profil kaydında yeniden eşitlenir.
     }
   }
 
@@ -393,7 +433,6 @@ class _ClubAccountScreenState extends ConsumerState<ClubAccountScreen> {
       appBar: ClubAppBar(
         title: context.t('clubAccount.title'),
         actions: <Widget>[
-          const AccountSwitchAction(),
           IconButton(
             tooltip: context.t('common.logout'),
             onPressed: _logout,
@@ -405,6 +444,11 @@ class _ClubAccountScreenState extends ConsumerState<ClubAccountScreen> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: <Widget>[
+          // Sayfanın sağ üstü, üst çubuktaki çıkış düğmesinin tam altı:
+          // iletişim ve hesap ayarları. İkisi de birer alt sayfa açar, o
+          // yüzden gövdede yer kaplamıyorlar (bkz. account_settings_sheet.dart).
+          const AccountToolbar(),
+          const SizedBox(height: 8),
           Center(
             child: Column(
               children: <Widget>[
@@ -444,11 +488,6 @@ class _ClubAccountScreenState extends ConsumerState<ClubAccountScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 22),
-
-          // Tercihler en üstte — öğrenci hesabıyla aynı sıralama: kullanıcının
-          // koyu/açık mod ve dili bulmak için formun sonuna inmesi gerekmesin.
-          const _PreferencesCard(),
           const SizedBox(height: 24),
 
           FeedbackBanner(message: _feedback, tone: _tone),
@@ -699,6 +738,17 @@ class _ClubAccountScreenState extends ConsumerState<ClubAccountScreen> {
               value: profile.clubContents,
               multiline: true,
             ),
+            // Sözleşme/KVKK onayının tam anı (bkz. öğrenci hesap kartı).
+            _InfoTile(
+              icon: Icons.verified_user_outlined,
+              label: context.t('legal.consent.tileLabel'),
+              value: consentTileValue(
+                context,
+                termsAccepted: profile.termsAccepted,
+                acceptedAtMs: profile.termsAcceptedAtMs,
+                marketingConsent: profile.marketingConsent,
+              ),
+            ),
 
             const SizedBox(height: 14),
             FilledButton.icon(
@@ -712,6 +762,15 @@ class _ClubAccountScreenState extends ConsumerState<ClubAccountScreen> {
               icon: const Icon(Icons.edit_outlined),
               label: Text(context.t('clubAccount.edit')),
             ),
+          ],
+
+          // Onaylanmış başvurunun belgeleri. Belge ekranı onay kapısının
+          // dışında yaşadığı (ve oraya yapılan her kayıt başvuruyu yeniden
+          // incelemeye düşürdüğü) için kulüp yüklediklerini onaydan sonra
+          // yalnızca burada görebiliyor — bkz. club_documents_card.dart.
+          if (!_editing) ...<Widget>[
+            const SizedBox(height: 20),
+            ClubDocumentsCard(profile: profile),
           ],
 
           const SizedBox(height: 20),
@@ -813,169 +872,6 @@ class _InfoTile extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Görünüm ve dil tercihleri — öğrenci hesabındakiyle aynı bileşen dili.
-class _PreferencesCard extends ConsumerWidget {
-  const _PreferencesCard();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final ThemeMode mode = ref.watch(themeModeProvider);
-    final String language = ref.watch(languageProvider);
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
-      decoration: BoxDecoration(
-        color: context.surface,
-        borderRadius: BorderRadius.circular(BrandShape.controlRadius),
-        boxShadow: BrandShape.card,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          _PreferenceLabel(
-            icon: Icons.brightness_6_outlined,
-            label: context.t('settings.appearance'),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: _ChoiceChip(
-                  icon: Icons.light_mode_outlined,
-                  label: context.t('settings.appearance.light'),
-                  selected: mode != ThemeMode.dark,
-                  onTap: () => ref
-                      .read(themeModeProvider.notifier)
-                      .setMode(ThemeMode.light),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _ChoiceChip(
-                  icon: Icons.dark_mode_outlined,
-                  label: context.t('settings.appearance.dark'),
-                  selected: mode == ThemeMode.dark,
-                  onTap: () => ref
-                      .read(themeModeProvider.notifier)
-                      .setMode(ThemeMode.dark),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          _PreferenceLabel(
-            icon: Icons.language_outlined,
-            label: context.t('settings.language'),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: _ChoiceChip(
-                  label: 'Türkçe',
-                  selected: language == 'tr',
-                  onTap: () =>
-                      ref.read(languageProvider.notifier).setLanguage('tr'),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _ChoiceChip(
-                  label: 'English',
-                  selected: language == 'en',
-                  onTap: () =>
-                      ref.read(languageProvider.notifier).setLanguage('en'),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PreferenceLabel extends StatelessWidget {
-  const _PreferenceLabel({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) => Row(
-    children: <Widget>[
-      Icon(icon, size: 18, color: context.inkMuted),
-      const SizedBox(width: 10),
-      Text(
-        label,
-        style: TextStyle(
-          fontSize: 13.5,
-          fontWeight: FontWeight.w700,
-          color: context.ink,
-        ),
-      ),
-    ],
-  );
-}
-
-class _ChoiceChip extends StatelessWidget {
-  const _ChoiceChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-    this.icon,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-  final IconData? icon;
-
-  @override
-  Widget build(BuildContext context) {
-    final Color fill = selected
-        ? BrandColors.redSoft
-        : context.isDarkMode
-        ? BrandColors.red.withValues(alpha: 0.16)
-        : BrandColors.redTint;
-
-    final Color fg = selected ? BrandColors.white : context.brandInk;
-
-    return Material(
-      color: fill,
-      borderRadius: BorderRadius.circular(BrandShape.pillRadius),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(BrandShape.pillRadius),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              if (icon != null) ...<Widget>[
-                Icon(icon, size: 17, color: fg),
-                const SizedBox(width: 7),
-              ],
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
-                    color: fg,
-                  ),
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );

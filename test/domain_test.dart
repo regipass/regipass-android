@@ -6,6 +6,8 @@ import 'package:regipass/core/sanitize.dart';
 import 'package:regipass/core/text_utils.dart';
 import 'package:regipass/domain/account_expiry.dart';
 import 'package:regipass/domain/checkin_qr.dart';
+import 'package:regipass/domain/checkin_mode.dart';
+import 'package:regipass/domain/session_qr_window.dart';
 import 'package:regipass/domain/department_field_map.dart';
 import 'package:regipass/domain/event_utils.dart';
 import 'package:regipass/domain/routing.dart';
@@ -250,8 +252,6 @@ void main() {
         registrationId: 'evt1_stu1',
         eventId: 'evt1',
         studentId: 'stu1',
-        lat: 41.0102345,
-        lng: 28.9644567,
       );
 
       final String token = createCheckinQrToken(payload);
@@ -261,9 +261,18 @@ void main() {
       expect(parsed, isNotNull);
       expect(parsed!['type'], 'event-checkin');
       expect(parsed['eventId'], 'evt1');
-      // Koordinatlar 5 ondalığa yuvarlanır (~1 m hassasiyet).
-      expect(parsed['lat'], 41.01023);
-      expect(parsed['lng'], 28.96446);
+    });
+
+    // Bilet, okutan taraf görevli olduğu için konum TAŞIMAZ; kapıda öğrenci
+    // zaten görevlinin karşısındadır (student-ticket.js ile aynı).
+    test('bilet yükü konum taşımaz', () {
+      final Map<String, dynamic> payload = buildStudentCheckinPayload(
+        registrationId: 'evt1_stu1',
+        eventId: 'evt1',
+        studentId: 'stu1',
+      );
+      expect(payload.containsKey('lat'), isFalse);
+      expect(payload.containsKey('lng'), isFalse);
     });
 
     test('Regipass olmayan QR reddedilir', () {
@@ -281,11 +290,170 @@ void main() {
 
     test('oturum QR yükü kulübün ürettiği biçimde', () {
       final String token = createCheckinQrToken(
-        buildSessionCheckinPayload(eventId: 'e1', session: 3),
+        buildSessionCheckinPayload(eventId: 'e1', session: 3, slot: 12345),
       );
       final Map<String, dynamic> parsed = parseCheckinQrToken(token)!;
       expect(parsed['type'], 'session-checkin');
       expect(parsed['session'], 3);
+      expect(parsed['slot'], 12345);
+    });
+
+    // Kulübün ekrana bastığı QR'ın içeriği ham token değil bir ADRESTİR;
+    // öğrencinin telefon kamerası onu link olarak açabilsin diye. Uygulama içi
+    // tarayıcı iki biçimi de okumak ZORUNDA: web'in bastığını mobil, mobilin
+    // bastığını web okuyor (checkin-qr.js#extractCheckinQrToken).
+    test('adres biçimindeki QR da çözülür', () {
+      final String token = createCheckinQrToken(
+        buildEventEntryPayload(eventId: 'e1'),
+      );
+      final String url = buildCheckinQrUrl(token);
+
+      expect(url.startsWith('https://eventapp-604a5.web.app/qr.html'), isTrue);
+      expect(extractCheckinQrToken(url), token);
+      expect(parseCheckinQrToken(url)!['eventId'], 'e1');
+    });
+
+    test('Regipass token taşımayan adres reddedilir', () {
+      expect(extractCheckinQrToken('https://eventapp-604a5.web.app/qr.html'), isNull);
+      expect(extractCheckinQrToken('https://example.com/?t=merhaba'), isNull);
+      expect(extractCheckinQrToken('  '), isNull);
+    });
+
+    // Tur adi web ile AYNI olmak zorunda: iki platform ayni QR'i okuyor
+    // (bkz. js/pages/qr-entry.js, js/pages/club-events.js#showEntryQr).
+    test('kapı QR yükü öğrenci kimliği taşımaz', () {
+      final Map<String, dynamic> parsed = parseCheckinQrToken(
+        createCheckinQrToken(buildEventEntryPayload(eventId: 'e1')),
+      )!;
+      expect(parsed['type'], 'event-entry');
+      expect(parsed['eventId'], 'e1');
+      expect(parsed.containsKey('studentId'), isFalse);
+    });
+  });
+
+  group('check-in / yoklama modları', () {
+    test('eski kayıtlar oturum sayısından önceki davranışı türetir', () {
+      expect(CheckinMode.resolve(null, 1), CheckinMode.checkinOnly);
+      expect(CheckinMode.resolve('', 3), CheckinMode.attendanceOnly);
+    });
+
+    test('check-in + yoklama kapı kaydını gerektirir', () {
+      final AppEvent event = AppEvent.fromMap('e1', <String, dynamic>{
+        'checkinMode': CheckinMode.checkinAttendance,
+        'sessionCount': 3,
+      });
+      expect(event.usesDoorQr, isTrue);
+      expect(event.isMultiSession, isTrue);
+      expect(event.requiresDoorCheckinForSession, isTrue);
+    });
+
+    test('gec kalan anahtarı kapı şartını kaldırır', () {
+      final AppEvent event = AppEvent.fromMap('e1', <String, dynamic>{
+        'checkinMode': CheckinMode.checkinAttendance,
+        'allowSessionWithoutCheckin': true,
+        'sessionCount': 2,
+      });
+      expect(event.requiresDoorCheckinForSession, isFalse);
+    });
+  });
+
+  // Kapı check-in'i üç adımdır ve sırası zorunludur; oturumlar ancak
+  // "bitir"den sonra başlatılabilir (checkin-mode.js > CHECKIN_STAGES).
+  group('kapı check-in aşamaları', () {
+    AppEvent build(Map<String, dynamic> extra) => AppEvent.fromMap(
+          'e1',
+          <String, dynamic>{
+            'checkinMode': CheckinMode.checkinAttendance,
+            'sessionCount': 3,
+            ...extra,
+          },
+        );
+
+    test('damga yoksa aşama başlamadıdır', () {
+      expect(build(<String, dynamic>{}).checkinStage, CheckinStage.notStarted);
+    });
+
+    test('kapı açıkken aşama çalışıyordur', () {
+      final AppEvent event =
+          build(<String, dynamic>{'entryStartedAtMs': 1000, 'entryOpen': true});
+      expect(event.checkinStage, CheckinStage.running);
+    });
+
+    // "Bitir" damgayı SİLMEZ: aşama "hiç başlamadı"ya dönmez, yeniden
+    // başlatma okunan girişleri korur.
+    test('kapı kapandığında aşama bittidir', () {
+      final AppEvent event = build(
+        <String, dynamic>{'entryStartedAtMs': 1000, 'entryOpen': false},
+      );
+      expect(event.checkinStage, CheckinStage.finished);
+    });
+
+    test('yalnızca yoklama modunda aşama yoktur', () {
+      final AppEvent event = AppEvent.fromMap('e1', <String, dynamic>{
+        'checkinMode': CheckinMode.attendanceOnly,
+        'sessionCount': 3,
+      });
+      expect(event.checkinStage, isNull);
+      expect(event.doorCheckinBlocksSessions, isFalse);
+    });
+
+    test('ilk oturum, check-in bitirilene kadar kilitlidir', () {
+      expect(build(<String, dynamic>{}).doorCheckinBlocksSessions, isTrue);
+      expect(
+        build(<String, dynamic>{'entryStartedAtMs': 1, 'entryOpen': true})
+            .doorCheckinBlocksSessions,
+        isTrue,
+      );
+      expect(
+        build(<String, dynamic>{'entryStartedAtMs': 1, 'entryOpen': false})
+            .doorCheckinBlocksSessions,
+        isFalse,
+      );
+    });
+
+    // Başlamış bir etkinliğin oturumlarını ilerletmek hiçbir zaman
+    // kilitlenmez: bu alanlar eklenmeden önce yarıda kalmış etkinlikler aksi
+    // hâlde kilitlenip kalırdı.
+    test('başlamış oturum bir daha kilitlenmez', () {
+      final AppEvent event = build(<String, dynamic>{'currentSession': 1});
+      expect(event.doorCheckinBlocksSessions, isFalse);
+    });
+  });
+
+  // Ekrandaki oturum QR'ı 20 saniyede bir yenilenir; ekran görüntüsüyle
+  // paylaşılan kod karşı tarafa ulaştığında dilim değişmiş olur.
+  group('oturum QR penceresi', () {
+    test('dilim 20 saniyede bir artar', () {
+      expect(currentSessionQrSlot(0), 0);
+      expect(currentSessionQrSlot(19999), 0);
+      expect(currentSessionQrSlot(20000), 1);
+    });
+
+    test('kalan süre dilim sınırına kadardır', () {
+      expect(msUntilNextSessionQrSlot(0), 20000);
+      expect(msUntilNextSessionQrSlot(19000), 1000);
+    });
+
+    test('bir önceki dilim tolerans içindedir', () {
+      const int now = 100000; // dilim 5
+      expect(isSessionQrSlotFresh(5, now), isTrue);
+      expect(isSessionQrSlotFresh(4, now), isTrue);
+      expect(isSessionQrSlotFresh(3, now), isFalse);
+    });
+
+    // Geleceğe ait dilim ancak okuyan cihazın saati geriyse oluşur; bir
+    // dilimlik kaymaya izin verilir, daha fazlası kabul edilmez.
+    test('ileri saat kayması bir dilim tolere edilir', () {
+      const int now = 100000;
+      expect(isSessionQrSlotFresh(6, now), isTrue);
+      expect(isSessionQrSlotFresh(7, now), isFalse);
+    });
+
+    // Bu alan eklenmeden önce üretilmiş QR'lar geçerli sayılır; yoksa
+    // yayındaki ekranlarda duran kodlar bir anda çalışmaz olurdu.
+    test('dilimsiz eski QR geçerli sayılır', () {
+      expect(isSessionQrSlotFresh(null, 100000), isTrue);
+      expect(isSessionQrSlotFresh('bozuk', 100000), isFalse);
     });
   });
 
@@ -367,6 +535,67 @@ void main() {
   });
 
   group('yönlendirme kapıları', () {
+    AppUser appUser({
+      String? role,
+      String? lastRole,
+      Map<String, bool> roles = const <String, bool>{},
+    }) => AppUser.fromMap('u1', <String, dynamic>{
+      'role': role,
+      'lastRole': lastRole,
+      'roles': roles,
+    });
+
+    test('yarım profil kalıcı rol olarak çözülmez', () {
+      final AppUser stale = appUser(
+        role: UserRole.student,
+        lastRole: UserRole.student,
+        roles: const <String, bool>{UserRole.student: true},
+      );
+
+      expect(
+        resolveCompletedRole(
+          storedRole: UserRole.student,
+          user: stale,
+          hasCompletedStudentRole: false,
+          hasCompletedClubRole: false,
+        ),
+        isNull,
+      );
+    });
+
+    test('tek tamamlanmış rol eski yanlış tercihin önüne geçer', () {
+      final AppUser stale = appUser(
+        role: UserRole.club,
+        lastRole: UserRole.club,
+        roles: const <String, bool>{
+          UserRole.student: true,
+          UserRole.club: true,
+        },
+      );
+
+      expect(
+        resolveCompletedRole(
+          storedRole: UserRole.club,
+          user: stale,
+          hasCompletedStudentRole: true,
+          hasCompletedClubRole: false,
+        ),
+        UserRole.student,
+      );
+    });
+
+    test('geçici rol yalnız kendi onboarding rotasına gider', () {
+      expect(
+        onboardingRouteForPendingRole(UserRole.student),
+        Routes.studentOnboarding,
+      );
+      expect(
+        onboardingRouteForPendingRole(UserRole.club),
+        Routes.clubOnboarding,
+      );
+      expect(onboardingRouteForPendingRole(null), isNull);
+    });
+
     StudentProfile student({
       bool onboarded = true,
       bool phoneVerified = true,
@@ -394,9 +623,14 @@ void main() {
       expect(getStudentRouteByStatus(student(banned: true)), Routes.banned);
     });
 
-    ClubProfile club({bool onboarded = true, String? status}) =>
+    ClubProfile club({
+      bool onboarded = true,
+      bool phoneVerified = true,
+      String? status,
+    }) =>
         ClubProfile.fromMap('c1', <String, dynamic>{
           'onboardingCompleted': onboarded,
+          'phoneVerified': phoneVerified,
           // Alan hiç yazılmamışsa varsayılanın uygulandığını da doğrulamak için
           // null geçildiğinde anahtar eklenmez.
           'clubStatus': ?status,
@@ -407,6 +641,10 @@ void main() {
       expect(
         getClubRouteByStatus(club(onboarded: false)),
         Routes.clubOnboarding,
+      );
+      expect(
+        getClubRouteByStatus(club(phoneVerified: false)),
+        Routes.phoneVerify,
       );
       // clubStatus yoksa varsayılan belge bekleme aşamasıdır.
       expect(getClubRouteByStatus(club()), Routes.clubDocuments);
@@ -433,9 +671,9 @@ void main() {
     );
 
     test('süre dolmadan silinmez, dolduktan sonra silinir', () {
-      expect(expiredAt(signedUpAt.add(const Duration(days: 3))), isFalse);
+      expect(expiredAt(signedUpAt.add(const Duration(minutes: 3))), isFalse);
       expect(
-        expiredAt(signedUpAt.add(const Duration(days: 3, seconds: 1))),
+        expiredAt(signedUpAt.add(const Duration(minutes: 3, seconds: 1))),
         isTrue,
       );
     });

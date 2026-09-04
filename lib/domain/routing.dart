@@ -62,6 +62,10 @@ class Routes {
 
   static const String adminHome = '/admin'; // admin-dashboard.html
   static const String adminStats = '/admin/stats';
+
+  /// Kulüp listesi: hangi şehirde/üniversitede hangi kulüp açılmış.
+  /// Web'de admin-clubs.html.
+  static const String adminClubs = '/admin/clubs';
   static const String adminBan = '/admin/ban';
   static const String adminNotifications = '/admin/notifications';
 
@@ -72,13 +76,19 @@ class Routes {
 
 /// Onaylanmış kulüp durumuna göre hedef rota.
 ///
-/// NOT: Kulüp hesapları için telefon SMS doğrulaması ARANMAZ (telefon bilgisi
-/// yine toplanır, sadece zorunlu SMS onayı istenmez) — bu yüzden burada
-/// telefon kontrolü yok, yalnızca öğrenci tarafında var.
+/// Kulüp hesabı da öğrencideki gibi, bilgi formu tamamlandıktan sonra SMS ile
+/// telefonunu doğrulamak zorundadır. Aynı Firebase Auth kimliği altında ikinci
+/// rol sonradan açılırsa doğrulama ortak olduğundan tekrar SMS istenmez.
 String getClubRouteByStatus(ClubProfile? profile) {
   if (profile == null || !profile.onboardingCompleted) {
     return Routes.clubOnboarding;
   }
+
+  // Engellenen kulüp, eski bir kayıttan telefon bayrağı eksik olsa bile
+  // doğrulama ekranına değil doğrudan yasaklı duruma gider.
+  if (profile.clubStatus == ClubStatus.banned) return Routes.banned;
+
+  if (!profile.phoneVerified) return Routes.phoneVerify;
 
   switch (profile.clubStatus) {
     case ClubStatus.approved:
@@ -117,13 +127,43 @@ String getRouteByRoleAndStatus(String? role, bool onboardingCompleted) {
   return Routes.landing;
 }
 
-/// Aktif rol çözümü: önce cihazda saklanan seçim, sonra `lastRole`, sonra `role`.
-String? resolvePreferredRole(String? storedRole, AppUser? user) {
-  if (UserRole.isValid(storedRole)) return storedRole;
-  if (UserRole.isValid(user?.lastRole)) return user!.lastRole;
-  if (UserRole.isValid(user?.role)) return user!.role;
+/// Aktif rol çözümü: önce cihazda saklanan seçim, sonra `lastRole`, sonra
+/// `role`.
+///
+/// Yalnızca bilgi formu başarıyla kaydedilmiş roller kabul edilir. Eski
+/// sürümlerin rol seçildiği anda oluşturduğu `onboardingCompleted: false`
+/// iskeletleri böylece gerçek hesap gibi davranıp kullanıcıyı aynı forma
+/// kilitlemez.
+String? resolveCompletedRole({
+  required String? storedRole,
+  required AppUser? user,
+  required bool hasCompletedStudentRole,
+  required bool hasCompletedClubRole,
+}) {
+  bool isCompleted(String? role) => switch (role) {
+    UserRole.student => hasCompletedStudentRole,
+    UserRole.club => hasCompletedClubRole,
+    _ => false,
+  };
+
+  if (isCompleted(storedRole)) return storedRole;
+  if (isCompleted(user?.lastRole)) return user!.lastRole;
+  if (isCompleted(user?.role)) return user!.role;
+
+  // Eski/kısmi bir users belgesinde role veya lastRole bozuk olsa bile tek
+  // tamamlanmış profil varsa kullanıcı o hesaba güvenle alınabilir.
+  if (hasCompletedStudentRole != hasCompletedClubRole) {
+    return hasCompletedStudentRole ? UserRole.student : UserRole.club;
+  }
   return null;
 }
+
+/// Henüz kaydedilmemiş rol yalnızca kendi bilgi formuna erişim verir.
+String? onboardingRouteForPendingRole(String? role) => switch (role) {
+  UserRole.student => Routes.studentOnboarding,
+  UserRole.club => Routes.clubOnboarding,
+  _ => null,
+};
 
 /// Bir rotanın öğrenci alanına ait olup olmadığı (guard'da kullanılır).
 bool isStudentRoute(String location) =>

@@ -466,12 +466,12 @@ class _QrAction extends StatelessWidget {
         borderRadius: radius,
         boxShadow: <BoxShadow>[
           BoxShadow(
-            color: BrandColors.red.withValues(alpha: 0.28),
+            color: BrandColors.red.withValues(alpha: 0.14),
             blurRadius: 18,
             spreadRadius: 1,
           ),
           BoxShadow(
-            color: BrandColors.white.withValues(alpha: 0.30),
+            color: BrandColors.white.withValues(alpha: 0.15),
             blurRadius: 10,
           ),
         ],

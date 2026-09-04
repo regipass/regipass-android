@@ -37,10 +37,20 @@ Emulator dosyayı izler ve kendiliğinden yeniden yükler.
 | `04-login.mjs` | Eşzamanlı giriş: giriş başına okuma, gecikme |
 | `05-realistic.mjs` | N ayrı cihaz aynı anda — yeniden deneme stratejilerinin karşılaştırması |
 | `06-rules.mjs` | `quota_shards` güvenlik kuralları (15 senaryo) |
+| `11-onay-logu.mjs` | KVKK/sözleşme onayı DB'ye düşüyor mu (10 senaryo) |
 
 ```bash
 node 01-baseline.mjs
 node 05-realistic.mjs
+```
+
+`11-onay-logu.mjs` kuralları emulator'e yeniden yükler ve veriyi siler
+(`clearFirestore`) — `06-rules.mjs` gibi, başka bir koşuyla aynı emulator'de
+çalıştırma. Kuralları **asıl** dosyadan (`Desktop/REGİPASS/firestore.rules`)
+okur, buradaki kopyadan değil. Başka porttaki bir emulator'e yönlendirmek için:
+
+```bash
+LOADTEST_RULES_PORT=8744 node 11-onay-logu.mjs
 ```
 
 `02`, `03` ve `05` uzun sürer (çekişme testleri bilerek beklemeli).

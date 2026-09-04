@@ -72,11 +72,47 @@ void main() {
   ) async {
     await pumpField(tester);
 
-    // Türkiye cep numaraları 5 ile başlar.
+    // "212" Türkiye'de sabit hattır; cep ön eklerinin hiçbiriyle bağdaşmaz.
     await tester.enterText(find.byType(TextField).first, '212');
     await tester.pump();
 
-    expect(find.text('Türkiye cep telefonu 5 ile başlamalı.'), findsOneWidget);
+    expect(
+      find.text('Türkiye cep numaraları 50, 53, 54, 55, 56 ile başlamalı.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('eksik ön ekte (yalnız "5") uyarı yok', (
+    WidgetTester tester,
+  ) async {
+    await pumpField(tester);
+
+    // "5" henüz 50/53/54/55/56 ön eklerinin hepsiyle bağdaşıyor: kullanıcı
+    // ikinci haneyi yazmadan operatör uyarısı çıkmamalı.
+    await tester.enterText(find.byType(TextField).first, '5');
+    await tester.pump();
+
+    expect(
+      find.textContaining('cep numaraları'),
+      findsNothing,
+    );
+  });
+
+  testWidgets('tahsis edilmemiş ön ek geçersiz sayılır', (
+    WidgetTester tester,
+  ) async {
+    final PhoneFieldController controller = await pumpField(tester);
+
+    // 51x Türkiye'de cebe tahsis edilmiş değil: hane sayısı doğru olsa da
+    // numara geçerli sayılmaz, SMS gönderilmez.
+    await tester.enterText(find.byType(TextField).first, '5121234567');
+    await tester.pump();
+
+    expect(controller.isValid, isFalse);
+    expect(
+      find.text('Türkiye cep numaraları 50, 53, 54, 55, 56 ile başlamalı.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('tam numarada uyarı yok', (WidgetTester tester) async {

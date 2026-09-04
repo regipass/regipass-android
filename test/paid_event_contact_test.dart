@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:regipass/features/shared/event_widgets.dart';
 import 'package:regipass/l10n/app_strings.dart';
@@ -101,6 +102,66 @@ void main() {
       expect(find.text(translate('eventModal.feeContactNote', language: 'tr')), findsOneWidget);
       expect(find.byIcon(Icons.phone_outlined), findsNothing);
       expect(find.byIcon(Icons.mail_outline), findsNothing);
+    });
+
+    // Satırlar eskiden `tel:`/`mailto:` açıyordu. Arama/e-posta uygulaması
+    // olmayan cihazda dokunuş sessizce yutuluyordu; kopyalama her yerde
+    // çalışır ve ödeme yazışmasına taşımak isteyen öğrencinin asıl yaptığı iş
+    // de bu.
+    testWidgets('numaraya ve e-postaya dokunmak panoya kopyalar', (
+      WidgetTester tester,
+    ) async {
+      final List<String> copied = <String>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (MethodCall call) async {
+          if (call.method == 'Clipboard.setData') {
+            copied.add('${(call.arguments as Map<Object?, Object?>)['text']}');
+          }
+          return null;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        ),
+      );
+
+      late BuildContext ctx;
+      await tester.pumpWidget(
+        _wrap(
+          Builder(
+            builder: (BuildContext context) {
+              ctx = context;
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      );
+
+      unawaited(showPaidEventContactDialog(ctx, _event(feeType: 'paid')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('05551112233'));
+      await tester.pump();
+      expect(copied, <String>['05551112233']);
+      expect(
+        find.text(translate('eventModal.phoneCopied', language: 'tr')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('kulup@example.com'));
+      await tester.pump();
+      expect(copied, <String>['05551112233', 'kulup@example.com']);
+      expect(
+        find.text(translate('eventModal.emailCopied', language: 'tr')),
+        findsOneWidget,
+      );
+
+      // Bildirim kök katmanda yaşıyor; testin sonunda zamanlayıcısı
+      // beklemede kalmasın.
+      await tester.pump(const Duration(seconds: 3));
     });
   });
 }

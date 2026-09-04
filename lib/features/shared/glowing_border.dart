@@ -114,7 +114,7 @@ class _GlowPainter extends CustomPainter {
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = strokeWidth
-          ..color = color.withValues(alpha: 0.4),
+          ..color = color.withValues(alpha: 0.2),
       );
       return;
     }
@@ -125,9 +125,9 @@ class _GlowPainter extends CustomPainter {
       colors: <Color>[
         color.withValues(alpha: 0.0),
         color.withValues(alpha: 0.0),
-        color.withValues(alpha: 0.55),
-        BrandColors.white.withValues(alpha: 0.95),
-        color.withValues(alpha: 0.55),
+        color.withValues(alpha: 0.275),
+        BrandColors.white.withValues(alpha: 0.475),
+        color.withValues(alpha: 0.275),
         color.withValues(alpha: 0.0),
         color.withValues(alpha: 0.0),
       ],

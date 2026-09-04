@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+// system_ui.dart bu dosyayı (BrandColors için) zaten kullanıyor; çubuk
+// kuralının tek bir yerde kalması adına döngüsel içe aktarım göze alındı.
+import 'system_ui.dart';
+
 /// css/theme.css içindeki tasarım token'larının Flutter karşılığı.
 /// Renk isimleri web ile aynı tutuldu ki iki taraf birlikte güncellenebilsin.
 class BrandColors {
@@ -224,6 +228,15 @@ ThemeData buildRegipassTheme({Brightness brightness = Brightness.light}) {
     pageTransitionsTheme: _instantPageTransitions,
 
     appBarTheme: AppBarTheme(
+      // ÇUBUK STİLİ NEDEN BURADA DA VAR: Flutter her karede ekranın üst ve alt
+      // ortasındaki `AnnotatedRegion`'a bakıp sistem çubuğu stilini kendisi
+      // bildiriyor (rendering/view.dart, `_updateSystemChrome`). AppBar böyle
+      // bir bölge yaratıyor ve varsayılan stilinde gezinme çubuğu alanları boş
+      // olduğu için, uygulamanın `SystemChrome.setSystemUIOverlayStyle` çağrısı
+      // aynı karede eziliyordu — alt çubuk temanın rengi yerine sistemin
+      // varsayılanında (siyah) kalıyordu. Bölgeye kendi stilimizi vererek
+      // kural her ekranda aynı kalıyor (bkz. lib/app/system_ui.dart).
+      systemOverlayStyle: systemBarsStyle(brightness: brightness),
       backgroundColor: surface,
       foregroundColor: onSurface,
       elevation: 0,

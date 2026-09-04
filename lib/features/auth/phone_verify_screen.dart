@@ -8,11 +8,10 @@ import '../../core/input_guard.dart';
 import '../../core/constants.dart';
 import '../../domain/routing.dart';
 import '../../l10n/app_strings.dart';
-import '../../services/phone_directory_repository.dart';
 import '../../state/providers.dart';
 import '../shared/common_widgets.dart';
-import '../shared/live_phone_field.dart';
 import '../shared/phone_field.dart';
+import '../shared/phone_guard.dart';
 import 'auth_actions.dart';
 import 'phone_auth_errors.dart';
 
@@ -35,12 +34,17 @@ class _PhoneVerifyScreenState extends ConsumerState<PhoneVerifyScreen> {
 
   String? _verificationId;
 
-  /// Sahiplik sorgusunun "başkasına ait" dediği numara. Kullanıcı numarasını
-  /// değiştirene kadar bu numaraya SMS gönderilmez.
-  String? _takenPhone;
+  /// Ön kontrolün elediği numara (başkasına ait, hane sayısı ya da operatör
+  /// ön eki tutmuyor). Kullanıcı numarasını değiştirene kadar bu numaraya
+  /// SMS gönderilmez; "Numarayı değiştir" düğmesi öne çıkar.
+  String? _blockedPhone;
 
   bool _sending = false;
   bool _confirming = false;
+
+  /// Bu doğrulama oturumunda kaç kez yanlış kod girildi. Yeni kod istenince
+  /// sıfırlanır; sınıra ulaşınca hata metni "yeni kod iste"ye döner.
+  int _wrongCodeAttempts = 0;
   int _resendIn = 0;
   String? _feedback;
   FeedbackTone _tone = FeedbackTone.info;
@@ -60,8 +64,14 @@ class _PhoneVerifyScreenState extends ConsumerState<PhoneVerifyScreen> {
     });
   }
 
-  String _describePhoneError(Object error) =>
-      describePhoneAuthError(context, error);
+  String _describePhoneError(Object error) {
+    if (isWrongCodeError(error)) _wrongCodeAttempts++;
+    return describePhoneAuthError(
+      context,
+      error,
+      wrongCodeAttempts: _wrongCodeAttempts,
+    );
+  }
 
   void _startResendCooldown([int seconds = 60]) {
     setState(() => _resendIn = seconds);
@@ -78,31 +88,34 @@ class _PhoneVerifyScreenState extends ConsumerState<PhoneVerifyScreen> {
     setState(() => _sending = true);
     _setFeedback(context.t('phoneVerify.feedback.sending'));
 
-    // Sahiplik sorgusu SMS'ten ÖNCE: numara başka bir hesaba aitse kullanıcı
-    // bunu kod isteyip beklemeden, doğrudan burada öğrenir. Eskiden uyarı
+    // Ön kontrol SMS'ten ÖNCE: hane sayısı → operatör ön eki → sahiplik.
+    // Numara başka bir hesaba aitse ya da o ülkenin cep numarası değilse
+    // kullanıcı bunu kod isteyip beklemeden burada öğrenir; eskiden uyarı
     // ancak 6 haneli kod girildikten sonra Firebase Auth telefon bağlama
-    // adımında çıkıyordu. Sorgu yapılamazsa (kural yayınlanmamış, çevrimdışı)
-    // akış durmaz — Auth aynı kontrolü bağlama sırasında yine yapar.
+    // adımında çıkıyordu. Sahiplik sorgusu yapılamazsa (kural yayınlanmamış,
+    // çevrimdışı) akış durmaz — Auth aynı kontrolü bağlarken yine yapar.
     final String? uid = FirebaseAuth.instance.currentUser?.uid;
+    final String? problem = await phoneSendPrecheck(
+      context,
+      ref,
+      phoneE164: phoneE164,
+      uid: uid,
+    );
+
+    if (!mounted) return;
+    if (problem != null) {
+      setState(() {
+        _sending = false;
+        _blockedPhone = phoneE164;
+      });
+      _setFeedback(problem, FeedbackTone.error);
+      return;
+    }
+
+    // Numarayı SMS'ten hemen önce rezerve et: aynı numaraya aynı anda ikinci
+    // bir hesap kod isteyemesin. Rezervasyon kanıt taşımadığı için kural onu
+    // 15 dakika sonra düşürür.
     if (uid != null) {
-      final PhoneOwnership ownership = await ref
-          .read(phoneDirectoryRepositoryProvider)
-          .lookup(phoneE164: phoneE164, uid: uid);
-
-      if (!mounted) return;
-      final String? problem = phoneOwnershipError(context, ownership);
-      if (problem != null) {
-        setState(() {
-          _sending = false;
-          _takenPhone = phoneE164;
-        });
-        _setFeedback(problem, FeedbackTone.error);
-        return;
-      }
-
-      // Numarayı SMS'ten hemen önce rezerve et: aynı numaraya aynı anda ikinci
-      // bir hesap kod isteyemesin. Rezervasyon kanıt taşımadığı için kural onu
-      // 15 dakika sonra düşürür.
       await ref
           .read(phoneDirectoryRepositoryProvider)
           .reserve(phoneE164: phoneE164, uid: uid);
@@ -126,6 +139,7 @@ class _PhoneVerifyScreenState extends ConsumerState<PhoneVerifyScreen> {
           setState(() {
             _verificationId = verificationId;
             _sending = false;
+            _wrongCodeAttempts = 0;
           });
           _setFeedback(
             context.t('phoneVerify.feedback.codeSent'),
@@ -220,21 +234,41 @@ class _PhoneVerifyScreenState extends ConsumerState<PhoneVerifyScreen> {
     try {
       await user.getIdToken(true);
 
+      final Session session = ref.read(sessionProvider);
       final String role =
-          ref.read(sessionProvider).resolvedRole ?? UserRole.student;
+          session.resolvedRole ?? session.pendingRole ?? UserRole.student;
+      final String verifiedPhone =
+          user.phoneNumber ??
+          session.studentProfile?.phone ??
+          session.clubProfile?.phone ??
+          '';
+      if (verifiedPhone.isEmpty) {
+        throw StateError('Firebase Auth doğrulanmış telefonu döndürmedi.');
+      }
       await ref
           .read(profileRepositoryProvider)
-          .markPhoneVerified(user.uid, role);
+          .setVerifiedPhone(
+            uid: user.uid,
+            role: role,
+            phoneE164: verifiedPhone,
+          );
 
       // Şifre sıfırlama ekranının gösterdiği maskeli ipucunu tazele.
       // En iyi çaba: yazılamazsa doğrulama akışı bozulmaz, yalnızca o ekran
       // maskesiz açılır.
-      final String? phone =
-          user.phoneNumber ?? ref.read(sessionProvider).studentProfile?.phone;
-      if ((user.email ?? '').isNotEmpty && phone != null && phone.isNotEmpty) {
+      if ((user.email ?? '').isNotEmpty) {
+        final List<String> roles = <String>[
+          if (session.hasStudentRole) UserRole.student,
+          if (session.hasClubRole) UserRole.club,
+          if (!session.hasAnyRole) role,
+        ];
         await ref
             .read(phoneHintRepositoryProvider)
-            .write(email: user.email!, maskedPhone: maskE164ForDisplay(phone));
+            .write(
+              email: user.email!,
+              maskedPhone: maskE164ForDisplay(verifiedPhone),
+              roles: roles,
+            );
       }
 
       if (!mounted) return;
@@ -258,7 +292,11 @@ class _PhoneVerifyScreenState extends ConsumerState<PhoneVerifyScreen> {
   @override
   Widget build(BuildContext context) {
     final Session session = ref.watch(sessionProvider);
-    final String phone = session.studentProfile?.phone ?? '';
+    final String role =
+        session.resolvedRole ?? session.pendingRole ?? UserRole.student;
+    final String phone = role == UserRole.club
+        ? (session.clubProfile?.phone ?? session.studentProfile?.phone ?? '')
+        : (session.studentProfile?.phone ?? session.clubProfile?.phone ?? '');
 
     if (phone.isEmpty) {
       return const Scaffold(body: LoadingView());
@@ -266,7 +304,7 @@ class _PhoneVerifyScreenState extends ConsumerState<PhoneVerifyScreen> {
 
     final bool codeSent = _verificationId != null;
     // Numara değiştirilince kilit kendiliğinden kalkar.
-    final bool numberTaken = _takenPhone == phone;
+    final bool numberBlocked = _blockedPhone == phone;
 
     return Scaffold(
       appBar: AppBar(
@@ -317,13 +355,21 @@ class _PhoneVerifyScreenState extends ConsumerState<PhoneVerifyScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
+            // Süre uyarısı: doğrulanmayan kayıt kPhoneVerifyGrace dolunca
+            // silinir (bkz. domain/account_expiry.dart). Metindeki süre o
+            // sabitle aynı tutulmalı.
+            FeedbackBanner(
+              message: context.t('phoneVerify.deleteWarning'),
+              tone: FeedbackTone.error,
+            ),
+            const SizedBox(height: 12),
 
             FeedbackBanner(message: _feedback, tone: _tone),
 
             if (!codeSent) ...<Widget>[
               FilledButton(
-                onPressed: _sending || numberTaken
+                onPressed: _sending || numberBlocked
                     ? null
                     : () => _sendCode(phone),
                 child: _sending
@@ -340,7 +386,7 @@ class _PhoneVerifyScreenState extends ConsumerState<PhoneVerifyScreen> {
               const SizedBox(height: 8),
               // Numara başkasına aitse tek çıkış yolu bu düğme; o yüzden
               // ikinci plandaki metin düğmesinden öne çıkarılır.
-              numberTaken
+              numberBlocked
                   ? FilledButton.tonal(
                       onPressed: () => context.push(Routes.phoneChange),
                       child: Text(context.t('phoneVerify.changeNumber')),

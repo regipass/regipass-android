@@ -8,6 +8,7 @@ library;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../core/constants.dart';
 import '../../l10n/app_strings.dart';
@@ -16,35 +17,38 @@ import '../../state/providers.dart';
 
 /// login-modal.js#handlePostAuth portu.
 ///
-/// Yönlendirmeyi router yapar; burada yalnızca "hangi rol seçili olmalı"
-/// kararı verilip `users` dokümanı tazelenir.
+/// Yönlendirmeyi router yapar. Firestore'da hesabı olmayan yeni kullanıcı için
+/// burada hiçbir belge oluşturulmaz; tamamlanmış bir hesabın yalnız giriş
+/// zamanı ve Auth e-postası tazelenir.
 Future<void> completePostAuth(WidgetRef ref, User user) async {
   if (isAdminEmail(user.email)) return; // router /admin'e alır
 
-  final AppUser? appUser =
-      await ref.read(profileRepositoryProvider).fetchUser(user.uid);
+  final profileRepository = ref.read(profileRepositoryProvider);
+  final authRepository = ref.read(authRepositoryProvider);
+  final AppUser? appUser = await profileRepository.fetchUser(user.uid);
+  if (appUser == null) return;
 
-  final bool hasStudent = appUser?.hasStudentRole ?? false;
-  final bool hasClub = appUser?.hasClubRole ?? false;
-
-  // İki rol de varsa ya da hiç yoksa: rol seçim ekranına düşülür
-  // (aktif rol atanmaz, router yönlendirir).
-  if (hasStudent == hasClub) return;
-
-  final String role = hasStudent ? UserRole.student : UserRole.club;
-  await ref.read(activeRoleProvider.notifier).select(role);
-  await ref.read(authRepositoryProvider).upsertBaseUser(user, role);
+  await authRepository.recordExistingUserLogin(user);
 }
 
 /// login-modal.js#getFriendlyErrorMessage portu.
 String friendlyAuthError(BuildContext context, Object error) {
+  // Google'ın hesap seçicisinden vazgeçmek hata değildir. Eklentinin v7
+  // sürümü bunu FirebaseAuthException yerine GoogleSignInException olarak
+  // döndürdüğü için burada ayrıca ele alıyoruz; aksi hâlde ham, uzun hata
+  // metni ekranda görünür.
+  if (error is GoogleSignInException &&
+      (error.code == GoogleSignInExceptionCode.canceled ||
+          error.code == GoogleSignInExceptionCode.interrupted)) {
+    return '';
+  }
+
   final String code = error is FirebaseAuthException ? error.code : '';
 
   return switch (code) {
     'invalid-email' => context.t('auth.error.invalidEmail'),
     'invalid-credential' ||
-    'wrong-password' =>
-      context.t('auth.error.invalidCredentials'),
+    'wrong-password' => context.t('auth.error.invalidCredentials'),
     'user-not-found' => context.t('auth.error.userNotFound'),
     'email-already-in-use' => context.t('auth.error.emailInUse'),
     'weak-password' => context.t('auth.error.weakPassword'),
@@ -53,8 +57,7 @@ String friendlyAuthError(BuildContext context, Object error) {
     'network-request-failed' => context.t('auth.error.networkFailed'),
     // Kullanıcı Google/Apple penceresini kapattı — hata göstermeye gerek yok.
     'canceled' || 'web-context-canceled' => '',
-    '' => context.t('auth.error.unknown', <String, Object?>{'code': '$error'}),
-    _ => context.t('auth.error.unknown', <String, Object?>{'code': code}),
+    _ => context.t('auth.error.unknown'),
   };
 }
 
@@ -68,6 +71,29 @@ String friendlyAuthError(BuildContext context, Object error) {
 /// zaten uid null olunca kendini sıfırlar, router da doğrudan giriş
 /// ekranına yönlendirir.
 Future<void> logout(WidgetRef ref) async {
-  await ref.read(roleSessionStoreProvider).clear();
-  await ref.read(authRepositoryProvider).signOut();
+  final Session session = ref.read(sessionProvider);
+  final accountCleanup = ref.read(accountCleanupRepositoryProvider);
+  final roleSessionStore = ref.read(roleSessionStoreProvider);
+  final authRepository = ref.read(authRepositoryProvider);
+  final pendingRole = ref.read(pendingOnboardingRoleProvider.notifier);
+
+  // Sosyal sağlayıcılar ve createUserWithEmailAndPassword, formdan önce bir
+  // Auth kimliği üretir. Hiç tamamlanmış profili olmayan kullanıcı açıkça
+  // vazgeçtiğinde eski sürümden kalmış yarım Firestore iskeletleri silinir.
+  // Auth kimliği silinmez: iki ayrı Firebase ürünü arasında atomik silme
+  // olmadığı için başka cihazdaki son kayıtla yarışmak güvenli değildir.
+  if (!session.isLoading &&
+      !session.isAdmin &&
+      !session.hasAnyRole &&
+      session.user != null) {
+    try {
+      await accountCleanup.discardIfUnfinished(session.user!.uid);
+    } catch (_) {
+      // En iyi çaba. Çevrimdışıyken kullanıcı yine güvenle oturumdan çıkarılır.
+    }
+  }
+
+  await roleSessionStore.clear();
+  await authRepository.signOut();
+  pendingRole.clear();
 }

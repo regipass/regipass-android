@@ -63,6 +63,11 @@ class InputLimits {
   /// Orta boy serbest metin: etkinlik amacı, yönetici düzeltme notu.
   static const int paragraph = 500;
 
+  /// Yöneticinin kulübe gönderdiği not. Web'deki
+  /// `MAX_CLUB_MESSAGE_LENGTH` ile aynı: iki istemci aynı diziye yazıyor,
+  /// sınırın farklı olması kulübün gördüğü metni platforma göre değiştirirdi.
+  static const int adminMessage = 1000;
+
   /// Uzun serbest metin: etkinlik açıklaması, kulüp amacı/içerikleri.
   /// `sanitizeLongText` 2000'de kırpar.
   static const int longText = 1500;
@@ -240,8 +245,9 @@ List<TextInputFormatter> guardedInput(
 /// üstelik şifre metni hiçbir zaman bir belgeye yazılmadığı (Firebase'e
 /// doğrulama için gidip orada karılıyor) için elemenin güvenlik faydası da
 /// yok. Kalan tek gerçek risk aşırı uzunluk; sınırlanan da o.
-List<TextInputFormatter> lengthOnlyInput(int maxLength) =>
-    <TextInputFormatter>[BoundedLengthTextInputFormatter(maxLength)];
+List<TextInputFormatter> lengthOnlyInput(int maxLength) => <TextInputFormatter>[
+  BoundedLengthTextInputFormatter(maxLength),
+];
 
 /// Yalnızca rakam kabul eden, uzunluğu sınırlı sayı kutuları için.
 List<TextInputFormatter> digitsInput(int maxLength) => <TextInputFormatter>[

@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../app/theme.dart';
-import '../../core/geo.dart';
 import '../../domain/checkin_qr.dart';
 import '../../domain/event_utils.dart';
 import '../../l10n/app_strings.dart';
@@ -91,17 +90,13 @@ class _ClubQrCheckinScreenState extends ConsumerState<ClubQrCheckinScreen> {
 
     setState(() => _busy = true);
     try {
-      await _process(eventId, studentId, payload);
+      await _process(eventId, studentId);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
-  Future<void> _process(
-    String eventId,
-    String studentId,
-    Map<String, dynamic> payload,
-  ) async {
+  Future<void> _process(String eventId, String studentId) async {
     final String? clubId = ref.read(sessionProvider).user?.uid;
     if (clubId == null) return;
 
@@ -121,6 +116,20 @@ class _ClubQrCheckinScreenState extends ConsumerState<ClubQrCheckinScreen> {
       _show(false, context.t('clubScan.pastEvent'));
       return;
     }
+    // Kapıda check-in adımı olmayan etkinlik ("Sadece Yoklama") burada
+    // okutulmaz: o modda tek QR salondaki oturum kodudur ve yönü terstir —
+    // kulüp ekrana basar, öğrenciler kendi telefonlarından okutur.
+    // (club-qr-checkin.js ile aynı ölçüt: `eventHasDoorCheckin`.)
+    if (!event.hasDoorCheckin) {
+      _show(false, context.t('clubScan.noDoorCheckin'));
+      return;
+    }
+    // Burada `entryOpen` ARANMAZ. Yazan taraf kulübün kendisidir ve
+    // firestore.rules > clubCanMarkCheckIn de kapının açık olmasını şart
+    // koşmaz; web tarafı da koşmuyor. Şart konsaydı check-in'i bitirdikten
+    // sonra kapıya gelen geç öğrenci mobilde alınamaz, web'de alınabilirdi.
+    // `entryOpen`, ÖĞRENCİNİN kendi girişini yazdığı yolun sınırıdır
+    // (studentCanMarkOwnEventCheckIn) — görevlinin okuttuğu yolun değil.
 
     final EventRegistration? registration = await ref
         .read(eventRepositoryProvider)
@@ -132,8 +141,11 @@ class _ClubQrCheckinScreenState extends ConsumerState<ClubQrCheckinScreen> {
       return;
     }
 
-    // ── Oturum kuralları ────────────────────────────────────────────
-    if (!event.isMultiSession && registration.isCheckedIn) {
+    // ── Zaten giriş yapmış öğrenci ──────────────────────────────────
+    // Bu bir HATA değildir: görevli aynı kişiyi ikinci kez okutmuş ya da
+    // öğrenci dışarı çıkıp geri girmiş olabilir. Kimlik kartı yine gösterilir,
+    // sayım değişmez (club-qr-checkin.js ile aynı).
+    if (registration.isCheckedIn) {
       _show(
         false,
         context.t('clubScan.alreadyCheckedIn', <String, Object?>{
@@ -143,65 +155,19 @@ class _ClubQrCheckinScreenState extends ConsumerState<ClubQrCheckinScreen> {
       return;
     }
 
-    if (event.isMultiSession) {
-      if (event.sessionsCompleted) {
-        _show(false, context.t('scan.sessionsCompleted'));
-        return;
-      }
-      if (event.currentSession < 1) {
-        _show(false, context.t('clubScan.sessionNotStarted'));
-        return;
-      }
-      if (registration.lastAttendedSession >= event.currentSession) {
-        _show(
-          false,
-          context.t('clubScan.alreadyInSession', <String, Object?>{
-            'name': registration.displayName,
-            'current': event.currentSession,
-            'total': event.sessionCount,
-          }),
-        );
-        return;
-      }
-    }
-
-    // ── Konum doğrulama ─────────────────────────────────────────────
-    if (event.hasLocationCheck) {
-      final double? lat = (payload['lat'] as num?)?.toDouble();
-      final double? lng = (payload['lng'] as num?)?.toDouble();
-
-      if (lat == null || lng == null) {
-        _show(false, context.t('clubScan.missingLocation'));
-        return;
-      }
-
-      final double distance = haversineDistanceM(
-        lat,
-        lng,
-        event.locationLat!,
-        event.locationLng!,
-      );
-
-      if (distance > event.effectiveRadius) {
-        _show(
-          false,
-          context.t('clubScan.tooFar', <String, Object?>{
-            'distance': distance < 1000
-                ? '${distance.round()} m'
-                : '${(distance / 1000).toStringAsFixed(1)} km',
-            'radius': event.effectiveRadius,
-          }),
-        );
-        return;
-      }
-    }
+    // ── Konum ────────────────────────────────────────────────────────
+    // Kapıda konum DOĞRULANMAZ: QR'ı okutan kişi kulüp görevlisidir, öğrenci
+    // fiziksel olarak kapıda durmaktadır. Bu yüzden bilet yükü de koordinat
+    // taşımaz (bkz. domain/checkin_qr.dart#buildStudentCheckinPayload).
+    // Konum yalnızca salondaki oturum QR'ında anlamlıdır.
 
     try {
+      // Bilet okuma yalnızca KAPI DAMGASI yazar; oturum yoklaması saymaz.
+      // "Check-in + Yoklama" modunda gün içindeki yoklamalar ayrı bir adımdır
+      // ve öğrencinin salondaki oturum QR'ını okutmasıyla işler.
       await ref.read(eventRepositoryProvider).markCheckInByClub(
             registration: registration,
             clubId: clubId,
-            isMultiSession: event.isMultiSession,
-            currentSession: event.currentSession,
           );
     } catch (error) {
       if (!mounted) return;
@@ -217,16 +183,9 @@ class _ClubQrCheckinScreenState extends ConsumerState<ClubQrCheckinScreen> {
     if (!mounted) return;
     _show(
       true,
-      event.isMultiSession
-          ? context.t('clubScan.sessionSuccess', <String, Object?>{
-              'name': registration.displayName,
-              'current': event.currentSession,
-              'attended': registration.sessionsAttended + 1,
-              'total': event.sessionCount,
-            })
-          : context.t('clubScan.success', <String, Object?>{
-              'name': registration.displayName,
-            }),
+      context.t('clubScan.success', <String, Object?>{
+        'name': registration.displayName,
+      }),
     );
   }
 

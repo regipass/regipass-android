@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/services.dart';
 
 import '../../app/theme.dart';
 import '../../domain/event_utils.dart';
+import '../../domain/paid_event_consent.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/event.dart';
 import 'common_widgets.dart';
@@ -237,7 +238,7 @@ class EventClubHeader extends StatelessWidget {
       children: <Widget>[
         // Kulübün kimliği başta logosuyla temsil edilir; logo yüklememiş
         // kulüplerde ClubLogoBox marka gradyanlı grup simgesine düşer.
-        ClubLogoBox(logoUrl: event.clubLogoUrl),
+        ClubLogoBox(logoUrl: event.clubLogoUrl, size: 48, radius: 14),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -458,14 +459,20 @@ class _PaidContactCard extends StatelessWidget {
 
   final AppEvent event;
 
-  Future<void> _launch(String scheme, String value) async {
-    final Uri uri = Uri(scheme: scheme, path: value);
-    try {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } catch (_) {
-      // Cihazda arama/e-posta uygulaması yoksa sessizce geç: metin zaten
-      // ekranda yazılı, kullanıcı elle kopyalayabilir.
-    }
+  /// Satıra dokunmak bilgiyi panoya alır.
+  ///
+  /// Eskiden `tel:`/`mailto:` bağlantısı açılıyordu. Ücretli etkinlikte
+  /// öğrencinin yapacağı iş genelde hemen aramak değil — numarayı ya da
+  /// adresi ödeme yazışmasına, bankacılık uygulamasına veya bir nota
+  /// taşımak. Üstelik cihazda arama/e-posta uygulaması yoksa dokunuş hiçbir
+  /// şey yapmadan yutuluyordu; kopyalama her cihazda çalışır.
+  Future<void> _copy(
+    BuildContext context,
+    String value,
+    String feedbackKey,
+  ) async {
+    await Clipboard.setData(ClipboardData(text: value));
+    if (context.mounted) showFloatingToast(context, context.t(feedbackKey));
   }
 
   @override
@@ -511,13 +518,15 @@ class _PaidContactCard extends StatelessWidget {
                   _ContactRow(
                     icon: Icons.phone_outlined,
                     value: phone,
-                    onTap: () => _launch('tel', phone),
+                    onTap: () =>
+                        _copy(context, phone, 'eventModal.phoneCopied'),
                   ),
                 if (email.isNotEmpty)
                   _ContactRow(
                     icon: Icons.mail_outline,
                     value: email,
-                    onTap: () => _launch('mailto', email),
+                    onTap: () =>
+                        _copy(context, email, 'eventModal.emailCopied'),
                   ),
               ],
             ],
@@ -525,6 +534,114 @@ class _PaidContactCard extends StatelessWidget {
     );
   }
 }
+
+/// Ücretli etkinlik işlemlerinde, işleme devam etmeden önce açık onay alır.
+///
+/// Onay düğmesi kutu işaretlenene kadar pasiftir. Pencere kapatılır ya da
+/// "Vazgeç" seçilirse `null` döner; çağıran taraf yazma işlemini başlatmaz.
+///
+/// Dönen kayıt, ekranda GÖSTERİLEN metnin kendisini taşır: onay logu
+/// kaydedilirken metin yeniden çevrilmez, kabul anındaki hâli yazılır.
+Future<PaidEventConsentAcceptance?> _showPaidEventConsentDialog(
+  BuildContext context, {
+  required String role,
+  required String titleKey,
+  required String consentTextKey,
+  required String confirmKey,
+}) async {
+  final String title = context.t(titleKey);
+  final String consentText = context.t(consentTextKey);
+  final String checkboxLabel = context.t('paidEventConsent.checkbox');
+  final String language = context.lang;
+
+  final bool? accepted = await showDialog<bool>(
+    context: context,
+    barrierDismissible: false,
+    builder: (BuildContext dialogContext) {
+      bool checked = false;
+
+      return StatefulBuilder(
+        builder: (BuildContext context, StateSetter setDialogState) =>
+            AlertDialog(
+              backgroundColor: context.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(BrandShape.cardRadius),
+              ),
+              title: Text(title),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      consentText,
+                      style: TextStyle(height: 1.5, color: context.ink),
+                    ),
+                    const SizedBox(height: 16),
+                    CheckboxListTile(
+                      value: checked,
+                      onChanged: (bool? value) =>
+                          setDialogState(() => checked = value ?? false),
+                      controlAffinity: ListTileControlAffinity.leading,
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(checkboxLabel),
+                    ),
+                  ],
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: Text(context.t('common.cancel')),
+                ),
+                FilledButton(
+                  onPressed: checked
+                      ? () => Navigator.of(context).pop(true)
+                      : null,
+                  child: Text(context.t(confirmKey)),
+                ),
+              ],
+            ),
+      );
+    },
+  );
+
+  if (accepted != true) return null;
+
+  return PaidEventConsentAcceptance(
+    role: role,
+    title: title,
+    text: consentText,
+    checkboxLabel: checkboxLabel,
+    language: language,
+    // Onay anı, yazma anı değil: kabul ile Firestore yazımı arasında görsel
+    // yüklemesi gibi saniyeler sürebilen adımlar var.
+    acceptedAt: DateTime.now(),
+  );
+}
+
+/// Kulüp, ücretli etkinliği yayımlamadan önce ödeme sorumluluğunu onaylar.
+Future<PaidEventConsentAcceptance?> showPaidEventClubCreationConsentDialog(
+  BuildContext context,
+) =>
+    _showPaidEventConsentDialog(
+      context,
+      role: PaidEventConsentRole.club,
+      titleKey: 'paidEventConsent.club.title',
+      consentTextKey: 'paidEventConsent.club.text',
+      confirmKey: 'paidEventConsent.club.confirm',
+    );
+
+/// Öğrenci, ücretli etkinlik kaydından hemen önce ödeme risklerini onaylar.
+Future<PaidEventConsentAcceptance?>
+showPaidEventStudentRegistrationConsentDialog(BuildContext context) =>
+    _showPaidEventConsentDialog(
+      context,
+      role: PaidEventConsentRole.student,
+      titleKey: 'paidEventConsent.student.title',
+      consentTextKey: 'paidEventConsent.student.text',
+      confirmKey: 'paidEventConsent.student.confirm',
+    );
 
 /// Ücretli etkinliğe kayıt alındıktan sonra açılan bilgilendirme penceresi.
 ///
@@ -606,7 +723,9 @@ class _ContactRow extends StatelessWidget {
                 ),
               ),
             ),
-            Icon(Icons.open_in_new, size: 15, color: context.inkMuted),
+            // Simge eylemi anlatır: satır artık başka bir uygulamaya
+            // yönlendirmiyor, değeri panoya alıyor.
+            Icon(Icons.content_copy, size: 15, color: context.inkMuted),
           ],
         ),
       ),

@@ -26,7 +26,53 @@ class ProfileRepository {
   Future<ClubProfile?> fetchClubProfile(String uid) async =>
       ClubProfile.fromDoc(await clubProfileDoc(uid).get());
 
-  /// info.js#saveStudentProfile — profil ve users dokümanı tek batch'te yazılır.
+  /// Bekleme ekranındaki kullanıcı isteğiyle, yerel önbellek yerine doğrudan
+  /// sunucudan güncel kulüp durumunu getirir. Dinleyen profil akışı da gelen
+  /// yeni anlık görüntüyle güncellenir.
+  Future<ClubProfile?> refreshClubProfile(String uid) async =>
+      ClubProfile.fromDoc(
+        await clubProfileDoc(uid).get(const GetOptions(source: Source.server)),
+      );
+
+  /// Kayıt ekranındaki onay kutucuklarının anlık kaydı.
+  ///
+  /// Hesap oluşturulur oluşturulmaz `users/{uid}` belgesine yazılır — profil
+  /// belgesi (`student_profiles`/`club_profiles`) henüz yoktur, bilgi formu
+  /// tamamlanana kadar oluşmaz. Onay bu yüzden iki yerde durur:
+  ///   1. burada, tıklama anıyla birlikte (kullanıcı formu yarıda bıraksa
+  ///      bile kayıt kaybolmaz),
+  ///   2. bilgi formu kaydedilirken profil belgesine kopyalanır (kartlarda
+  ///      ve yönetici ekranlarında oradan okunur).
+  ///
+  /// [acceptedAtMs] kullanıcının kaydol düğmesine bastığı andır; sunucu
+  /// damgası değil, çünkü aranan bilgi yazımın değil ONAYIN zamanı.
+  Future<void> recordConsent({
+    required String uid,
+    required bool termsAccepted,
+    required bool marketingConsent,
+    required int acceptedAtMs,
+    required String termsVersion,
+  }) async {
+    final Timestamp acceptedAt = Timestamp.fromMillisecondsSinceEpoch(
+      acceptedAtMs,
+    );
+    await userDoc(uid).set(<String, dynamic>{
+      'uid': uid,
+      'termsAccepted': termsAccepted,
+      'termsAcceptedAt': acceptedAt,
+      'termsVersion': termsVersion,
+      'marketingConsent': marketingConsent,
+      // Reddedilen açık rızanın zamanı tutulmaz: KVKK'da saklanması gereken
+      // şey verilen rızadır, verilmeyeni kayıt altına almak gereksiz veri.
+      'marketingConsentAt': marketingConsent
+          ? acceptedAt
+          : FieldValue.delete(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  /// info.js#saveStudentProfile — profil ve users dokümanı tek transaction'da
+  /// yazılır.
   ///
   /// [phoneVerified]: numara değişmediyse önceki doğrulama durumu korunur;
   /// Firebase Auth bu hesaba bu numarayı zaten bağlamışsa da korunur.
@@ -46,62 +92,99 @@ class ProfileRepository {
     required String photoPath,
     required bool phoneVerified,
     required bool hasPassword,
+    bool? termsAccepted,
+    int? termsAcceptedAtMs,
+    bool? marketingConsent,
+    String? termsVersion,
   }) async {
     final Doc profileRef = studentProfileDoc(uid);
     final Doc userRef = userDoc(uid);
+    final Doc otherProfileRef = clubProfileDoc(uid);
 
-    final List<Snap> snaps = await Future.wait<Snap>(<Future<Snap>>[
-      profileRef.get(),
-      userRef.get(),
-    ]);
-    final Snap existingProfile = snaps[0];
-    final Snap existingUser = snaps[1];
+    await fbDb.runTransaction<void>((Transaction transaction) async {
+      // Bütün okumalar transaction yazımlarından önce yapılmalı. users belgesi
+      // de okunduğu için iki cihaz aynı anda farklı rol tamamlarsa Firestore
+      // işlemlerden birini yeniden çalıştırır ve rol haritası kaybolmaz.
+      final Snap existingProfile = await transaction.get(profileRef);
+      final Snap existingUser = await transaction.get(userRef);
+      final Snap existingOtherProfile = await transaction.get(otherProfileRef);
+      final bool profileWasCompleted =
+          existingProfile.data()?['onboardingCompleted'] == true;
 
-    final Object? rawRoles = existingUser.data()?['roles'];
-    final Map<String, dynamic> existingRoles = rawRoles is Map
-        ? Map<String, dynamic>.from(rawRoles)
-        : <String, dynamic>{};
+      final Object? rawRoles = existingUser.data()?['roles'];
+      final Map<String, dynamic> existingRoles = rawRoles is Map
+          ? Map<String, dynamic>.from(rawRoles)
+          : <String, dynamic>{};
+      final bool keepClubRole =
+          existingOtherProfile.data()?['onboardingCompleted'] == true;
+      if (keepClubRole) {
+        existingRoles[UserRole.club] = true;
+      } else {
+        existingRoles.remove(UserRole.club);
+      }
 
-    final WriteBatch batch = fbDb.batch();
+      if (existingOtherProfile.exists && !keepClubRole) {
+        transaction.delete(otherProfileRef);
+      }
 
-    batch.set(profileRef, <String, dynamic>{
-      'uid': uid,
-      'email': email,
-      'role': UserRole.student,
-      'firstName': firstName,
-      'lastName': lastName,
-      'phone': phone,
-      'city': city,
-      'university': university,
-      'department': department,
-      'studentNumber': studentNumber,
-      'classYear': classYear,
-      // `male` | `female`. Yönetici istatistikleri bu iki değeri sayıyor.
-      'gender': gender,
-      'photoUrl': photoUrl,
-      'photoPath': photoPath,
-      'onboardingCompleted': true,
-      'phoneVerified': phoneVerified,
-      // Auth SDK'nın providerData'sı bazen önbellekten eski gelebildiği için
-      // şifre sağlayıcısının varlığı Firestore'da da tutulur.
-      'hasPassword': hasPassword,
-      'updatedAt': FieldValue.serverTimestamp(),
-      'createdAt':
-          existingProfile.data()?['createdAt'] ?? FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+      transaction.set(profileRef, <String, dynamic>{
+        'uid': uid,
+        'email': email,
+        'role': UserRole.student,
+        'firstName': firstName,
+        'lastName': lastName,
+        'phone': phone,
+        'city': city,
+        'university': university,
+        'department': department,
+        'studentNumber': studentNumber,
+        'classYear': classYear,
+        // `male` | `female`. Yönetici istatistikleri bu iki değeri sayıyor.
+        'gender': gender,
+        'photoUrl': photoUrl,
+        'photoPath': photoPath,
+        'onboardingCompleted': true,
+        'phoneVerified': phoneVerified,
+        // Auth SDK'nın providerData'sı bazen önbellekten eski gelebildiği için
+        // şifre sağlayıcısının varlığı Firestore'da da tutulur.
+        'hasPassword': hasPassword,
+        // Onay yalnızca kayıt ekranında bir kez verilir; bu alanlar yoksa
+        // (ör. hesap ekranındaki düzenleme akışı) mevcut değer korunur.
+        'termsAccepted': ?termsAccepted,
+        if (termsAcceptedAtMs != null) ...<String, dynamic>{
+          'termsAcceptedAt': Timestamp.fromMillisecondsSinceEpoch(
+            termsAcceptedAtMs,
+          ),
+          'termsVersion': termsVersion,
+        },
+        'marketingConsent': ?marketingConsent,
+        'updatedAt': FieldValue.serverTimestamp(),
+        'createdAt': profileWasCompleted
+            ? (existingProfile.data()?['createdAt'] ??
+                  FieldValue.serverTimestamp())
+            : FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
 
-    batch.set(userRef, <String, dynamic>{
-      'role': UserRole.student,
-      'lastRole': UserRole.student,
-      'email': email,
-      'roles': <String, dynamic>{...existingRoles, UserRole.student: true},
-      'studentOnboardingCompleted': true,
-      'onboardingCompleted': true,
-      'profileCompletedAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-
-    await batch.commit();
+      transaction.set(userRef, <String, dynamic>{
+        'uid': uid,
+        'role': UserRole.student,
+        'lastRole': UserRole.student,
+        'email': email,
+        'displayName': '$firstName $lastName'.trim(),
+        'photoURL': photoUrl,
+        'roles': <String, dynamic>{...existingRoles, UserRole.student: true},
+        'studentOnboardingCompleted': true,
+        if (!keepClubRole) 'clubOnboardingCompleted': FieldValue.delete(),
+        'onboardingCompleted': true,
+        'profileCompletedAt': FieldValue.serverTimestamp(),
+        'lastLoginAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'createdAt': profileWasCompleted || keepClubRole
+            ? (existingUser.data()?['createdAt'] ??
+                  FieldValue.serverTimestamp())
+            : FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    });
   }
 
   /// club-info.js#saveClubProfile.
@@ -118,69 +201,112 @@ class ProfileRepository {
     required List<String> clubFields,
     required String clubPurpose,
     required String clubContents,
+    required bool phoneVerified,
     required bool hasPassword,
+    String? logoUrl,
+    String? logoPath,
+    bool? termsAccepted,
+    int? termsAcceptedAtMs,
+    bool? marketingConsent,
+    String? termsVersion,
   }) async {
     final Doc profileRef = clubProfileDoc(uid);
     final Doc userRef = userDoc(uid);
+    final Doc otherProfileRef = studentProfileDoc(uid);
 
-    final List<Snap> snaps = await Future.wait<Snap>(<Future<Snap>>[
-      profileRef.get(),
-      userRef.get(),
-    ]);
-    final Snap existingProfile = snaps[0];
-    final Snap existingUser = snaps[1];
+    return fbDb.runTransaction<String>((Transaction transaction) async {
+      final Snap existingProfile = await transaction.get(profileRef);
+      final Snap existingUser = await transaction.get(userRef);
+      final Snap existingOtherProfile = await transaction.get(otherProfileRef);
+      final bool profileWasCompleted =
+          existingProfile.data()?['onboardingCompleted'] == true;
 
-    final Object? rawRoles = existingUser.data()?['roles'];
-    final Map<String, dynamic> existingRoles = rawRoles is Map
-        ? Map<String, dynamic>.from(rawRoles)
-        : <String, dynamic>{};
+      final Object? rawRoles = existingUser.data()?['roles'];
+      final Map<String, dynamic> existingRoles = rawRoles is Map
+          ? Map<String, dynamic>.from(rawRoles)
+          : <String, dynamic>{};
+      final bool keepStudentRole =
+          existingOtherProfile.data()?['onboardingCompleted'] == true;
+      if (keepStudentRole) {
+        existingRoles[UserRole.student] = true;
+      } else {
+        existingRoles.remove(UserRole.student);
+      }
 
-    final String clubStatus =
-        (existingProfile.data()?['clubStatus'] as String?) ??
-        ClubStatus.documentsPending;
+      final String clubStatus =
+          (existingProfile.data()?['clubStatus'] as String?) ??
+          ClubStatus.documentsPending;
 
-    final WriteBatch batch = fbDb.batch();
+      if (existingOtherProfile.exists && !keepStudentRole) {
+        transaction.delete(otherProfileRef);
+      }
 
-    batch.set(profileRef, <String, dynamic>{
-      'uid': uid,
-      'email': email,
-      'role': UserRole.club,
-      'firstName': firstName,
-      'lastName': lastName,
-      'phone': phone,
-      'city': city,
-      'university': university,
-      'clubName': clubName,
-      // Geriye dönük uyumluluk: `clubField` ilk alan, `clubFields` tümü.
-      // Eski web sürümleri ve eski etkinlik kayıtları yalnızca tekil alanı
-      // okuyor (club-account.js ile aynı desen).
-      'clubField': clubFields.isEmpty ? '' : clubFields.first,
-      'clubFields': clubFields,
-      'clubPurpose': clubPurpose,
-      'clubContents': clubContents,
-      'onboardingCompleted': true,
-      'clubStatus': clubStatus,
-      'hasPassword': hasPassword,
-      'updatedAt': FieldValue.serverTimestamp(),
-      'createdAt':
-          existingProfile.data()?['createdAt'] ?? FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+      transaction.set(profileRef, <String, dynamic>{
+        'uid': uid,
+        'email': email,
+        'role': UserRole.club,
+        'firstName': firstName,
+        'lastName': lastName,
+        'phone': phone,
+        'city': city,
+        'university': university,
+        'clubName': clubName,
+        // Geriye dönük uyumluluk: `clubField` ilk alan, `clubFields` tümü.
+        // Eski web sürümleri ve eski etkinlik kayıtları yalnızca tekil alanı
+        // okuyor (club-account.js ile aynı desen).
+        'clubField': clubFields.isEmpty ? '' : clubFields.first,
+        'clubFields': clubFields,
+        'clubPurpose': clubPurpose,
+        'clubContents': clubContents,
+        if (logoUrl != null && logoPath != null) 'logoUrl': logoUrl,
+        if (logoUrl != null && logoPath != null) 'logoPath': logoPath,
+        'onboardingCompleted': true,
+        'clubStatus': clubStatus,
+        // Telefon, Firebase Auth hesabının ortak alanıdır. Aynı e-postayla
+        // sonradan öğrenci rolü eklenirse bu bayrak, Auth'ta bağlı numarayla
+        // birlikte ikinci profile de taşınır.
+        'phoneVerified': phoneVerified,
+        if (!phoneVerified) 'phoneVerifiedAt': FieldValue.delete(),
+        'hasPassword': hasPassword,
+        'termsAccepted': ?termsAccepted,
+        if (termsAcceptedAtMs != null) ...<String, dynamic>{
+          'termsAcceptedAt': Timestamp.fromMillisecondsSinceEpoch(
+            termsAcceptedAtMs,
+          ),
+          'termsVersion': termsVersion,
+        },
+        'marketingConsent': ?marketingConsent,
+        'updatedAt': FieldValue.serverTimestamp(),
+        'createdAt': profileWasCompleted
+            ? (existingProfile.data()?['createdAt'] ??
+                  FieldValue.serverTimestamp())
+            : FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
 
-    batch.set(userRef, <String, dynamic>{
-      'role': UserRole.club,
-      'lastRole': UserRole.club,
-      'email': email,
-      'clubName': clubName,
-      'roles': <String, dynamic>{...existingRoles, UserRole.club: true},
-      'clubOnboardingCompleted': true,
-      'onboardingCompleted': true,
-      'clubStatus': clubStatus,
-      'profileCompletedAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+      transaction.set(userRef, <String, dynamic>{
+        'uid': uid,
+        'role': UserRole.club,
+        'lastRole': UserRole.club,
+        'email': email,
+        'displayName': '$firstName $lastName'.trim(),
+        'photoURL': asString(existingUser.data()?['photoURL']),
+        'clubName': clubName,
+        'roles': <String, dynamic>{...existingRoles, UserRole.club: true},
+        'clubOnboardingCompleted': true,
+        if (!keepStudentRole) 'studentOnboardingCompleted': FieldValue.delete(),
+        'onboardingCompleted': true,
+        'clubStatus': clubStatus,
+        'profileCompletedAt': FieldValue.serverTimestamp(),
+        'lastLoginAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'createdAt': profileWasCompleted || keepStudentRole
+            ? (existingUser.data()?['createdAt'] ??
+                  FieldValue.serverTimestamp())
+            : FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
 
-    await batch.commit();
-    return clubStatus;
+      return clubStatus;
+    });
   }
 
   /// phone-verify.js#markPhoneVerified.
@@ -291,46 +417,106 @@ class ProfileRepository {
     required String uid,
     required String role,
     required String phoneE164,
-  }) => (role == UserRole.club ? clubProfileDoc(uid) : studentProfileDoc(uid))
-      .update(<String, dynamic>{
-        'phone': phoneE164,
-        'phoneVerified': true,
-        'phoneVerifiedAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+  }) => _writeSharedPhone(
+    uid: uid,
+    fallbackRole: role,
+    phoneE164: phoneE164,
+    verified: true,
+  );
 
   /// phone-change.js — numara değişince doğrulama sıfırlanır.
   Future<void> changePhone(String uid, String role, String newPhoneE164) =>
-      (role == UserRole.club ? clubProfileDoc(uid) : studentProfileDoc(uid))
-          .update(<String, dynamic>{
-            'phone': newPhoneE164,
-            'phoneVerified': false,
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
+      _writeSharedPhone(
+        uid: uid,
+        fallbackRole: role,
+        phoneE164: newPhoneE164,
+        verified: false,
+      );
 
-  /// club-documents.js — belgeler yüklendikten sonra inceleme kuyruğuna alır.
-  Future<void> submitClubDocuments(
+  /// Öğrenci ve kulüp aynı Firebase Auth kimliğini kullandığı için giriş
+  /// telefonu da ortaktır. Var olan iki profili tek batch içinde günceller;
+  /// ikinci rol henüz oluşturulmamışsa yalnız mevcut profile yazar.
+  ///
+  /// NOT: yeni kayıtlarda bir e-postaya tek rol bağlanıyor, dolayısıyla ikinci
+  /// profil oluşmuyor. Bu birleşik yazım, kural değişmeden önce açılmış çift
+  /// rollü hesaplar için duruyor.
+  Future<void> _writeSharedPhone({
+    required String uid,
+    required String fallbackRole,
+    required String phoneE164,
+    required bool verified,
+  }) async {
+    final Doc studentRef = studentProfileDoc(uid);
+    final Doc clubRef = clubProfileDoc(uid);
+    final List<Snap> snapshots = await Future.wait<Snap>(<Future<Snap>>[
+      studentRef.get(),
+      clubRef.get(),
+    ]);
+
+    final Map<String, dynamic> data = <String, dynamic>{
+      'phone': phoneE164,
+      'phoneVerified': verified,
+      'phoneVerifiedAt': verified
+          ? FieldValue.serverTimestamp()
+          : FieldValue.delete(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+    final WriteBatch batch = fbDb.batch();
+    bool hasWrite = false;
+    if (snapshots[0].exists) {
+      batch.update(studentRef, data);
+      hasWrite = true;
+    }
+    if (snapshots[1].exists) {
+      batch.update(clubRef, data);
+      hasWrite = true;
+    }
+
+    if (!hasWrite) {
+      final Doc fallbackRef = fallbackRole == UserRole.club
+          ? clubRef
+          : studentRef;
+      batch.update(fallbackRef, data);
+    }
+    await batch.commit();
+  }
+
+  /// Bir kulüp belgesini anında kaydeder. Dördüncü belge de kaydedildiğinde
+  /// kulüp otomatik olarak inceleme kuyruğuna alınır.
+  Future<void> saveClubDocuments(
     String uid,
     Map<String, dynamic> documents,
   ) async {
+    final bool complete = kClubDocTypes.every(documents.containsKey);
     final WriteBatch batch = fbDb.batch();
 
     batch.update(clubProfileDoc(uid), <String, dynamic>{
       'documents': documents,
-      'clubStatus': ClubStatus.pendingReview,
-      'documentsSubmittedAt': FieldValue.serverTimestamp(),
-      // Yönetici "belge eksik" notu bıraktıysa yeniden gönderimle birlikte
-      // silinir; aksi hâlde kulüp eksiği tamamladıktan sonra da eski uyarıyı
-      // görmeye devam ederdi.
-      'documentIssue': FieldValue.delete(),
+      'clubStatus': complete
+          ? ClubStatus.pendingReview
+          : ClubStatus.documentsPending,
+      'documentsSubmittedAt': complete
+          ? FieldValue.serverTimestamp()
+          : FieldValue.delete(),
+      // Yönetici "belge eksik" notu, ancak tüm belgeler tamamlanıp başvuru
+      // yeniden incelemeye gönderildiğinde kaldırılır.
+      if (complete) 'documentIssue': FieldValue.delete(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
 
     batch.update(userDoc(uid), <String, dynamic>{
-      'clubStatus': ClubStatus.pendingReview,
+      'clubStatus': complete
+          ? ClubStatus.pendingReview
+          : ClubStatus.documentsPending,
       'updatedAt': FieldValue.serverTimestamp(),
     });
 
     await batch.commit();
   }
+
+  /// Geriye dönük çağıranlar için eski ad korunur.
+  Future<void> submitClubDocuments(
+    String uid,
+    Map<String, dynamic> documents,
+  ) => saveClubDocuments(uid, documents);
 }

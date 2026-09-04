@@ -4,10 +4,13 @@ import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../app/theme.dart';
+import '../../core/geo.dart';
 import '../../domain/checkin_qr.dart';
 import '../../domain/routing.dart';
+import '../../domain/session_qr_window.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/event.dart';
+import '../../services/geo_fence_service.dart';
 import '../../state/providers.dart';
 import '../shared/common_widgets.dart';
 import 'student_shell.dart';
@@ -76,8 +79,14 @@ class _StudentQrCheckinScreenState extends ConsumerState<StudentQrCheckinScreen>
 
     final Map<String, dynamic>? payload = parseCheckinQrToken(raw);
 
-    if (payload == null || payload['type'] != 'session-checkin') {
+    if (payload == null) {
       _show(false, context.t('scan.notSessionQr'));
+      return;
+    }
+
+    final String type = '${payload['type'] ?? ''}';
+    if (type != 'session-checkin' && type != 'event-entry') {
+      _show(false, context.t('scan.notRegipassQr'));
       return;
     }
 
@@ -86,7 +95,7 @@ class _StudentQrCheckinScreenState extends ConsumerState<StudentQrCheckinScreen>
         ? payload['session'] as int
         : int.tryParse('${payload['session']}');
 
-    if (eventId.isEmpty || session == null) {
+    if (eventId.isEmpty || (type == 'session-checkin' && session == null)) {
       _show(false, context.t('scan.missingSessionInfo'));
       return;
     }
@@ -97,7 +106,7 @@ class _StudentQrCheckinScreenState extends ConsumerState<StudentQrCheckinScreen>
       return;
     }
 
-    final String dedupeKey = '${eventId}_$session';
+    final String dedupeKey = '${eventId}_${type == 'session-checkin' ? session : 'door'}';
     final int now = DateTime.now().millisecondsSinceEpoch;
     if (dedupeKey == _lastProcessedKey && now - _lastProcessedAtMs < _dedupeWindowMs) {
       return;
@@ -107,13 +116,17 @@ class _StudentQrCheckinScreenState extends ConsumerState<StudentQrCheckinScreen>
 
     setState(() => _busy = true);
     try {
-      await _processSession(eventId, session);
+      if (type == 'event-entry') {
+        await _processDoor(eventId);
+      } else {
+        await _processSession(eventId, session!, payload['slot']);
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
-  Future<void> _processSession(String eventId, int session) async {
+  Future<void> _processSession(String eventId, int session, Object? slot) async {
     final String? uid = ref.read(sessionProvider).user?.uid;
     if (uid == null) return;
 
@@ -140,11 +153,29 @@ class _StudentQrCheckinScreenState extends ConsumerState<StudentQrCheckinScreen>
       return;
     }
 
+    // Ekrandaki kod 20 saniyede bir yenilenir; başkasının gönderdiği ekran
+    // görüntüsü buraya ulaştığında dilim çoktan değişmiş olur.
+    //
+    // Web'de bu kontrol yalnızca `tokenCameFromScan` iken yapılır: orada token
+    // giriş/kayıt adımlarından sonra beklemeden de gelebiliyor ve o adımlar
+    // dakikalar sürebiliyordu. Mobilde bu ekrandaki her token DOĞRUDAN
+    // kameradan gelir, yani koşul her zaman sağlanır ve kontrol her okumada
+    // uygulanır (bkz. domain/session_qr_window.dart).
+    if (!isSessionQrSlotFresh(slot)) {
+      _show(false, context.t('scan.qrSlotExpired'));
+      return;
+    }
+
     final EventRegistration? registration = await repo.fetchRegistration(eventId, uid);
     if (!mounted) return;
 
     if (registration == null) {
       _show(false, context.t('scan.notRegistered'));
+      return;
+    }
+
+    if (event.requiresDoorCheckinForSession && !registration.isCheckedIn) {
+      _show(false, context.t('scan.needsDoorCheckin'));
       return;
     }
 
@@ -158,6 +189,26 @@ class _StudentQrCheckinScreenState extends ConsumerState<StudentQrCheckinScreen>
         }),
       );
       return;
+    }
+
+    // Öğrenci ekrandaki QR'ı KENDİ telefonuyla okuttuğu için salonda olup
+    // olmadığını yalnızca konum söyleyebilir. Etkinliğin tanımlı bir konumu
+    // yoksa bu adım atlanır — izin bile istenmez (geo-fence.js ile aynı).
+    if (event.hasLocationCheck) {
+      final GeoFenceResult fence = await const GeoFenceService().verify(event);
+      if (!mounted) return;
+      if (!fence.ok) {
+        _show(
+          false,
+          fence.outcome == GeoFenceOutcome.tooFar
+              ? context.t('scan.tooFar', <String, Object?>{
+                  'distance': formatDistance(fence.distanceM!),
+                  'radius': event.effectiveRadius,
+                })
+              : context.t('scan.locationRequired'),
+        );
+        return;
+      }
     }
 
     try {
@@ -187,6 +238,77 @@ class _StudentQrCheckinScreenState extends ConsumerState<StudentQrCheckinScreen>
         'attended': registration.sessionsAttended + 1,
         'total': event.sessionCount,
       }),
+    );
+    _returnToAppointment(registration.id);
+  }
+
+  Future<void> _processDoor(String eventId) async {
+    final String? uid = ref.read(sessionProvider).user?.uid;
+    if (uid == null) return;
+
+    final EventRepositoryAccess repo = EventRepositoryAccess(ref);
+    final AppEvent? event = await repo.fetchEvent(eventId);
+    if (!mounted) return;
+
+    if (event == null) {
+      _show(false, context.t('scan.eventNotFound'));
+      return;
+    }
+    // Ölçüt etkinliğin MODUDUR (checkinMode alanı yazılı olsun ya da olmasın;
+    // eski kayıtlarda oturum sayısından türetilir). Web tarafı da bu QR'ı
+    // `eventHasDoorCheckin` ile kabul ediyor — iki platform aynı kodu okuduğu
+    // için ölçüt de aynı olmak zorunda.
+    if (!event.hasDoorCheckin) {
+      _show(false, context.t('scan.notDoorQr'));
+      return;
+    }
+    if (!event.entryOpen) {
+      _show(false, context.t('scan.doorClosed'));
+      return;
+    }
+
+    final EventRegistration? registration = await repo.fetchRegistration(eventId, uid);
+    if (!mounted) return;
+    if (registration == null) {
+      _show(false, context.t('scan.notRegistered'));
+      return;
+    }
+    if (registration.isCheckedIn) {
+      _show(false, context.t('clubScan.alreadyCheckedIn', <String, Object?>{
+        'name': registration.displayName,
+      }));
+      return;
+    }
+
+    // KAPIDA KONUM SORULMAZ. Check-in fiziksel olarak kapıda yapılan bir
+    // işlemdir: öğrenci ya görevlinin okuttuğu bilettedir ya da görevlinin
+    // açtığı kapı QR'ının önündedir. Konum izni istemek hem gereksiz bir adım
+    // hem de her öğrenci için saniyeler süren bir gecikmedir.
+    //
+    // Buradaki sınır konumun yerine KULÜBÜN KAPIYI AÇIK TUTMASIDIR
+    // (yukarıdaki `entryOpen` kontrolü): görevli girişi bitirince QR'ın ekran
+    // görüntüsü de dahil hiçbir kod işe yaramaz. Aynı koşul
+    // firestore.rules > studentCanMarkOwnEventCheckIn içinde de duruyor.
+    //
+    // Konum YALNIZCA salondaki oturum yoklamasında çalışır
+    // (bkz. [_processSession]) — orada QR'ı öğrenci kendi telefonuyla okuttuğu
+    // için gerçekten içeride olup olmadığı başka türlü anlaşılamaz.
+    try {
+      await repo.markOwnDoorCheckin(eventId: eventId, studentId: uid);
+    } catch (error) {
+      if (!mounted) return;
+      _show(
+        false,
+        '$error'.contains('permission-denied')
+            ? context.t('scan.permissionError')
+            : context.t('scan.checkinSaveFailed'),
+      );
+      return;
+    }
+    if (!mounted) return;
+    _show(
+      true,
+      context.t(event.isMultiSession ? 'scan.doorSuccess' : 'scan.doorOnlySuccess'),
     );
     _returnToAppointment(registration.id);
   }
@@ -346,5 +468,14 @@ class EventRepositoryAccess {
             studentId: studentId,
             registration: registration,
             currentSession: currentSession,
+          );
+
+  Future<void> markOwnDoorCheckin({
+    required String eventId,
+    required String studentId,
+  }) =>
+      _ref.read(eventRepositoryProvider).markOwnDoorCheckin(
+            eventId: eventId,
+            studentId: studentId,
           );
 }

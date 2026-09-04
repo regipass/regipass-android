@@ -36,6 +36,15 @@ class ClubStatus {
   static const String banned = 'banned';
 }
 
+/// Regipass destek hattı — hesap ekranlarındaki "İletişim" düğmesi bu
+/// numarayı arar (bkz. lib/features/shared/support_contact.dart).
+///
+/// İki biçim de elle tutuluyor: `formatE164ForDisplay` numarayı bayrak
+/// emojisiyle ve parantezsiz yazıyor, kurumsal hattın ekranda görünmesi
+/// istenen hâli ise parantezli. Aranan değer her zaman [kSupportPhoneE164].
+const String kSupportPhoneE164 = '+908508883558';
+const String kSupportPhoneDisplay = '+90 (850) 888 35 58';
+
 /// Kullanıcı rolleri (`users.role` / `users.lastRole`).
 class UserRole {
   static const String student = 'student';

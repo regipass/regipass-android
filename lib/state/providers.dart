@@ -103,7 +103,8 @@ final Provider<NotificationService> notificationServiceProvider =
 /// `autoDispose` yok.
 final Provider<EventReminderScheduler> eventReminderSchedulerProvider =
     Provider<EventReminderScheduler>(
-      (Ref ref) => EventReminderScheduler(ref.watch(notificationServiceProvider)),
+      (Ref ref) =>
+          EventReminderScheduler(ref.watch(notificationServiceProvider)),
     );
 
 /// `main()` içinde gerçek örnekle override edilir.
@@ -160,20 +161,123 @@ class ActiveRoleNotifier extends Notifier<String?> {
 
   Future<void> select(String role) async {
     final String? uid = ref.read(currentUidProvider);
-    if (uid == null || !UserRole.isValid(role)) return;
+    if (uid == null) return;
+    await selectForUser(uid, role);
+  }
 
-    await ref.read(roleSessionStoreProvider).setActiveRole(uid, role);
+  /// Telefonla giriş sonucu `authStateProvider`a ulaşmadan hemen önce de rol
+  /// seçilebilsin diye uid'i çağırandan alan sürüm.
+  Future<void> selectForUser(String uid, String role) async {
+    if (uid.isEmpty || !UserRole.isValid(role)) return;
+
     state = role;
+    await ref.read(roleSessionStoreProvider).setActiveRole(uid, role);
   }
 
   Future<void> clear() async {
-    await ref.read(roleSessionStoreProvider).clear();
     state = null;
+    await ref.read(roleSessionStoreProvider).clear();
   }
 }
 
 final NotifierProvider<ActiveRoleNotifier, String?> activeRoleProvider =
     NotifierProvider<ActiveRoleNotifier, String?>(ActiveRoleNotifier.new);
+
+/// Bilgi formu henüz kaydedilmemişken seçilen rol.
+///
+/// Bu değer bilerek yalnız bellekte tutulur. Uygulama kapanırsa veya kullanıcı
+/// çıkış yaparsa seçim unutulur; Firestore'a ya da SharedPreferences'a hiçbir
+/// yarım hesap bilgisi yazılmaz.
+class PendingOnboardingRoleNotifier extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void select(String role) {
+    if (UserRole.isValid(role)) state = role;
+  }
+
+  void clear() => state = null;
+}
+
+final NotifierProvider<PendingOnboardingRoleNotifier, String?>
+pendingOnboardingRoleProvider =
+    NotifierProvider<PendingOnboardingRoleNotifier, String?>(
+      PendingOnboardingRoleNotifier.new,
+    );
+
+/// Kayıt ekranında verilen onay — bilgi formu kaydedilene kadar bellekte
+/// tutulur, sonra profil belgesine yazılıp temizlenir (bkz.
+/// [PendingOnboardingRoleNotifier] ile aynı gerekçe: kalıcı depoya hiçbir
+/// yarım hesap bilgisi yazılmaz).
+class PendingConsent {
+  const PendingConsent({
+    required this.termsAccepted,
+    required this.marketingConsent,
+    required this.acceptedAtMs,
+  });
+
+  final bool termsAccepted;
+  final bool marketingConsent;
+  final int acceptedAtMs;
+}
+
+class PendingConsentNotifier extends Notifier<PendingConsent?> {
+  @override
+  PendingConsent? build() => null;
+
+  void set({required bool termsAccepted, required bool marketingConsent}) {
+    state = PendingConsent(
+      termsAccepted: termsAccepted,
+      marketingConsent: marketingConsent,
+      acceptedAtMs: DateTime.now().millisecondsSinceEpoch,
+    );
+  }
+
+  void clear() => state = null;
+}
+
+final NotifierProvider<PendingConsentNotifier, PendingConsent?>
+pendingConsentProvider =
+    NotifierProvider<PendingConsentNotifier, PendingConsent?>(
+      PendingConsentNotifier.new,
+    );
+
+/// Kayıt ekranının "bu hesapta bu rol zaten var mı" yoklaması sürüyor.
+///
+/// Rol bilgisi Firestore'da ve o belgeleri yalnız hesabın SAHİBİ okuyabiliyor
+/// (bkz. firestore.rules). Yani soruyu sorabilmek için bir an oturum açmak
+/// zorunlu. Bayrak açıkken router hiçbir yönlendirme yapmaz; aksi hâlde
+/// yoklama için açılan oturum kullanıcıyı doğrudan panele fırlatıyor,
+/// "bu hesap zaten var" uyarısı hiç görünmeden kayıt ekranı kapanıyordu.
+class AuthProbeNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void begin() => state = true;
+
+  void end() => state = false;
+}
+
+final NotifierProvider<AuthProbeNotifier, bool> authProbeProvider =
+    NotifierProvider<AuthProbeNotifier, bool>(AuthProbeNotifier.new);
+
+/// Şifre sıfırlamada SMS kodu doğrulanınca Firebase Auth geçici olarak oturum
+/// açar. Bu bayrak, kullanıcı yeni şifresini girmeden router'ın rol/panel
+/// ekranına yönlendirmesini önler.
+class PasswordResetInProgressNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void begin() => state = true;
+
+  void end() => state = false;
+}
+
+final NotifierProvider<PasswordResetInProgressNotifier, bool>
+passwordResetInProgressProvider =
+    NotifierProvider<PasswordResetInProgressNotifier, bool>(
+      PasswordResetInProgressNotifier.new,
+    );
 
 /// Router ve ekranların okuduğu birleşik oturum görüntüsü.
 class Session {
@@ -184,6 +288,9 @@ class Session {
     required this.studentProfile,
     required this.clubProfile,
     required this.activeRole,
+    this.pendingRole,
+    this.isProbingAccount = false,
+    this.isResettingPassword = false,
   });
 
   final bool isLoading;
@@ -195,21 +302,48 @@ class Session {
   /// Cihazda saklanan seçim; `resolvedRole` bunu `lastRole`/`role` ile tamamlar.
   final String? activeRole;
 
+  /// Kayıt formu tamamlanana kadar yalnız bellekte yaşayan rol seçimi.
+  final String? pendingRole;
+
+  /// Kayıt ekranı var olan bir hesabı yokluyor (bkz. [authProbeProvider]).
+  /// Router bu sırada hiçbir yönlendirme yapmaz.
+  final bool isProbingAccount;
+
+  /// Şifre yenileme, SMS doğrulamasının açtığı geçici oturumda sürüyor.
+  final bool isResettingPassword;
+
   bool get isSignedIn => user != null;
 
   bool get isAdmin => isAdminEmail(user?.email);
 
-  /// role-session.js#resolvePreferredRole sırası.
-  String? get resolvedRole => resolvePreferredRole(activeRole, appUser);
+  bool get hasStudentRole => studentProfile?.onboardingCompleted ?? false;
 
-  /// Kullanıcının her iki rolü de varsa giriş sonrası rol seçimi gerekir.
-  bool get hasBothRoles =>
-      (appUser?.hasStudentRole ?? false) && (appUser?.hasClubRole ?? false);
+  bool get hasClubRole => clubProfile?.onboardingCompleted ?? false;
+
+  bool hasCompletedRole(String? role) => switch (role) {
+    UserRole.student => hasStudentRole,
+    UserRole.club => hasClubRole,
+    _ => false,
+  };
+
+  bool get hasAnyRole => hasStudentRole || hasClubRole;
+
+  /// Yalnız tamamlanmış profiller arasından aktif rolü çözer. Geçici
+  /// onboarding rolü burada özellikle hesaba katılmaz; uygulamanın geri kalanı
+  /// onu yetkili bir hesap sanmamalıdır.
+  String? get resolvedRole => resolveCompletedRole(
+    storedRole: activeRole,
+    user: appUser,
+    hasCompletedStudentRole: hasStudentRole,
+    hasCompletedClubRole: hasClubRole,
+  );
 }
 
 final Provider<Session> sessionProvider = Provider<Session>((Ref ref) {
   final AsyncValue<User?> auth = ref.watch(authStateProvider);
   final User? user = auth.value;
+  final bool probing = ref.watch(authProbeProvider);
+  final bool resettingPassword = ref.watch(passwordResetInProgressProvider);
 
   // Oturum yokken profil akışları beklenmez; aksi hâlde açılışta gereksiz
   // bir "yükleniyor" durumunda takılırdı.
@@ -221,22 +355,33 @@ final Provider<Session> sessionProvider = Provider<Session>((Ref ref) {
       studentProfile: null,
       clubProfile: null,
       activeRole: null,
+      pendingRole: null,
+      isProbingAccount: probing,
+      isResettingPassword: resettingPassword,
     );
   }
 
   final AsyncValue<AppUser?> appUser = ref.watch(appUserProvider);
   final AppUser? userProfile = appUser.value;
   final String? activeRole = ref.watch(activeRoleProvider);
+  final String? pendingRole = ref.watch(pendingOnboardingRoleProvider);
 
-  // Tek rollü kullanıcıların açılışında diğer role ait boş profil belgesini
-  // beklemiyoruz. İki rol varsa cihazdaki seçim hangi profilin gerekli
-  // olduğunu belirler; henüz seçim yoksa router doğrudan rol seçimine geçer.
+  // `roles` alanı eski sürümlerin yarım profil iskeletlerini de içeriyor
+  // olabilir. Tamamlanıp tamamlanmadığını anlayabilmek için işaretli iki profil
+  // de yüklenir; yalnız `onboardingCompleted: true` olanlar gerçek rol sayılır.
   final bool hasStudentRole = userProfile?.hasStudentRole ?? false;
   final bool hasClubRole = userProfile?.hasClubRole ?? false;
+  // Pending/aktif rolün profili de dinlenir. Böylece final batch döndüğünde
+  // profil snapshot'ı hemen tamamlanmış sayılır; users ve profil stream'lerinin
+  // geliş sırası kısa süreli yanlış panele yönlendirme yaratmaz.
   final bool loadStudent =
-      hasStudentRole && (!hasClubRole || activeRole == UserRole.student);
+      hasStudentRole ||
+      pendingRole == UserRole.student ||
+      activeRole == UserRole.student;
   final bool loadClub =
-      hasClubRole && (!hasStudentRole || activeRole == UserRole.club);
+      hasClubRole ||
+      pendingRole == UserRole.club ||
+      activeRole == UserRole.club;
 
   final AsyncValue<StudentProfile?> student = loadStudent
       ? ref.watch(studentProfileProvider)
@@ -266,5 +411,8 @@ final Provider<Session> sessionProvider = Provider<Session>((Ref ref) {
     studentProfile: safeStudent,
     clubProfile: safeClub,
     activeRole: activeRole,
+    pendingRole: pendingRole,
+    isProbingAccount: probing,
+    isResettingPassword: resettingPassword,
   );
 });

@@ -12,12 +12,12 @@ import '../../l10n/app_strings.dart';
 import '../../models/profiles.dart';
 import '../../services/phone_directory_repository.dart';
 import '../../state/providers.dart';
-import '../../state/theme_mode.dart';
 import '../auth/auth_actions.dart';
 import '../auth/phone_verify_sheet.dart';
+import '../shared/account_settings_sheet.dart';
 import '../shared/common_widgets.dart';
-import '../shared/account_switch_action.dart';
 import '../shared/gender_picker.dart';
+import '../shared/legal_consent.dart';
 import '../shared/live_phone_field.dart';
 import '../shared/phone_field.dart';
 import '../shared/profile_photo.dart';
@@ -368,6 +368,25 @@ class _StudentAccountScreenState extends ConsumerState<StudentAccountScreen> {
         lastName: _lastName.text.trim(),
         phone: newPhone,
       );
+
+      // Aynı Firebase Auth kimliğindeki kulübün ücretli etkinliklerinde
+      // iletişim bilgisi etkinlik dokümanına kopyalanır. Ortak numara
+      // öğrenciden değiştirildiyse bu kopya da eski numarada kalmasın.
+      final ClubProfile? linkedClub = ref.read(sessionProvider).clubProfile;
+      if (linkedClub != null) {
+        try {
+          await ref
+              .read(eventRepositoryProvider)
+              .syncClubContact(
+                clubId: linkedClub.uid,
+                phone: newPhone,
+                email: linkedClub.email,
+              );
+        } catch (_) {
+          // Profil senkronu geçerlidir; etkinlik kopyası sonraki kayıtta
+          // yeniden güncellenir.
+        }
+      }
     }
 
     if (!mounted) return;
@@ -400,7 +419,6 @@ class _StudentAccountScreenState extends ConsumerState<StudentAccountScreen> {
         // Bu ekranda sağdaki eylem çıkıştır: hesabın kendisi zaten burası,
         // bildirime gitmek için alt çubuktaki diğer sekmeler var.
         actions: <Widget>[
-          const AccountSwitchAction(),
           IconButton(
             tooltip: context.t('common.logout'),
             onPressed: _logout,
@@ -412,6 +430,11 @@ class _StudentAccountScreenState extends ConsumerState<StudentAccountScreen> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: <Widget>[
+          // Sayfanın sağ üstü, üst çubuktaki çıkış düğmesinin tam altı:
+          // iletişim ve hesap ayarları. İkisi de birer alt sayfa açar, o
+          // yüzden gövdede yer kaplamıyorlar (bkz. account_settings_sheet.dart).
+          const AccountToolbar(),
+          const SizedBox(height: 8),
           Center(
             child: Column(
               children: <Widget>[
@@ -435,10 +458,6 @@ class _StudentAccountScreenState extends ConsumerState<StudentAccountScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 22),
-          // Tercihler en üstte: kullanıcının koyu/açık mod ve dili bulmak için
-          // profil bilgilerinin sonuna kadar inmesi gerekmez.
-          const _PreferencesCard(),
           const SizedBox(height: 28),
 
           if (_editing) ...<Widget>[
@@ -502,6 +521,7 @@ class _StudentAccountScreenState extends ConsumerState<StudentAccountScreen> {
               value: _classYear,
               options: _classYears,
               enabled: !_saving,
+              searchable: false,
               noResultText: context.t('search.classYear.noResult'),
               onSelected: (String value) => setState(() => _classYear = value),
             ),
@@ -594,6 +614,19 @@ class _StudentAccountScreenState extends ConsumerState<StudentAccountScreen> {
               label: context.t('form.studentNumber'),
               value: profile.studentNumber,
             ),
+            // Sözleşme/KVKK onayının tam anı — gün, saat, dakika, saniye.
+            // Kullanıcı ne zaman onay verdiğini kendi kartından görebilmeli
+            // (bkz. KVKK Aydınlatma Metni madde 7).
+            _InfoTile(
+              icon: Icons.verified_user_outlined,
+              label: context.t('legal.consent.tileLabel'),
+              value: consentTileValue(
+                context,
+                termsAccepted: profile.termsAccepted,
+                acceptedAtMs: profile.termsAcceptedAtMs,
+                marketingConsent: profile.marketingConsent,
+              ),
+            ),
             const SizedBox(height: 24),
             FilledButton.icon(
               onPressed: () => _startEditing(profile),
@@ -601,6 +634,7 @@ class _StudentAccountScreenState extends ConsumerState<StudentAccountScreen> {
               label: Text(context.t('studentAccount.edit')),
             ),
           ],
+
           const SizedBox(height: 24),
 
           TextButton.icon(
@@ -612,169 +646,6 @@ class _StudentAccountScreenState extends ConsumerState<StudentAccountScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// Görünüm ve dil tercihleri.
-///
-/// İkisi de anında uygulanır ve cihazda saklanır; bu yüzden "Kaydet" düğmesi
-/// yok — seçim eylemin kendisi.
-class _PreferencesCard extends ConsumerWidget {
-  const _PreferencesCard();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final ThemeMode mode = ref.watch(themeModeProvider);
-    final String language = ref.watch(languageProvider);
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
-      decoration: BoxDecoration(
-        color: context.surface,
-        borderRadius: BorderRadius.circular(BrandShape.controlRadius),
-        boxShadow: BrandShape.card,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          _PreferenceLabel(
-            icon: Icons.brightness_6_outlined,
-            label: context.t('settings.appearance'),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: Text(
-                  mode == ThemeMode.dark
-                      ? context.t('settings.appearance.dark')
-                      : context.t('settings.appearance.light'),
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: context.inkMuted,
-                  ),
-                ),
-              ),
-              Semantics(
-                label: context.t('settings.appearance'),
-                child: Switch.adaptive(
-                  value: mode == ThemeMode.dark,
-                  activeTrackColor: BrandColors.redSoft,
-                  activeThumbColor: BrandColors.redDark,
-                  onChanged: (bool useDarkMode) => ref
-                      .read(themeModeProvider.notifier)
-                      .setMode(useDarkMode ? ThemeMode.dark : ThemeMode.light),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 18),
-          _PreferenceLabel(
-            icon: Icons.language_outlined,
-            label: context.t('settings.language'),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: _ChoiceChip(
-                  label: context.t('language.tr'),
-                  selected: language == 'tr',
-                  onTap: () =>
-                      ref.read(languageProvider.notifier).setLanguage('tr'),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _ChoiceChip(
-                  label: context.t('language.en'),
-                  selected: language == 'en',
-                  onTap: () =>
-                      ref.read(languageProvider.notifier).setLanguage('en'),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PreferenceLabel extends StatelessWidget {
-  const _PreferenceLabel({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) => Row(
-    children: <Widget>[
-      Icon(icon, size: 18, color: context.inkMuted),
-      const SizedBox(width: 10),
-      Text(
-        label,
-        style: TextStyle(
-          fontSize: 13.5,
-          fontWeight: FontWeight.w700,
-          color: context.ink,
-        ),
-      ),
-    ],
-  );
-}
-
-class _ChoiceChip extends StatelessWidget {
-  const _ChoiceChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final Color fill = selected
-        ? BrandColors.redSoft
-        : context.isDarkMode
-        ? BrandColors.red.withValues(alpha: 0.16)
-        : BrandColors.redTint;
-
-    final Color fg = selected ? BrandColors.white : context.brandInk;
-
-    return Material(
-      color: fill,
-      borderRadius: BorderRadius.circular(BrandShape.pillRadius),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(BrandShape.pillRadius),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
-                    color: fg,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

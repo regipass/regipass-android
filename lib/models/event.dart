@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../core/constants.dart';
+import '../domain/checkin_mode.dart';
+import '../domain/paid_event_consent.dart';
 import 'profiles.dart';
 
 /// `events/{eventId}` — club-create-event.js#saveEvent yükünün karşılığı.
@@ -24,6 +26,10 @@ class AppEvent {
     this.quotaShardCount = 0,
     required this.deadlineAtMs,
     required this.sessionCount,
+    this.checkinMode = '',
+    this.allowSessionWithoutCheckin = false,
+    this.entryOpen = false,
+    this.entryStartedAtMs = 0,
     required this.certificateThresholdPercent,
     required this.locationName,
     required this.locationLat,
@@ -53,6 +59,7 @@ class AppEvent {
     required this.certificateTemplateName,
     required this.certificateTemplateType,
     required this.certificateDocuments,
+    this.clubConsentLog,
   });
 
   factory AppEvent.fromMap(String id, Map<String, dynamic> data) {
@@ -92,6 +99,14 @@ class AppEvent {
           0,
       // Web'de 1 ve altı her değer "tek oturumlu" sayılır.
       sessionCount: rawSessionCount > 1 ? rawSessionCount : 1,
+      // Boş değer eski web kayıtlarını belirtir; [resolvedCheckinMode] onların
+      // davranışını sessionCount'tan türetir.
+      checkinMode: asString(data['checkinMode']),
+      allowSessionWithoutCheckin: data['allowSessionWithoutCheckin'] == true,
+      entryOpen: data['entryOpen'] == true,
+      // Kapı BİR KEZ açıldığında yazılır ve bir daha silinmez; check-in
+      // "bitti" ile "hiç başlamadı" ancak bu alanla ayrılabilir.
+      entryStartedAtMs: asEpochMilliseconds(data['entryStartedAtMs']) ?? 0,
       certificateThresholdPercent: asInt(data['certificateThresholdPercent']),
       locationName: asString(data['locationName']),
       locationLat: asDouble(data['locationLat']),
@@ -125,6 +140,12 @@ class AppEvent {
       certificateTemplateName: asString(data['certificateTemplateName']),
       certificateTemplateType: asString(data['certificateTemplateType']),
       certificateDocuments: _readCertificateDocuments(data),
+      // Ücretli etkinliğin kulüp onay logu etkinliğin kendi belgesinde
+      // durur; ücretsiz etkinlikte alanlar hiç yazılmadığı için null kalır.
+      clubConsentLog: PaidEventConsentLog.fromMap(
+        data,
+        role: PaidEventConsentRole.club,
+      ),
     );
   }
 
@@ -199,6 +220,10 @@ class AppEvent {
 
   final int deadlineAtMs;
   final int sessionCount;
+  final String checkinMode;
+  final bool allowSessionWithoutCheckin;
+  final bool entryOpen;
+  final int entryStartedAtMs;
   final int? certificateThresholdPercent;
   final String locationName;
   final double? locationLat;
@@ -276,7 +301,42 @@ class AppEvent {
   /// Etkinliğe yüklenmiş tüm belgeler (yükleme sırasına göre).
   final List<EventDocument> certificateDocuments;
 
-  bool get isMultiSession => sessionCount > 1;
+  /// Ücretli etkinlikte kulübün oluşturma anındaki onay logu; yoksa `null`.
+  final PaidEventConsentLog? clubConsentLog;
+
+  String get resolvedCheckinMode => CheckinMode.resolve(checkinMode, sessionCount);
+
+  /// Bu alan yeni modlarla birlikte yazıldı mı? Eski tek oturum kayıtları
+  /// öğrenci QR'ını kulübe okutmaya devam eder; kapıdaki paylaşılan QR'a
+  /// kendiliğinden taşınmaz.
+  bool get usesDoorQr => CheckinMode.isValid(checkinMode) &&
+      CheckinMode.hasDoorCheckin(resolvedCheckinMode);
+
+  bool get hasDoorCheckin => CheckinMode.hasDoorCheckin(resolvedCheckinMode);
+
+  bool get isMultiSession => CheckinMode.hasSessions(resolvedCheckinMode);
+
+  bool get requiresDoorCheckinForSession =>
+      CheckinMode.requiresDoorCheckinForSession(
+        mode: resolvedCheckinMode,
+        allowSessionWithoutCheckin: allowSessionWithoutCheckin,
+      );
+
+  /// Kapı check-in'inin aşaması: başlamadı / açık / bitti.
+  /// Kapı girişi olmayan modda (`attendance_only`) `null`.
+  CheckinStage? get checkinStage => resolveCheckinStage(
+        mode: resolvedCheckinMode,
+        entryStartedAtMs: entryStartedAtMs,
+        entryOpen: entryOpen,
+      );
+
+  /// İlk oturum, kapı check-in'i bitirilmediği için kilitli mi?
+  bool get doorCheckinBlocksSessions => doorCheckinBlocksSessionsFor(
+        mode: resolvedCheckinMode,
+        currentSession: currentSession,
+        entryStartedAtMs: entryStartedAtMs,
+        entryOpen: entryOpen,
+      );
 
   bool get hasCertificateTemplate => certificateTemplateUrl.isNotEmpty;
 
@@ -406,6 +466,7 @@ class EventRegistration {
     required this.sessionsAttended,
     required this.lastAttendedSession,
     required this.lastSessionCheckInAtMs,
+    this.studentConsentLog,
   });
 
   factory EventRegistration.fromMap(String id, Map<String, dynamic> data) {
@@ -433,6 +494,12 @@ class EventRegistration {
       sessionsAttended: asInt(data['sessionsAttended']) ?? 0,
       lastAttendedSession: asInt(data['lastAttendedSession']) ?? 0,
       lastSessionCheckInAtMs: asInt(data['lastSessionCheckInAtMs']),
+      // Ücretli etkinlikte öğrencinin kabul ettiği metnin logu kaydın
+      // kendisinde tutulur (bkz. RegistrationService).
+      studentConsentLog: PaidEventConsentLog.fromMap(
+        data,
+        role: PaidEventConsentRole.student,
+      ),
     );
   }
 
@@ -463,6 +530,9 @@ class EventRegistration {
   final int sessionsAttended;
   final int lastAttendedSession;
   final int? lastSessionCheckInAtMs;
+
+  /// Ücretli etkinlikte öğrencinin onay logu; yoksa `null`.
+  final PaidEventConsentLog? studentConsentLog;
 
   bool get isCheckedIn => checkedInAtMs != null && checkedInAtMs! > 0;
 

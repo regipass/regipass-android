@@ -48,6 +48,7 @@ import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../core/app_log.dart';
+import '../domain/paid_event_consent.dart';
 import '../domain/registration_capacity.dart';
 import '../models/event.dart';
 import '../models/profiles.dart';
@@ -129,8 +130,17 @@ class RegistrationService {
     required String displayName,
     required String eventFallbackTitle,
     required String clubFallbackName,
+    required PaidEventConsentAcceptance? paidEventConsent,
     void Function(int round)? onWaiting,
   }) async {
+    // Ekrandaki zorunlu pop-up atlatılsa bile servis ücretli kaydı kurmaz.
+    // DİKKAT: firestore.rules onay alanlarını ZORUNLU TUTMUYOR (emulator ile
+    // doğrulandı, bkz. tool/loadtest/12-ucretli-onay-logu.mjs) — zorunluluk şu an
+    // yalnızca istemcide. Bu denetim son sınır, kaldırılmamalı.
+    if (event.isPaid && paidEventConsent == null) {
+      throw ArgumentError('Paid event registration requires student consent.');
+    }
+
     final Stopwatch watch = Stopwatch()..start();
 
     AppLog.info('registration.start', <String, Object?>{
@@ -157,6 +167,7 @@ class RegistrationService {
         displayName: displayName,
         eventFallbackTitle: eventFallbackTitle,
         clubFallbackName: clubFallbackName,
+        paidEventConsent: paidEventConsent,
         shard: null,
       );
       return RegistrationResult(
@@ -192,6 +203,7 @@ class RegistrationService {
             displayName: displayName,
             eventFallbackTitle: eventFallbackTitle,
             clubFallbackName: clubFallbackName,
+            paidEventConsent: paidEventConsent,
           );
 
           if (claim == _ClaimResult.shardFull) {
@@ -391,6 +403,7 @@ class RegistrationService {
     required String displayName,
     required String eventFallbackTitle,
     required String clubFallbackName,
+    required PaidEventConsentAcceptance? paidEventConsent,
   }) => fbDb.runTransaction<_ClaimResult>(
     (Transaction tx) async {
       final Doc shardRef = quotaShardDoc(event.id, shard);
@@ -427,6 +440,7 @@ class RegistrationService {
           displayName: displayName,
           eventFallbackTitle: eventFallbackTitle,
           clubFallbackName: clubFallbackName,
+          paidEventConsent: paidEventConsent,
           shard: shard,
         ),
       );
@@ -447,6 +461,7 @@ class RegistrationService {
     required String displayName,
     required String eventFallbackTitle,
     required String clubFallbackName,
+    required PaidEventConsentAcceptance? paidEventConsent,
     required int? shard,
   }) => registrationDoc(event.id, studentId).set(
     _registrationPayload(
@@ -457,6 +472,7 @@ class RegistrationService {
       displayName: displayName,
       eventFallbackTitle: eventFallbackTitle,
       clubFallbackName: clubFallbackName,
+      paidEventConsent: paidEventConsent,
       shard: shard,
     ),
     SetOptions(merge: true),
@@ -473,6 +489,7 @@ class RegistrationService {
     required String displayName,
     required String eventFallbackTitle,
     required String clubFallbackName,
+    required PaidEventConsentAcceptance? paidEventConsent,
     required int? shard,
   }) => <String, dynamic>{
     'registrationId': registrationIdFor(event.id, studentId),
@@ -494,6 +511,17 @@ class RegistrationService {
     'studentCity': profile?.city ?? '',
     'registeredAtMs': DateTime.now().millisecondsSinceEpoch,
     'quotaShard': ?shard,
+    // Ücretli etkinliğin öğrenci onay logu, kaydın KENDİ belgesinde
+    // (etkinliğin katılımcı verisinde) durur — öğrenci profil belgesinde
+    // değil. Şema web ile ortak (dashboard.js#buildRegistrationPayload):
+    // kabul edilen metin + epoch + okunabilir damga. Ücretsiz etkinlikte
+    // hiçbir alan eklenmez.
+    if (event.isPaid && paidEventConsent != null)
+      kPaidConsentLogField: <String, dynamic>{
+        ...paidEventConsent.toLogMap(),
+        // Sunucu damgası: istemcinin saatinden bağımsız ikinci kayıt.
+        'approvedAt': FieldValue.serverTimestamp(),
+      },
     'createdAt': FieldValue.serverTimestamp(),
     'updatedAt': FieldValue.serverTimestamp(),
   };

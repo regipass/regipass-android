@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
 import '../../domain/checkin_qr.dart';
+import '../../domain/session_qr_window.dart';
 import '../../domain/event_utils.dart';
 import '../../domain/routing.dart';
 import '../../l10n/app_strings.dart';
@@ -320,53 +321,147 @@ Future<void> openSessionQr(
 
 /// Kulübün ekrana bastığı, öğrencilerin kendi telefonlarından okuttuğu
 /// paylaşılan oturum QR'ı. Öğrenciye özel değildir.
+///
+/// Kod **20 saniyede bir yenilenir**: içine üretildiği anın dilim numarası
+/// yazılır, okuyan taraf kendi dilimiyle karşılaştırır. Amaç, ekranın
+/// fotoğrafını çekip dışarıdaki arkadaşına gönderen öğrenciyi durdurmaktır
+/// (bkz. domain/session_qr_window.dart).
 Future<void> showSessionQrDialog(
   BuildContext context,
   String eventId,
   int session,
-) {
+) =>
+    showDialog<void>(
+      context: context,
+      builder: (BuildContext dialogContext) => AlertDialog(
+        title: Text(
+          dialogContext.t('clubEvents.session.qrTitle', <String, Object?>{
+            'session': session,
+          }),
+        ),
+        content: _RotatingSessionQr(eventId: eventId, session: session),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(dialogContext.t('common.close')),
+          ),
+        ],
+      ),
+    );
+
+/// Yenilemeyi dilim **sınırına** hizalar: ilk bekleme, içinde bulunulan 20
+/// saniyelik dilimin bitişine kadardır. Böylece ekrandaki kod ile öğrencinin
+/// cihazındaki dilim hesabı aynı anda döner ve tolerans penceresi boşa
+/// harcanmaz (club-events.js#scheduleSessionQrRotation ile aynı).
+class _RotatingSessionQr extends StatefulWidget {
+  const _RotatingSessionQr({required this.eventId, required this.session});
+
+  final String eventId;
+  final int session;
+
+  @override
+  State<_RotatingSessionQr> createState() => _RotatingSessionQrState();
+}
+
+class _RotatingSessionQrState extends State<_RotatingSessionQr> {
+  Timer? _rotation;
+  Timer? _countdown;
+  late int _slot;
+  late int _secondsLeft;
+
+  @override
+  void initState() {
+    super.initState();
+    _slot = currentSessionQrSlot();
+    _secondsLeft = _remainingSeconds();
+
+    // Saniye sayacı yalnızca ipucu satırını tazeler; kodu döndüren ayrı bir
+    // zamanlayıcıdır ve dilim sınırına hizalıdır.
+    _countdown = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _secondsLeft = _remainingSeconds());
+    });
+    _scheduleRotation();
+  }
+
+  int _remainingSeconds() =>
+      (msUntilNextSessionQrSlot() / 1000).ceil().clamp(1, 20);
+
+  void _scheduleRotation() {
+    _rotation?.cancel();
+    _rotation = Timer(
+      Duration(milliseconds: msUntilNextSessionQrSlot()),
+      () {
+        if (!mounted) return;
+        setState(() => _slot = currentSessionQrSlot());
+        // Sınırdan sonrası tam pencere aralıklıdır.
+        _rotation = Timer.periodic(
+          const Duration(milliseconds: kSessionQrWindowMs),
+          (_) {
+            if (mounted) setState(() => _slot = currentSessionQrSlot());
+          },
+        );
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _rotation?.cancel();
+    _countdown?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final String token = createCheckinQrToken(
+      buildSessionCheckinPayload(
+        eventId: widget.eventId,
+        session: widget.session,
+        slot: _slot,
+      ),
+    );
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        // QR'ın içeriği bir ADRESTİR: öğrenci telefonunun kendi kamerasıyla
+        // okuttuğunda link açılır; uygulama içi tarayıcı da aynı kodu okur
+        // (bkz. domain/checkin_qr.dart#extractCheckinQrToken).
+        _QrImage(data: buildCheckinQrUrl(token)),
+        const SizedBox(height: 12),
+        Text(
+          context.t('clubEvents.session.qrRotatingHint', <String, Object?>{
+            'seconds': _secondsLeft,
+          }),
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ],
+    );
+  }
+}
+
+/// Kapıda gösterilen ortak giriş QR'ı.
+///
+/// Oturum QR'ından farklı olarak **yenilenmez**: kapı kodunun sınırı tazelik
+/// değil, kulübün kapıyı açık tutmasıdır (`events.entryOpen`). Görevli girişi
+/// bitirdiğinde ekran görüntüsü de dahil hiçbir kod işe yaramaz.
+Future<void> showDoorCheckinQrDialog(BuildContext context, String eventId) {
   final String token = createCheckinQrToken(
-    buildSessionCheckinPayload(eventId: eventId, session: session),
+    buildEventEntryPayload(eventId: eventId),
   );
 
   return showDialog<void>(
     context: context,
     builder: (BuildContext dialogContext) => AlertDialog(
-      title: Text(
-        dialogContext.t('clubEvents.session.qrTitle', <String, Object?>{
-          'session': session,
-        }),
-      ),
+      title: Text(dialogContext.t('clubEvents.entry.qrTitle')),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          // QR her zaman beyaz zemin üzerinde: koyu modda okunabilirlik
-          // kamera için kritik.
-          ColoredBox(
-            color: BrandColors.white,
-            child: Padding(
-              padding: const EdgeInsets.all(8),
-              child: Image.network(
-                buildCheckinQrImageUrl(token, size: 320),
-                width: 240,
-                height: 240,
-                errorBuilder: (_, _, _) => SizedBox(
-                  width: 240,
-                  height: 240,
-                  child: Center(
-                    child: Text(
-                      dialogContext.t('clubEvents.session.qrError'),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: BrandColors.black),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
+          _QrImage(data: buildCheckinQrUrl(token)),
           const SizedBox(height: 12),
           Text(
-            dialogContext.t('clubEvents.session.qrHint'),
+            dialogContext.t('clubEvents.entry.qrHint'),
             textAlign: TextAlign.center,
             style: Theme.of(dialogContext).textTheme.bodySmall,
           ),
@@ -380,4 +475,42 @@ Future<void> showSessionQrDialog(
       ],
     ),
   );
+}
+
+/// QR her zaman beyaz zemin üzerinde: koyu modda okunabilirlik kamera için
+/// kritik.
+class _QrImage extends StatelessWidget {
+  const _QrImage({required this.data});
+
+  final String data;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: BrandColors.white,
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: Image.network(
+          buildCheckinQrImageUrl(data, size: 320),
+          width: 240,
+          height: 240,
+          // Yenilenen kodda eski görsel bir an bile kalmasın diye anahtar
+          // içeriğe bağlı: aynı kutu yeni veriyle yeniden çizilir.
+          key: ValueKey<String>(data),
+          gaplessPlayback: true,
+          errorBuilder: (_, _, _) => SizedBox(
+            width: 240,
+            height: 240,
+            child: Center(
+              child: Text(
+                context.t('clubEvents.session.qrError'),
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: BrandColors.black),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

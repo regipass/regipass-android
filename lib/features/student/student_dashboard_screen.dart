@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme.dart';
 import '../../domain/event_utils.dart';
+import '../../domain/paid_event_consent.dart';
 import '../../domain/registration_capacity.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/event.dart';
@@ -298,6 +299,13 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
         return;
       }
 
+      // Ücretli etkinlikte onay, kayıt Firestore'a yazılmadan hemen önce
+      // alınır. Pencere kapatılır ya da kutu işaretlenmezse kayıt yapılmaz.
+      final PaidEventConsentAcceptance? paidEventConsent = latest.isPaid
+          ? await showPaidEventStudentRegistrationConsentDialog(context)
+          : null;
+      if ((latest.isPaid && paidEventConsent == null) || !mounted) return;
+
       final StudentProfile? profile = session.studentProfile;
 
       // Kontenjanı koruyan yol: kayıt ile sayaç aynı transaction'da yazılır,
@@ -312,6 +320,7 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
                 displayName: _displayName(session),
                 eventFallbackTitle: context.t('dashboard.eventFallback'),
                 clubFallbackName: context.t('dashboard.clubFallback'),
+                paidEventConsent: paidEventConsent,
                 onWaiting: (int round) {
                   if (!mounted || _queued) return;
                   setState(() => _queued = true);
@@ -409,7 +418,7 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
       'unavailable' => context.t('dashboard.errors.register.unavailable'),
       'not-found' => context.t('dashboard.errors.register.notFound'),
       '' => context.t('dashboard.errors.register.generic'),
-      _ => context.t('dashboard.errors.register.genericCode', <String, Object?>{'code': code}),
+      _ => context.t('dashboard.errors.register.generic'),
     };
   }
 
@@ -603,6 +612,14 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
                               ),
                             ],
                           ),
+
+                          // Ücretli etkinlik: pop-up kapandıktan sonra da
+                          // kulüp iletişim bilgileri kaybolmasın diye burada
+                          // kalıcı olarak da gösteriliyor.
+                          if (event.isPaid) ...<Widget>[
+                            const SizedBox(height: 22),
+                            EventPaidContactBlock(event: event),
+                          ],
 
                           // ── Açıklama ────────────────────────────────────────
                           const SizedBox(height: 22),

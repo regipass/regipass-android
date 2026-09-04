@@ -117,6 +117,14 @@ QR üretimi web ile **aynı** kalmıştır (`api.qrserver.com`), böylece iki
 platformun ürettiği kodlar birebir aynıdır. Token formatı da aynı:
 `EVAPPQR1:` + base64url(JSON).
 
+## Check-in / Yoklama modları
+
+Kulüp etkinliği oluştururken üç moddan birini seçer: **Check-in + Yoklama**,
+**Sadece Yoklama**, **Sadece Check-in**. Mod `events.checkinMode` alanında
+durur; alanı olmayan eski kayıtlarda oturum sayısından türetilir ve davranış
+değişmez. Ayrıntı, QR türleri ve kural tarafı:
+[docs/check-in-modlari.md](docs/check-in-modlari.md)
+
 ## Durum
 
 | Bölüm | Durum |

@@ -168,6 +168,20 @@ class RegistrationWithEvent {
     return !registration.isCheckedIn;
   }
 
+  /// Kapıda görevliye gösterilen **bilet** üretilebilir mi?
+  /// (js/modules/events/student-ticket.js#canShowStudentTicket)
+  ///
+  /// Ölçüt oturum sayısı DEĞİL etkinliğin modudur: "Sadece Yoklama" modunda
+  /// kapı girişi yoktur, dolayısıyla bilet de yoktur — o etkinlikte tek QR
+  /// salondaki oturum kodudur ve onu öğrenci "QR Okut" ile okutur.
+  ///
+  /// Giriş bir kez alındıktan sonra bilet gizlenir; aynı bilet ikinci kez işe
+  /// yaramaz (kapıda "zaten giriş yapmış" uyarısı çıkar).
+  bool get canShowTicket =>
+      event != null &&
+      event!.hasDoorCheckin &&
+      !registration.isCheckedIn;
+
   /// Oturumlu etkinlikte QR okutma düğmesinin durumu.
   ///
   /// Bilerek [isClosed] KULLANILMAZ: o, son başvuru tarihine bakar ve

@@ -5,11 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme.dart';
+import '../../core/constants.dart';
 import '../../core/input_guard.dart';
 import '../../l10n/app_strings.dart';
 import '../../state/providers.dart';
 import '../shared/common_widgets.dart';
 import '../shared/phone_field.dart';
+import '../shared/phone_guard.dart';
 import 'phone_auth_errors.dart';
 
 /// Hesap ekranından numara değiştirmenin doğrulama adımı — **pop-up**.
@@ -67,6 +69,9 @@ class _PhoneVerifyDialogState extends ConsumerState<_PhoneVerifyDialog> {
   _Step _step = _Step.idle;
   String? _verificationId;
   bool _confirming = false;
+
+  /// Bu doğrulama oturumundaki yanlış kod sayısı; yeni kod gelince sıfırlanır.
+  int _wrongCodeAttempts = 0;
   int _resendIn = 0;
   String? _feedback;
   FeedbackTone _tone = FeedbackTone.info;
@@ -110,6 +115,17 @@ class _PhoneVerifyDialogState extends ConsumerState<_PhoneVerifyDialog> {
     });
   }
 
+  /// Yanlış kod denemelerini sayar: sınıra gelince "kodun süresi doldu"
+  /// yerine "yeni kod iste" metni gösterilir.
+  String _describeError(Object error) {
+    if (isWrongCodeError(error)) _wrongCodeAttempts++;
+    return describePhoneAuthError(
+      context,
+      error,
+      wrongCodeAttempts: _wrongCodeAttempts,
+    );
+  }
+
   void _startResendCooldown([int seconds = 60]) {
     setState(() => _resendIn = seconds);
 
@@ -125,10 +141,27 @@ class _PhoneVerifyDialogState extends ConsumerState<_PhoneVerifyDialog> {
     setState(() => _step = _Step.sending);
     _setFeedback(context.t('phoneVerify.feedback.sending'));
 
-    // Numarayı SMS'ten hemen önce rezerve et: aynı numaraya aynı anda ikinci
-    // bir hesap kod isteyemesin. Sahiplik sorgusunu pop-up'ı açan ekran zaten
-    // yaptı; burada yalnızca rezervasyon bırakılır (en iyi çaba).
+    // Ön kontrol: hane sayısı → operatör ön eki → sahiplik (bkz.
+    // shared/phone_guard.dart). Pop-up'ı açan ekran da sorguluyor ama arada
+    // zaman geçmiş olabilir — numarayı bu sırada başka bir hesap almış
+    // olabileceği için kararı SMS'e en yakın nokta verir.
     final String? uid = FirebaseAuth.instance.currentUser?.uid;
+    final String? problem = await phoneSendPrecheck(
+      context,
+      ref,
+      phoneE164: widget.phoneE164,
+      uid: uid,
+    );
+
+    if (!mounted) return;
+    if (problem != null) {
+      setState(() => _step = _Step.idle);
+      _setFeedback(problem, FeedbackTone.error);
+      return;
+    }
+
+    // Numarayı SMS'ten hemen önce rezerve et: aynı numaraya aynı anda ikinci
+    // bir hesap kod isteyemesin (en iyi çaba).
     if (uid != null) {
       await ref
           .read(phoneDirectoryRepositoryProvider)
@@ -147,7 +180,7 @@ class _PhoneVerifyDialogState extends ConsumerState<_PhoneVerifyDialog> {
           if (!mounted) return;
           setState(() => _step = _Step.idle);
           _setFeedback(
-            describePhoneAuthError(context, error),
+            _describeError(error),
             FeedbackTone.error,
           );
         },
@@ -156,6 +189,7 @@ class _PhoneVerifyDialogState extends ConsumerState<_PhoneVerifyDialog> {
           setState(() {
             _verificationId = verificationId;
             _step = _Step.code;
+            _wrongCodeAttempts = 0;
           });
           _setFeedback(
             context.t('phoneVerify.feedback.codeSent'),
@@ -176,7 +210,7 @@ class _PhoneVerifyDialogState extends ConsumerState<_PhoneVerifyDialog> {
     } catch (error) {
       if (!mounted) return;
       setState(() => _step = _Step.idle);
-      _setFeedback(describePhoneAuthError(context, error), FeedbackTone.error);
+      _setFeedback(_describeError(error), FeedbackTone.error);
     }
   }
 
@@ -229,7 +263,7 @@ class _PhoneVerifyDialogState extends ConsumerState<_PhoneVerifyDialog> {
     } catch (error) {
       if (!mounted) return;
       setState(() => _confirming = false);
-      _setFeedback(describePhoneAuthError(context, error), FeedbackTone.error);
+      _setFeedback(_describeError(error), FeedbackTone.error);
     }
   }
 
@@ -263,11 +297,17 @@ class _PhoneVerifyDialogState extends ConsumerState<_PhoneVerifyDialog> {
       // En iyi çaba: yazılamazsa doğrulama akışı bozulmaz.
       final String email = user.email ?? '';
       if (email.isNotEmpty) {
+        final Session session = ref.read(sessionProvider);
         await ref
             .read(phoneHintRepositoryProvider)
             .write(
               email: email,
               maskedPhone: maskE164ForDisplay(widget.phoneE164),
+              roles: <String>[
+                if (session.hasStudentRole) UserRole.student,
+                if (session.hasClubRole) UserRole.club,
+                if (!session.hasAnyRole) widget.role,
+              ],
             );
       }
 
@@ -287,7 +327,7 @@ class _PhoneVerifyDialogState extends ConsumerState<_PhoneVerifyDialog> {
     } catch (error) {
       if (!mounted) return;
       setState(() => _confirming = false);
-      _setFeedback(describePhoneAuthError(context, error), FeedbackTone.error);
+      _setFeedback(_describeError(error), FeedbackTone.error);
     }
   }
 

@@ -56,10 +56,11 @@ android {
         // mobile_scanner/ML Kit'in istediği 21'in üzerinde — elle sabitlemek
         // yalnızca tavanı düşürür, bu yüzden varsayılan bırakıldı.
         minSdk = flutter.minSdkVersion
-        // API 36'yı hedefleyen uygulamalarda Android, sistem çubuklarını gizleme
-        // isteklerini yok sayar; panel içinde cihazın alt gezinme çubuğunun
-        // kaybolması isteniyor (bkz. lib/app/system_ui.dart). API 35 Google
-        // Play'in güncel alt sınırıdır, dolayısıyla yayınlamaya engel değil.
+        // Uygulama artık sistem çubuklarını gizlemiyor (bkz.
+        // lib/app/system_ui.dart), yani API 36'nın gizlemeyi yok sayması
+        // sorun değil; yine de hedef sürüm API 36 ile denenmediği için 35'te
+        // bırakıldı. API 35 Google Play'in güncel alt sınırıdır, dolayısıyla
+        // yayınlamaya engel değil.
         targetSdk = 35
         versionCode = flutter.versionCode
         versionName = flutter.versionName

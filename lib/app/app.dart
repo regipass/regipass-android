@@ -7,14 +7,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/constants.dart';
+import '../core/keyboard.dart';
 import '../domain/account_expiry.dart';
 import '../domain/routing.dart';
 import '../features/auth/auth_actions.dart';
 import '../features/landing/splash_screen.dart';
 import '../features/notifications/notification_sync.dart';
 import '../features/shared/offline_banner.dart';
+import '../features/shared/phone_field.dart';
 import '../l10n/app_strings.dart';
 import '../models/profiles.dart';
+import '../services/device_permission_service.dart';
 import '../state/providers.dart';
 import '../state/theme_mode.dart';
 import 'router.dart';
@@ -34,14 +37,16 @@ class _RegipassAppState extends ConsumerState<RegipassApp>
   /// göndermemek için tutulur.
   Brightness? _appliedChrome;
   bool _startupResolved = false;
-
-  /// Gezinme çubuğunun son uygulanan görünürlüğü (bkz. lib/app/system_ui.dart).
-  bool? _appliedNavHidden;
+  bool _devicePermissionsRequested = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+
+    // Çubuklar görünür, içerik altlarına kadar uzanır
+    // (bkz. lib/app/system_ui.dart).
+    unawaited(applyVisibleSystemBars());
 
     // Telefon sahiplik dizinini geçmişe dönük doldur: hesabında doğrulanmış
     // numarası olan her kullanıcı, uygulamayı açtığında kendi kaydını bir kez
@@ -60,16 +65,74 @@ class _RegipassAppState extends ConsumerState<RegipassApp>
 
     // Telefonunu doğrulamayan öğrencinin kaydı süre dolunca silinir
     // (bkz. lib/domain/account_expiry.dart).
-    ref.listenManual<Session>(
-      sessionProvider,
-      (Session? _, Session next) => unawaited(_purgeUnverifiedStudent(next)),
-      fireImmediately: true,
-    );
+    ref.listenManual<Session>(sessionProvider, (Session? _, Session next) {
+      unawaited(_purgeUnverifiedStudent(next));
+      unawaited(_syncPasswordResetHint(next));
+    }, fireImmediately: true);
   }
 
   /// Aynı kaydı iki kez silmeye kalkmamak için kilit: `sessionProvider`,
   /// profil akışının her güncellemesinde yeniden yayın yapıyor.
   bool _purging = false;
+  String? _lastPasswordResetHint;
+
+  /// Eski kullanıcıların parola kurtarma kaydına mevcut rollerini ekler.
+  /// Yalnızca Auth tarafından doğrulanmış ortak telefon yazılır; profil
+  /// içindeki doğrulanmamış iletişim numarası kurtarma numarası sayılmaz.
+  Future<void> _syncPasswordResetHint(Session session) async {
+    if (session.isLoading || !session.isSignedIn || session.isAdmin) return;
+    if (session.isProbingAccount || session.isResettingPassword) return;
+
+    final User? user = session.user;
+    final String email = (user?.email ?? '').trim();
+    final String phone = (user?.phoneNumber ?? '').trim();
+    final List<String> roles = _hintRoles(session);
+    if (email.isEmpty || phone.isEmpty || roles.isEmpty) return;
+
+    final String signature = '$email|$phone|${roles.join(',')}';
+    if (_lastPasswordResetHint == signature) return;
+    _lastPasswordResetHint = signature;
+
+    final bool saved = await ref
+        .read(phoneHintRepositoryProvider)
+        .write(
+          email: email,
+          maskedPhone: maskE164ForDisplay(phone),
+          roles: roles,
+        );
+    if (!saved && _lastPasswordResetHint == signature) {
+      // Yazma düşerse imza sıfırlanır ve bir sonraki oturum senkronu tekrar
+      // dener; nedeni [PhoneHintRepository.write] günlüğe yazıyor.
+      _lastPasswordResetHint = null;
+    }
+  }
+
+  /// İpucu belgesine yazılacak rol listesi.
+  ///
+  /// Tamamlanmış roller esas alınır. Hiçbiri yoksa hesap onboarding'in
+  /// ortasındadır: telefon Auth tarafında ZATEN doğrulanmıştır, dolayısıyla
+  /// kurtarma ipucu da yazılabilmelidir. `roles` alanı kurallar gereği en az
+  /// bir geçerli değer istiyor; o yüzden o an yürüyen rol yazılır ve
+  /// onboarding bitince imza değişip belge kendiliğinden tazelenir.
+  List<String> _hintRoles(Session session) {
+    final List<String> completed = <String>[
+      if (session.hasStudentRole) UserRole.student,
+      if (session.hasClubRole) UserRole.club,
+    ];
+    if (completed.isNotEmpty) return completed;
+
+    final String? inProgress =
+        session.pendingRole ??
+        session.activeRole ??
+        (session.studentProfile != null
+            ? UserRole.student
+            : session.clubProfile != null
+            ? UserRole.club
+            : null);
+    return UserRole.isValid(inProgress)
+        ? <String>[inProgress!]
+        : const <String>[];
+  }
 
   /// Süresi dolmuş doğrulanmamış öğrenci kaydını siler ve oturumu kapatır.
   ///
@@ -79,6 +142,9 @@ class _RegipassAppState extends ConsumerState<RegipassApp>
   Future<void> _purgeUnverifiedStudent(Session session) async {
     if (_purging || session.isLoading || !session.isSignedIn) return;
     if (session.isAdmin) return;
+    // Kayıt ekranının yoklaması sırasında açılan oturum bir giriş değildir;
+    // o hesap adına silme kararı verilmez (bkz. authProbeProvider).
+    if (session.isProbingAccount) return;
 
     final User? user = session.user;
     final StudentProfile? profile = session.studentProfile;
@@ -100,7 +166,7 @@ class _RegipassAppState extends ConsumerState<RegipassApp>
             profile: profile,
             // Hesapta kulüp rolü de varsa Auth hesabı ve `users` dokümanı
             // kulüp için ayakta kalmalı; yalnızca öğrenci tarafı silinir.
-            keepAccount: session.appUser?.hasClubRole ?? false,
+            keepAccount: session.hasClubRole,
           );
     } catch (_) {
       _purging = false;
@@ -122,10 +188,14 @@ class _RegipassAppState extends ConsumerState<RegipassApp>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Başka bir uygulamadan dönüşte Android gezinme çubuğunu geri getirir;
-    // panelin içindeysek gizli kalması gerekiyor.
-    if (state == AppLifecycleState.resumed && _appliedNavHidden == true) {
-      restoreSystemNavigationBarVisibility();
+    // Başka bir uygulamadan (ör. kamera, tarayıcı) dönüşte sistem, kendi
+    // yerleşim modunu geri koyabiliyor; edge-to-edge yeniden bildirilir.
+    //
+    // Android'de bunu [AutoHideNavigationBar] yapıyor: dönüşte çubukları geri
+    // getirip gizlenme sayacını da yeniden kuruyor. Aynı bildirim buradan da
+    // gönderilirse gizlenme durumu iki yerden yönetilmiş olurdu.
+    if (state == AppLifecycleState.resumed && !autoHideNavigationBarSupported) {
+      unawaited(applyVisibleSystemBars());
     }
   }
 
@@ -142,58 +212,15 @@ class _RegipassAppState extends ConsumerState<RegipassApp>
         );
   }
 
-  @override
-  void didChangeMetrics() {
-    // Kullanıcı ekranın altından yukarı kaydırınca çubuk geçici olarak geri
-    // gelir ve alt güvenli alan büyür. Aynı modu tekrar uygulamak onu yeniden
-    // gizler; mod değişmediği için bu döngüye girmez.
-    if (_appliedNavHidden != true) return;
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _appliedNavHidden == true) {
-        restoreSystemNavigationBarVisibility();
-      }
-    });
-  }
-
-  /// Oturum durumuna göre cihazın alt gezinme çubuğunu gizler/gösterir.
-  void _syncSystemNavigationBar(Session session) {
-    final bool hide = shouldHideSystemNavigationBar(
-      isSignedIn: session.isSignedIn,
-      isLoading: session.isLoading,
-    );
-
-    if (_appliedNavHidden == hide) return;
-    _appliedNavHidden = hide;
-
-    applySystemNavigationBarVisibility(hideNavigationBar: hide);
-  }
-
-  /// Durum ve gezinme çubuğu, seçili görünümle aynı tarafta olmalı: koyu
-  /// modda koyu zemin + açık simge, açık modda tersi.
+  /// Çubukların simge stilini seçili görünüme göre ayarlar: koyu modda açık
+  /// simge, açık modda koyu simge. Çubukların zemini her koşulda saydam;
+  /// rengini altlarındaki tema veriyor (bkz. [systemBarsStyle]).
   void _syncSystemChrome(Brightness brightness) {
     if (_appliedChrome == brightness) return;
     _appliedChrome = brightness;
 
-    final bool dark = brightness == Brightness.dark;
-
     SystemChrome.setSystemUIOverlayStyle(
-      SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: dark ? Brightness.light : Brightness.dark,
-        statusBarBrightness: dark ? Brightness.dark : Brightness.light,
-        systemStatusBarContrastEnforced: false,
-        systemNavigationBarColor: dark
-            ? BrandColors.darkSurface
-            : BrandColors.white,
-        systemNavigationBarDividerColor: dark
-            ? BrandColors.darkBorder
-            : BrandColors.grayLight,
-        systemNavigationBarIconBrightness: dark
-            ? Brightness.light
-            : Brightness.dark,
-        systemNavigationBarContrastEnforced: false,
-      ),
+      systemBarsStyle(brightness: brightness),
     );
   }
 
@@ -206,8 +233,19 @@ class _RegipassAppState extends ConsumerState<RegipassApp>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && !_startupResolved) {
         setState(() => _startupResolved = true);
+        _requestDevicePermissions();
       }
     });
+  }
+
+  /// Bildirimler sesli/uyarı şeklinde gösterilebilsin, QR okuma ekranı
+  /// kameraya anında erişebilsin ve harita/etkinlik girişi konumu
+  /// kullanabilsin diye üç izin ilk kullanılabilir anda istenir. Kullanıcı
+  /// daha önce seçim yaptıysa işletim sistemi tekrar pencere açmaz.
+  void _requestDevicePermissions() {
+    if (_devicePermissionsRequested) return;
+    _devicePermissionsRequested = true;
+    unawaited(DevicePermissionService.requestStartupPermissions());
   }
 
   @override
@@ -217,7 +255,13 @@ class _RegipassAppState extends ConsumerState<RegipassApp>
     final ThemeMode themeMode = ref.watch(themeModeProvider);
     final Session session = ref.watch(sessionProvider);
     _markStartupResolved(session);
-    _syncSystemNavigationBar(session);
+
+    // Buzlu cam yalnızca panele girildikten sonra: giriş öncesi ekranlarda
+    // çubuklar açılıştaki sade hâlinde kalır.
+    final bool frosted = shouldFrostSystemBars(
+      isSignedIn: session.isSignedIn,
+      isLoading: session.isLoading || !_startupResolved,
+    );
 
     // themeMode yalnızca açık ya da koyudur (cihaz takibi provider tarafında
     // yapılır). `system` yine de bir ihtimal olarak cihazdan okunuyor; bu
@@ -237,6 +281,10 @@ class _RegipassAppState extends ConsumerState<RegipassApp>
       Session next,
     ) async {
       if (next.isLoading || !next.isSignedIn || next.isAdmin) return;
+      // Yoklama oturumunu kayıt ekranı kendisi kapatıyor; buradan çıkış
+      // yapılırsa yarım hesap temizliği de çalışır ve var olan hesaba
+      // dokunulmuş olurdu (bkz. authProbeProvider).
+      if (next.isProbingAccount) return;
 
       final String? role = next.resolvedRole;
       if (role == null) return;
@@ -259,14 +307,36 @@ class _RegipassAppState extends ConsumerState<RegipassApp>
         darkTheme: buildRegipassTheme(brightness: Brightness.dark),
         themeMode: themeMode,
         routerConfig: router,
+        // Kaydırma başlar başlamaz klavye kapanır — ekranlarda da pop-up ve
+        // alt sayfaların içindeki listelerde de (bkz. lib/core/keyboard.dart).
+        scrollBehavior: const RegipassScrollBehavior(),
         // NotificationSync görünmez: yalnızca bildirim izni, etkinlik
         // alarmları ve gelen duyurular için ağaçta canlı bir dinleyici
         // gerekiyor (bkz. features/notifications/notification_sync.dart).
-        builder: (BuildContext context, Widget? child) => NotificationSync(
-          child: OfflineBanner(
-            child: _StartupGate(
-              showSplash: !_startupResolved,
-              child: child ?? const SizedBox.shrink(),
+        builder: (BuildContext context, Widget? child) => AutoHideNavigationBar(
+          // Alttaki sistem çubuğu, KENDİSİNE 3 saniye dokunulmazsa gizlenir;
+          // şeridine dokunulduğunda geri gelir (bkz. lib/app/system_ui.dart).
+          // Dinleyici yönlendiricinin üstünde: hangi ekran/pop-up açık olursa
+          // olsun aynı kural işler.
+          child: NotificationSync(
+            child: OfflineBanner(
+              // Sistem çubuklarının şeridi her şeyin üstünde buğulanır; açılan
+              // sayfa ya da pencere ne olursa olsun çubukların altı aynı görünür
+              // (bkz. lib/app/system_ui.dart).
+              child: SystemBarsFrost(
+                enabled: frosted,
+                child: _StartupGate(
+                  showSplash: !_startupResolved,
+                  // İkisi de yönlendiricinin (dolayısıyla açılan her pencerenin)
+                  // üstünde: boşluğa dokununca klavye kapanır, çok satırlı bir
+                  // alan yazılırken klavyenin üstünde "Bitti" çubuğu belirir.
+                  child: KeyboardDoneBar(
+                    child: DismissKeyboardOnTap(
+                      child: child ?? const SizedBox.shrink(),
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
         ),

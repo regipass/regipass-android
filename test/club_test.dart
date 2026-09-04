@@ -31,8 +31,9 @@ AppEvent event({
   String clubField = '',
   String targetScope = 'public',
 }) {
-  final DateTime deadline =
-      DateTime.now().add(Duration(days: deadlineDaysFromNow));
+  final DateTime deadline = DateTime.now().add(
+    Duration(days: deadlineDaysFromNow),
+  );
 
   return AppEvent.fromMap(id, <String, dynamic>{
     'title': 'Etkinlik $id',
@@ -150,11 +151,10 @@ void main() {
   });
 
   group('belge hakkı', () {
-    EventRegistration reg(String id, int attended) =>
-        EventRegistration.fromMap(id, <String, dynamic>{
-          'studentId': id,
-          'sessionsAttended': attended,
-        });
+    EventRegistration reg(String id, int attended) => EventRegistration.fromMap(
+      id,
+      <String, dynamic>{'studentId': id, 'sessionsAttended': attended},
+    );
 
     test('eşik yoksa en az bir oturuma katılan hak kazanır', () {
       final AppEvent e = AppEvent.fromMap('e', <String, dynamic>{
@@ -234,9 +234,7 @@ void main() {
       required int endOffsetHours,
       bool sessionsCompleted = false,
     }) {
-      final DateTime end = DateTime.now().add(
-        Duration(hours: endOffsetHours),
-      );
+      final DateTime end = DateTime.now().add(Duration(hours: endOffsetHours));
 
       return AppEvent.fromMap('e', <String, dynamic>{
         'sessionCount': sessionCount,
@@ -248,9 +246,7 @@ void main() {
 
     test('tek oturumlu: etkinlik bitmeden kapalı, bitince açık', () {
       expect(
-        canDistributeCertificates(
-          withDate(sessionCount: 1, endOffsetHours: 2),
-        ),
+        canDistributeCertificates(withDate(sessionCount: 1, endOffsetHours: 2)),
         isFalse,
       );
       expect(
@@ -319,8 +315,9 @@ void main() {
     });
   });
 
-  testWidgets('kulüp alt çubuğu dört sekme + ekleme düğmesi çizer',
-      (WidgetTester tester) async {
+  testWidgets('kulüp alt çubuğu dört sekme + ekleme düğmesi çizer', (
+    WidgetTester tester,
+  ) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(360, 780);
     addTearDown(tester.view.reset);
@@ -348,8 +345,9 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('kulüp QR düğmesi okut/oluştur eylemlerini açar',
-      (WidgetTester tester) async {
+  testWidgets('kulüp QR düğmesi okut/oluştur eylemlerini açar', (
+    WidgetTester tester,
+  ) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(360, 780);
     addTearDown(tester.view.reset);
@@ -472,10 +470,16 @@ void main() {
       logoUrl: '',
       logoPath: '',
       documentIssue: '',
+      adminMessages: <AdminMessage>[],
       onboardingCompleted: true,
       clubStatus: ClubStatus.approved,
+      banned: false,
+      phoneVerified: true,
       hasPassword: true,
       documents: <String, Map<String, dynamic>>{},
+      termsAccepted: true,
+      termsAcceptedAtMs: null,
+      marketingConsent: false,
     );
 
     await tester.pumpWidget(
@@ -639,10 +643,16 @@ void main() {
       logoUrl: '',
       logoPath: '',
       documentIssue: '',
+      adminMessages: <AdminMessage>[],
       onboardingCompleted: true,
       clubStatus: ClubStatus.approved,
+      banned: false,
+      phoneVerified: true,
       hasPassword: true,
       documents: <String, Map<String, dynamic>>{},
+      termsAccepted: true,
+      termsAcceptedAtMs: null,
+      marketingConsent: false,
     );
 
     await tester.pumpWidget(
@@ -704,14 +714,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final Iterable<AnimatedContainer> slots =
-        tester.widgetList<AnimatedContainer>(find.byType(AnimatedContainer));
+    final Iterable<AnimatedContainer> slots = tester
+        .widgetList<AnimatedContainer>(find.byType(AnimatedContainer));
     expect(slots.length, 4);
 
     final List<Color?> colors = slots
         .map(
-          (AnimatedContainer slot) =>
-              (slot.decoration! as BoxDecoration).color,
+          (AnimatedContainer slot) => (slot.decoration! as BoxDecoration).color,
         )
         .toList();
 
@@ -740,8 +749,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final Iterable<AnimatedContainer> slots =
-        tester.widgetList<AnimatedContainer>(find.byType(AnimatedContainer));
+    final Iterable<AnimatedContainer> slots = tester
+        .widgetList<AnimatedContainer>(find.byType(AnimatedContainer));
     expect(slots.length, 3);
     for (final AnimatedContainer slot in slots) {
       expect((slot.decoration! as BoxDecoration).color, BrandColors.success);

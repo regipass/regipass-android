@@ -11,8 +11,10 @@ import 'package:http/http.dart' as http;
 import '../../app/theme.dart';
 import '../../core/app_log.dart';
 import '../../core/input_guard.dart';
+import '../../domain/checkin_mode.dart';
 import '../../domain/registration_capacity.dart';
 import '../../domain/event_utils.dart';
+import '../../domain/paid_event_consent.dart';
 import '../../domain/routing.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/event.dart';
@@ -364,6 +366,53 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
 
   Future<void> _showSessionQr(String eventId, int session) =>
       showSessionQrDialog(context, eventId, session);
+
+  /// Kapıyı açar/kapatır. Kapı açıkken öğrenciler kapıdaki ortak QR'ı kendi
+  /// telefonlarından okutup girişlerini onaylar; kapalıyken o QR hiçbir işe
+  /// yaramaz (firestore.rules > studentCanMarkOwnEventCheckIn `entryOpen`
+  /// alanına bakar). Açar açmaz QR ekrana gelir — kulübün ikinci bir düğme
+  /// araması gerekmesin.
+  Future<void> _toggleDoorCheckin(AppEvent event) async {
+    final bool opening = !event.entryOpen;
+    // Metinler async iş BAŞLAMADAN çözülür (dosyadaki diğer eylemlerle aynı
+    // kalıp): `context` await sonrası ağaçtan düşmüş olabilir.
+    final String failed = context.t('clubEvents.feedback.updateError');
+
+    await _run(() async {
+      try {
+        await ref.read(eventRepositoryProvider).setEntryOpen(
+              event.id,
+              opening,
+              // Damga BİR KEZ atılır: "Bitir" sonrası aşama "hiç başlamadı"ya
+              // dönmesin, etkinlik Aktif listesinden düşmesin.
+              alreadyStartedAtMs: event.entryStartedAtMs,
+            );
+      } catch (_) {
+        _setFeedback(failed, FeedbackTone.error);
+        return;
+      }
+      if (opening && mounted) {
+        await showDoorCheckinQrDialog(context, event.id);
+      }
+    });
+  }
+
+  /// Kapıda check-in'i kaçıranların oturum yoklamasına doğrudan katılmasına
+  /// izin veren anahtar (PDF: "oturumları başlattıktan sonra bir switch").
+  /// Kapalıyken yoklama için önce kapı girişi gerekir.
+  Future<void> _setAllowSessionWithoutCheckin(AppEvent event, bool allow) async {
+    final String failed = context.t('clubEvents.feedback.updateError');
+
+    await _run(() async {
+      try {
+        await ref
+            .read(eventRepositoryProvider)
+            .setAllowSessionWithoutCheckin(event.id, allow);
+      } catch (_) {
+        _setFeedback(failed, FeedbackTone.error);
+      }
+    });
+  }
 
   // ── Belge dağıtımı ─────────────────────────────────────────────────
 
@@ -1118,6 +1167,10 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
             onReopenSessions: () => _reopenSessions(event),
             onShowSessionQr: () =>
                 _showSessionQr(event.id, event.currentSession),
+            onToggleDoorCheckin: () => _toggleDoorCheckin(event),
+            onShowDoorQr: () => showDoorCheckinQrDialog(context, event.id),
+            onAllowSessionWithoutCheckin: (bool allow) =>
+                _setAllowSessionWithoutCheckin(event, allow),
             onDistribute: () => _pickCertificate(event),
             onDistributeLink: () => _distributeFromLink(event),
             onPasteLink: _pasteLink,
@@ -1147,6 +1200,9 @@ class _Body extends ConsumerWidget {
     required this.onUndoSession,
     required this.onReopenSessions,
     required this.onShowSessionQr,
+    required this.onToggleDoorCheckin,
+    required this.onShowDoorQr,
+    required this.onAllowSessionWithoutCheckin,
     required this.onDistribute,
     required this.onDistributeLink,
     required this.onPasteLink,
@@ -1170,6 +1226,9 @@ class _Body extends ConsumerWidget {
   final VoidCallback onUndoSession;
   final VoidCallback onReopenSessions;
   final VoidCallback onShowSessionQr;
+  final VoidCallback onToggleDoorCheckin;
+  final VoidCallback onShowDoorQr;
+  final ValueChanged<bool> onAllowSessionWithoutCheckin;
   final VoidCallback onDistribute;
   final VoidCallback onDistributeLink;
   final VoidCallback onPasteLink;
@@ -1246,10 +1305,45 @@ class _Body extends ConsumerWidget {
           _SessionPanel(
             event: event,
             busy: busy,
+            // İLK oturum, kapı check-in'i bitirilene kadar başlatılamaz:
+            // kimin içeride olduğu henüz belli değildir ve erken başlatılan
+            // bir oturum, kapıda check-in yapmamış öğrencileri yoklamada
+            // reddeder (bkz. domain/checkin_mode.dart).
+            sessionsLockedByDoor: event.doorCheckinBlocksSessions,
             onAdvance: onAdvanceSession,
             onUndo: onUndoSession,
             onReopen: onReopenSessions,
             onShowQr: onShowSessionQr,
+          ),
+          if (event.hasDoorCheckin)
+            SwitchListTile.adaptive(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+              title: Text(context.t('clubEvents.session.allowWithoutCheckin')),
+              subtitle: Text(
+                context.t('clubEvents.session.allowWithoutCheckinHint'),
+              ),
+              value: event.allowSessionWithoutCheckin,
+              onChanged: busy ? null : onAllowSessionWithoutCheckin,
+            ),
+        ],
+
+        // ── Kapı check-in'i ────────────────────────────────────────
+        // Ölçüt oturum sayısı değil MODDUR: "Check-in + Yoklama" modunda
+        // etkinlik çok oturumlu olduğu hâlde kapıda bir check-in adımı vardır.
+        // Eski kayıtlarda mod oturum sayısından türetilir, davranış değişmez.
+        if (event.hasDoorCheckin) ...<Widget>[
+          const SizedBox(height: 22),
+          EventSectionTitle(context.t('clubEvents.entry.title')),
+          const SizedBox(height: 10),
+          _CheckinStageBar(
+            event: event,
+            busy: busy || past,
+            attended: list
+                .where((EventRegistration r) => r.isCheckedIn)
+                .length,
+            total: list.length,
+            onToggle: onToggleDoorCheckin,
+            onShowQr: onShowDoorQr,
           ),
         ],
 
@@ -1259,7 +1353,11 @@ class _Body extends ConsumerWidget {
         // telefonundan okutur. Öğrencinin kişisel QR'ını okutmak orada bir
         // yoklama üretmiyor, bu yüzden düğme kafa karıştırmaktan başka bir işe
         // yaramıyordu.
-        if (!event.isMultiSession) ...<Widget>[
+        // Kapı check-in'i olan her etkinlikte görevli bilet okutabilir:
+        // öğrenci ya biletini gösterir ya kapıdaki ortak kodu okutur.
+        // İki yön de aynı damgayı yazar; hangisinin kullanılacağı
+        // kulübün kapıdaki tercihidir (club-qr-checkin.js ile aynı).
+        if (event.hasDoorCheckin) ...<Widget>[
           const SizedBox(height: 22),
           EventSectionTitle(context.t('dashboard.drawer.qrCheckin')),
           const SizedBox(height: 10),
@@ -1370,6 +1468,16 @@ class _Body extends ConsumerWidget {
             ),
         ],
 
+        // ── Ücretli etkinlik onay kaydı ────────────────────────────
+        // Yalnızca ücretli etkinlikte görünür: kulübün oluşturma anında,
+        // öğrencilerin kayıt anında onayladığı metnin işlem logu.
+        if (event.isPaid) ...<Widget>[
+          const SizedBox(height: 22),
+          EventSectionTitle(context.t('paidEventConsent.log.title')),
+          const SizedBox(height: 10),
+          _PaidEventConsentLogCard(event: event, registrations: list),
+        ],
+
         // ── Katılımcılar ───────────────────────────────────────────
         const SizedBox(height: 22),
         Row(
@@ -1429,10 +1537,144 @@ class _Body extends ConsumerWidget {
 /// İlerleme artık "2/4" gibi bir metinle değil, oturum sayısı kadar bölmesi
 /// olan bir çubukla anlatılıyor: kulüp ekrana bir kez bakınca kaçıncı oturumda
 /// olduğunu ve ne kadar kaldığını görüyor.
+/// Kapı check-in'inin üç aşamalı kontrol çubuğu
+/// (club-events.js#updateCheckinControls karşılığı).
+///
+/// Süreç bilerek üç adımdır ve sırası zorunludur:
+///
+///   1. **Check-in'i Başlat** → `entryOpen = true` (+ ilk kez `entryStartedAtMs`)
+///   2. Öğrenciler kapıdaki QR'ı okutur ya da biletini görevliye gösterir
+///   3. **Check-in'i Bitir** → `entryOpen = false`
+///
+/// Ancak 3. adımdan sonra oturumlar başlatılabilir; sebebi
+/// `domain/checkin_mode.dart > doorCheckinBlocksSessionsFor` içinde yazıyor.
+///
+/// "Yeniden Başlat" **veriyi sıfırlamaz**: okunan girişler kayıtlarda durur
+/// (`checkedInAtMs` bir kez yazılır), yeni okutulanlar üzerine eklenir.
+class _CheckinStageBar extends StatelessWidget {
+  const _CheckinStageBar({
+    required this.event,
+    required this.busy,
+    required this.attended,
+    required this.total,
+    required this.onToggle,
+    required this.onShowQr,
+  });
+
+  final AppEvent event;
+  final bool busy;
+
+  /// Kapıda girişi alınmış öğrenci sayısı / toplam kayıt.
+  final int attended;
+  final int total;
+
+  final VoidCallback onToggle;
+  final VoidCallback onShowQr;
+
+  @override
+  Widget build(BuildContext context) {
+    final CheckinStage? stage = event.checkinStage;
+    // Kapı check-in'i olmayan modda çubuk hiç çizilmez (çağıran zaten
+    // `hasDoorCheckin` ile koruyor; bu yalnızca güvenli varsayılan).
+    if (stage == null) return const SizedBox.shrink();
+
+    final String tally = total > 0
+        ? context.t('clubEvents.entry.tally', <String, Object?>{
+            'attended': attended,
+            'total': total,
+          })
+        : '';
+
+    final (IconData icon, String info, String action) = switch (stage) {
+      CheckinStage.notStarted => (
+        Icons.door_front_door_outlined,
+        context.t('clubEvents.entry.stateNotStarted'),
+        context.t('clubEvents.entry.start'),
+      ),
+      CheckinStage.running => (
+        Icons.sensor_door_outlined,
+        '${context.t('clubEvents.entry.stateRunning')}$tally',
+        context.t('clubEvents.entry.finish'),
+      ),
+      CheckinStage.finished => (
+        Icons.check_circle_outline,
+        '${context.t('clubEvents.entry.stateFinished')}$tally',
+        context.t('clubEvents.entry.restart'),
+      ),
+    };
+
+    final bool running = stage == CheckinStage.running;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: context.surface,
+        borderRadius: BorderRadius.circular(BrandShape.controlRadius),
+        boxShadow: BrandShape.card,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Icon(
+                icon,
+                size: 19,
+                color: stage == CheckinStage.finished
+                    ? BrandColors.success
+                    : context.brandInk,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  info,
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                    color: context.ink,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Kapı açıkken asıl iş QR'ı ekranda tutmaktır; "Bitir" ikincil
+          // kalır ki yanlışlıkla basılmasın.
+          if (running) ...<Widget>[
+            FilledButton.icon(
+              onPressed: busy ? null : onShowQr,
+              icon: const Icon(Icons.qr_code_2, size: 18),
+              label: Text(context.t('clubEvents.entry.show')),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: busy ? null : onToggle,
+              icon: const Icon(Icons.stop_circle_outlined, size: 18),
+              label: Text(action),
+            ),
+          ] else
+            FilledButton.icon(
+              onPressed: busy ? null : onToggle,
+              icon: Icon(
+                stage == CheckinStage.finished
+                    ? Icons.restart_alt
+                    : Icons.play_circle_outline,
+                size: 18,
+              ),
+              label: Text(action),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 class _SessionPanel extends StatelessWidget {
   const _SessionPanel({
     required this.event,
     required this.busy,
+    required this.sessionsLockedByDoor,
     required this.onAdvance,
     required this.onUndo,
     required this.onReopen,
@@ -1441,6 +1683,7 @@ class _SessionPanel extends StatelessWidget {
 
   final AppEvent event;
   final bool busy;
+  final bool sessionsLockedByDoor;
   final VoidCallback onAdvance;
   final VoidCallback onUndo;
   final VoidCallback onReopen;
@@ -1459,7 +1702,9 @@ class _SessionPanel extends StatelessWidget {
       info = context.t('clubEvents.session.stateAllDone');
       actionLabel = null;
     } else if (current < 1) {
-      info = context.t('clubEvents.session.stateNotStarted');
+      info = sessionsLockedByDoor
+          ? context.t('clubEvents.session.blockedByCheckin')
+          : context.t('clubEvents.session.stateNotStarted');
       actionLabel = context.t('clubEvents.session.start');
     } else if (current < total) {
       info = context.t('clubEvents.session.stateActive');
@@ -1508,7 +1753,9 @@ class _SessionPanel extends StatelessWidget {
           const SizedBox(height: 14),
           if (actionLabel != null)
             FilledButton.icon(
-              onPressed: busy ? null : onAdvance,
+              // Kilit yalnızca YENİ oturum başlatmayı kapatır; başlamış bir
+              // etkinliği ilerletmek hiçbir zaman kilitlenmez.
+              onPressed: busy || sessionsLockedByDoor ? null : onAdvance,
               icon: Icon(
                 current >= total ? Icons.flag_outlined : Icons.skip_next,
                 size: 18,
@@ -2033,6 +2280,210 @@ class _CertificateLinkField extends StatelessWidget {
 }
 
 /// Katılımcı satırı (club-events.js#renderStudentsTable).
+
+/// Ücretli etkinliğin onay işlem logu — YALNIZCA ücretli etkinlikte çizilir.
+///
+/// İki kayıt bir arada gösterilir:
+///   • kulübün etkinliği oluştururken onayladığı metin (etkinlik belgesinde),
+///   • kaydolan her öğrencinin onayladığı metin (kaydın kendi belgesinde).
+///
+/// Damga `formatPaidEventConsentStamp` ile yazıldığı gibi gösterilir:
+/// gün.ay.yıl saat:dakika:saniye. Metinler uzun olduğu için katlanır durur;
+/// dokununca açılır.
+class _PaidEventConsentLogCard extends StatefulWidget {
+  const _PaidEventConsentLogCard({
+    required this.event,
+    required this.registrations,
+  });
+
+  final AppEvent event;
+  final List<EventRegistration> registrations;
+
+  @override
+  State<_PaidEventConsentLogCard> createState() =>
+      _PaidEventConsentLogCardState();
+}
+
+class _PaidEventConsentLogCardState extends State<_PaidEventConsentLogCard> {
+  /// Metni açılmış kayıtlar. Kulüp onayı için `club`, öğrenciler için kayıt
+  /// kimliği tutulur.
+  final Set<String> _expanded = <String>{};
+
+  void _toggle(String key) => setState(
+    () => _expanded.contains(key) ? _expanded.remove(key) : _expanded.add(key),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final PaidEventConsentLog? clubLog = widget.event.clubConsentLog;
+
+    // Onay veren öğrenciler: onaysız (ücretli etkinlik alanları eklenmeden
+    // önce yapılmış) kayıtlar listede yer almaz, sayı da onları saymaz.
+    final List<EventRegistration> consented = widget.registrations
+        .where((EventRegistration r) => r.studentConsentLog != null)
+        .toList()
+      ..sort(
+        (EventRegistration a, EventRegistration b) =>
+            b.studentConsentLog!.atMs.compareTo(a.studentConsentLog!.atMs),
+      );
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: context.surface,
+        borderRadius: BorderRadius.circular(BrandShape.controlRadius),
+        boxShadow: BrandShape.card,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            context.t('paidEventConsent.log.club'),
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+          ),
+          const SizedBox(height: 6),
+          if (clubLog == null)
+            Text(
+              context.t('paidEventConsent.log.missing'),
+              style: Theme.of(context).textTheme.bodySmall,
+            )
+          else
+            _ConsentLogRow(
+              log: clubLog,
+              label: widget.event.clubName,
+              expanded: _expanded.contains('club'),
+              onToggle: () => _toggle('club'),
+            ),
+          const SizedBox(height: 14),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: Text(
+                  context.t('paidEventConsent.log.students'),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+              StatusPill(label: '${consented.length}'),
+            ],
+          ),
+          const SizedBox(height: 6),
+          if (consented.isEmpty)
+            Text(
+              context.t('paidEventConsent.log.studentsEmpty'),
+              style: Theme.of(context).textTheme.bodySmall,
+            )
+          else
+            for (final EventRegistration reg in consented)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _ConsentLogRow(
+                  log: reg.studentConsentLog!,
+                  label: reg.displayName,
+                  expanded: _expanded.contains(reg.id),
+                  onToggle: () => _toggle(reg.id),
+                ),
+              ),
+          const SizedBox(height: 10),
+          Text(
+            context.t('paidEventConsent.log.note'),
+            style: TextStyle(
+              fontSize: 11.5,
+              height: 1.4,
+              color: context.inkMuted,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tek bir onay satırı: kim, ne zaman — ve istenirse metnin tamamı.
+class _ConsentLogRow extends StatelessWidget {
+  const _ConsentLogRow({
+    required this.log,
+    required this.label,
+    required this.expanded,
+    required this.onToggle,
+  });
+
+  final PaidEventConsentLog log;
+  final String label;
+  final bool expanded;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final String who = label;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Row(
+          children: <Widget>[
+            Icon(Icons.verified_outlined, size: 15, color: context.inkMuted),
+            const SizedBox(width: 7),
+            Expanded(
+              child: Text(
+                who,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            InkWell(
+              onTap: onToggle,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                child: Text(
+                  context.t(
+                    expanded
+                        ? 'paidEventConsent.log.hideText'
+                        : 'paidEventConsent.log.showText',
+                  ),
+                  style: TextStyle(fontSize: 11.5, color: context.inkMuted),
+                ),
+              ),
+            ),
+          ],
+        ),
+        _Line(icon: Icons.schedule, text: log.stamp),
+        if (expanded) ...<Widget>[
+          const SizedBox(height: 6),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: context.isDarkMode
+                  ? BrandColors.infoBgDark
+                  : BrandColors.infoBg,
+              borderRadius: BorderRadius.circular(BrandShape.controlRadius),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  log.text.isNotEmpty
+                      ? log.text
+                      : context.t('paidEventConsent.log.legacyText'),
+                  style: TextStyle(
+                    fontSize: 12,
+                    height: 1.45,
+                    color: context.ink,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 class _StudentTile extends StatelessWidget {
   const _StudentTile({required this.registration, required this.event});
 
@@ -2107,6 +2558,15 @@ class _StudentTile extends StatelessWidget {
               locale: context.lang,
             ),
           ),
+          // Ücretli etkinlikte öğrencinin onay damgası, kaydın hemen
+          // altında: listeye bakan kulüp onayın alındığını görsün.
+          if (event.isPaid && registration.studentConsentLog != null)
+            _Line(
+              icon: Icons.verified_outlined,
+              text:
+                  '${context.t('paidEventConsent.log.tileLabel')}: '
+                  '${registration.studentConsentLog!.stamp}',
+            ),
         ],
       ),
     );
