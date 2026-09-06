@@ -20,19 +20,23 @@ import 'auth_widgets.dart';
 /// (password-reset.html + js/pages/password-reset.js portu.)
 ///
 /// Akış:
-///   1. E-postaya bağlı hesabın telefon ipucu okunur.
-///   2. Kullanıcı numarasını tam olarak yazar. Numara maskeyle tutuyorsa SMS
-///      kodu gönderilir; tutmuyorsa SMS HİÇ gönderilmez (web ile aynı kontrol).
-///   3. Kod **pop-up** içinde girilir; sayfa arkada kalır.
+///   1. E-postaya bağlı hesabın telefon ipucu okunur (yalnızca ekranda
+///      gösterilecek MASKE için — güvenlik kontrolü buna dayanmaz).
+///   2. Kullanıcı numarasını tam olarak yazar. Sunucudaki
+///      `checkPasswordResetPhone` (Cloud Function) girilen numarayı hesabın
+///      Firebase Auth'taki GERÇEK numarasıyla birebir karşılaştırır; yalnızca
+///      evet/hayır döner. Eşleşmiyorsa SMS HİÇ gönderilmez.
+///   3. Eşleşiyorsa kod **pop-up** içinde girilir; sayfa arkada kalır.
 ///   4. Doğrulanınca doğrudan yeni şifre + şifre tekrar alanları açılır.
 ///   5. Şifre güncellenince hesapla doğrudan giriş yapılır.
 ///
-/// **Neden numara elle yazılıyor?**
+/// **Neden numara elle yazılıyor, sunucu doğrudan SMS atmıyor?**
 /// Firebase Phone Auth doğrulamayı yalnızca istemci başlatabilir ve tam
-/// numarayı ister; Admin SDK'da sunucudan SMS gönderen bir API yok. Tam
-/// numarayı fonksiyondan döndürmek maskelemeyi anlamsız kılar ve e-postadan
-/// telefon öğrenmeyi mümkün kılardı. Bu yüzden maske yalnızca ipucu olarak
-/// gösterilir; SMS'i tetikleyen numarayı kullanıcının kendisi girer.
+/// numarayı ister; Admin SDK'da sunucudan SMS gönderen bir API yok. Bu yüzden
+/// SMS'i tetikleyen numarayı kullanıcının kendisi girer; sunucu yalnızca bu
+/// numaranın hesaba ait olup olmadığını doğrular
+/// (`functions/index.js#checkPasswordResetPhone`), gerçek numarayı asla
+/// istemciye döndürmez.
 ///
 /// **Neden ekrandan çıkarken oturum kapatılıyor?**
 /// Kodu doğrulamak kullanıcıyı Auth'a giriş yaptırır — şifre değiştirmek
@@ -134,25 +138,43 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
     // Ön kontrol (hane sayısı + operatör ön eki): kodu istemeden önce numara
     // gerçekten o ülkenin cep numarası mı? Sahiplik sorgusu burada yapılmaz —
-    // oturum henüz açılmadığı için uid yok; numaranın bu hesaba ait olduğunu
-    // aşağıdaki maske karşılaştırması doğruluyor.
+    // numaranın bu hesaba ait olduğunu aşağıdaki sunucu (Cloud Function)
+    // kontrolü doğruluyor.
     final String? structure = phoneStructureError(context, typed);
     if (structure != null) {
       _setFeedback(structure);
       return;
     }
 
-    // İpucu varsa: girilen numara kayıtlı numarayla aynı mı? Karşılaştırma
-    // MASKELER üzerinden yapılır, çünkü elimizde tam numara hiç yok. Böylece
-    // yanlış numaraya boşuna SMS gitmez ve e-postayı bilen ama numarayı
-    // bilmeyen biri kod isteyemez (js/pages/password-reset.js ile aynı kural).
-    if (_maskedPhone != null && maskE164ForDisplay(typed) != _maskedPhone) {
+    setState(() => _stage = _Stage.sending);
+    _setFeedback(null);
+
+    // Girilen numara gerçekten bu e-postanın hesabına mı ait? Karşılaştırma
+    // sunucuda (Cloud Function, tam numarayla) yapılır ve yalnızca evet/hayır
+    // döner — gerçek numara istemciye hiç açılmaz. Eskiden bu kontrol iki
+    // MASKELENMİŞ diziyi karşılaştırıyordu; ortadaki haneler her iki tarafta
+    // da 'X' olduğundan yalnızca uzunluk + son birkaç hane tutan YANLIŞ bir
+    // numara da "eşleşmiş" gibi görünüp boşuna gerçek SMS gönderiyordu.
+    bool matches;
+    try {
+      matches = await ref
+          .read(phoneHintRepositoryProvider)
+          .matchesAccountPhone(email: widget.email, phoneE164: typed);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _stage = _Stage.enterPhone);
+      _setFeedback(_describeError(error));
+      return;
+    }
+
+    if (!matches) {
+      if (!mounted) return;
+      setState(() => _stage = _Stage.enterPhone);
       _setFeedback(context.t('forgotPassword.phoneMismatch'));
       return;
     }
 
-    setState(() => _stage = _Stage.sending);
-    _setFeedback(null);
+    if (!mounted) return;
     ref.read(passwordResetInProgressProvider.notifier).begin();
 
     await FirebaseAuth.instance.verifyPhoneNumber(

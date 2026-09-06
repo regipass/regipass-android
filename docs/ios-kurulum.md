@@ -35,7 +35,7 @@ bunun üstünü istemiyor, dolayısıyla 15.0 hem alt hem üst sınır.
 
 | Paket | iOS min | Çektiği yerel SDK | Ek gereksinim |
 |---|---|---|---|
-| firebase_core / auth / firestore / storage | 15.0 | Firebase iOS SDK | — |
+| firebase_core / auth / firestore / storage / functions | 15.0 | Firebase iOS SDK | — |
 | google_sign_in_ios 6.3 | 13.0 | GoogleSignIn ~> 9.0 | URL şeması + `GIDClientID` |
 | google_maps_flutter_ios 2.18 | 14.0 | GoogleMaps 8.4–10.x, Google-Maps-iOS-Utils | API anahtarı |
 | mobile_scanner 7.4 | 12.0 | Apple Vision (ML Kit yok) | Kamera izni |

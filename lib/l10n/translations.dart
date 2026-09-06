@@ -581,6 +581,7 @@ const Map<String, String> kTranslationsTr = <String, String>{
   'dashboard.drawer.certificates': 'Belgelerim',
   'dashboard.drawer.qrGenerate': 'QR Oluştur',
   'dashboard.drawer.qrCheckin': 'QR Okut',
+  'dashboard.qrMenu.myTicket': 'Biletim',
   'studentQrGenerate.hero.title': 'QR Oluştur',
   'studentQrGenerate.hero.subtitle':
       'Etkinlik kartına dokun, giriş QR\'ın hemen oluşsun.',
@@ -1278,6 +1279,7 @@ const Map<String, String> kTranslationsEn = <String, String>{
   'dashboard.drawer.certificates': 'My Certificates',
   'dashboard.drawer.qrGenerate': 'Generate QR',
   'dashboard.drawer.qrCheckin': 'Scan QR',
+  'dashboard.qrMenu.myTicket': 'My Ticket',
   'studentQrGenerate.hero.title': 'Generate QR',
   'studentQrGenerate.hero.subtitle':
       'Tap an event card to instantly generate your entry QR.',

@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:regipass/features/shared/legal_consent.dart';
 import 'package:regipass/features/shared/legal_document_screen.dart';
 import 'package:regipass/l10n/app_strings.dart';
 
-/// Onay satırındaki belge adları, adın HANGİ kelimesine basılırsa basılsın
-/// doğru belgeyi açmalı — ad satır sonuna taştığında ("… ve KVKK" /
-/// "Aydınlatma Metni'ni okudum") ikinci satırdaki parça da tıklanabilir
-/// kalmalı.
+/// Belge adları artık ortak bir cümle içine gömülü linkler değil, onay
+/// metninin altında duran, kendi başına geniş dokunma alanlı iki ayrı
+/// buton (chip). Bu testler her çipin doğru belgeyi açtığını ve onay
+/// kutusundan bağımsız çalıştığını doğrular.
 class _Host extends StatefulWidget {
   const _Host();
 
@@ -40,95 +40,99 @@ class _HostState extends State<_Host> {
 }
 
 void main() {
-  Future<void> pumpHost(WidgetTester tester) async {
+  setUpAll(() async {
+    await initializeDateFormatting('tr_TR');
+    await initializeDateFormatting('en_US');
+  });
+
+  Future<void> pumpHost(WidgetTester tester, {String language = 'tr'}) async {
     tester.view.physicalSize = const Size(400, 900);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
-      const MaterialApp(
-        home: LanguageScope(language: 'tr', child: _Host()),
+      MaterialApp(
+        home: LanguageScope(language: language, child: const _Host()),
       ),
     );
     await tester.pumpAndSettle();
   }
 
-  RenderParagraph consentParagraph(WidgetTester tester) {
-    return tester.renderObject<RenderParagraph>(
-      find
-          .byWidgetPredicate(
-            (Widget w) => w is RichText && w.text.toPlainText().contains('KVKK'),
-          )
-          .first,
-    );
-  }
-
-  /// Metnin içindeki [needle] parçasının tam ortasına denk gelen ekran noktası.
-  Offset centerOf(WidgetTester tester, String needle) {
-    final RenderParagraph para = consentParagraph(tester);
-    final String plain = para.text.toPlainText();
-    final int start = plain.indexOf(needle);
-    expect(start, isNonNegative, reason: '"$needle" onay metninde yok');
-    final TextBox box = para
-        .getBoxesForSelection(
-          TextSelection(baseOffset: start, extentOffset: start + needle.length),
-        )
-        .first;
-    return para.localToGlobal(
-      Offset((box.left + box.right) / 2, (box.top + box.bottom) / 2),
-    );
-  }
-
-  String? openDocumentTitle(WidgetTester tester) {
+  String? openDocumentTitle(WidgetTester tester, String language) {
     final Finder screen = find.byType(LegalDocumentScreen);
     if (screen.evaluate().isEmpty) return null;
-    return tester.widget<LegalDocumentScreen>(screen).document.title('tr');
+    return tester.widget<LegalDocumentScreen>(screen).document.title(language);
   }
 
-  testWidgets('belge adının her kelimesi doğru metni açar', (
+  Future<void> tapChipAndPop(
+    WidgetTester tester,
+    String label,
+    String expectedTitle,
+    String language,
+  ) async {
+    await tester.tap(find.text(label));
+    await tester.pumpAndSettle();
+    expect(
+      openDocumentTitle(tester, language),
+      expectedTitle,
+      reason: '"$label" çipine dokunuş yanlış belgeyi açtı',
+    );
+    tester.state<NavigatorState>(find.byType(Navigator).first).pop();
+    await tester.pumpAndSettle();
+    expect(openDocumentTitle(tester, language), isNull);
+  }
+
+  testWidgets('Türkçede her belge çipi kendi belgesini açar', (
     WidgetTester tester,
   ) async {
-    const Map<String, String> expected = <String, String>{
-      'Kullanıcı': 'Kullanıcı ve Kulüp Sözleşmesi',
-      'Sözleşmesi': 'Kullanıcı ve Kulüp Sözleşmesi',
-      'KVKK': 'KVKK Aydınlatma Metni',
-      // Satır sonuna taşan parça — asıl bildirilen hata buydu.
-      'Aydınlatma': 'KVKK Aydınlatma Metni',
-      'Metni': 'KVKK Aydınlatma Metni',
-    };
-
     await pumpHost(tester);
-    for (final MapEntry<String, String> entry in expected.entries) {
-      await tester.tapAt(centerOf(tester, entry.key));
-      await tester.pumpAndSettle();
-      expect(
-        openDocumentTitle(tester),
-        entry.value,
-        reason: '"${entry.key}" kelimesine dokunuş yanlış belgeyi açtı',
-      );
-
-      // Bir sonraki dokunuş için onay ekranına geri dön.
-      tester.state<NavigatorState>(find.byType(Navigator).first).pop();
-      await tester.pumpAndSettle();
-      expect(openDocumentTitle(tester), isNull);
-    }
+    await tapChipAndPop(
+      tester,
+      'Kullanıcı ve Kulüp Sözleşmesi',
+      'Kullanıcı ve Kulüp Sözleşmesi',
+      'tr',
+    );
+    await tapChipAndPop(
+      tester,
+      'KVKK Aydınlatma Metni',
+      'KVKK Aydınlatma Metni',
+      'tr',
+    );
   });
 
-  testWidgets('metin üzerindeyken gelen yeniden çizim dokunuşu yutmaz', (
+  testWidgets('İngilizcede her belge çipi kendi belgesini açar', (
+    WidgetTester tester,
+  ) async {
+    await pumpHost(tester, language: 'en');
+    await tapChipAndPop(
+      tester,
+      'User and Club Agreement',
+      'User and Club Agreement',
+      'en',
+    );
+    await tapChipAndPop(
+      tester,
+      'Data Protection Notice',
+      'Data Protection Notice',
+      'en',
+    );
+  });
+
+  testWidgets('çip üzerindeyken gelen yeniden çizim dokunuşu yutmaz', (
     WidgetTester tester,
   ) async {
     await pumpHost(tester);
     final TestGesture gesture = await tester.startGesture(
-      centerOf(tester, 'Aydınlatma'),
+      tester.getCenter(find.text('KVKK Aydınlatma Metni')),
     );
 
-    // Parmak metnin üzerindeyken ekranı besleyen bir kaynak yayın yapıyor.
+    // Parmak çipin üzerindeyken ekranı besleyen bir kaynak yayın yapıyor.
     tester.state<_HostState>(find.byType(_Host)).rebuild();
     await tester.pump();
 
     await gesture.up();
     await tester.pumpAndSettle();
 
-    expect(openDocumentTitle(tester), 'KVKK Aydınlatma Metni');
+    expect(openDocumentTitle(tester, 'tr'), 'KVKK Aydınlatma Metni');
   });
 
   testWidgets('onay kutusu dokunuşları belge açmaz', (
@@ -137,7 +141,35 @@ void main() {
     await pumpHost(tester);
     await tester.tap(find.byType(Checkbox).first);
     await tester.pumpAndSettle();
-    expect(openDocumentTitle(tester), isNull);
+    expect(openDocumentTitle(tester, 'tr'), isNull);
     expect(tester.state<_HostState>(find.byType(_Host)).terms, isTrue);
+  });
+
+  testWidgets('salt-okunur özet çipleri hâlâ dokunulabilir', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(400, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: LanguageScope(
+          language: 'tr',
+          child: Scaffold(
+            body: SingleChildScrollView(
+              child: ConsentSummary(
+                termsAccepted: true,
+                marketingConsent: false,
+                acceptedAtMs: 1735689600000,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('KVKK Aydınlatma Metni'));
+    await tester.pumpAndSettle();
+    expect(openDocumentTitle(tester, 'tr'), 'KVKK Aydınlatma Metni');
   });
 }

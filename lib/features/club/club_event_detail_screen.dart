@@ -201,10 +201,45 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
     return result == true;
   }
 
+  /// Tek düğmeli bilgi penceresi: seçim yok, yalnızca "neden olmadı" der.
+  Future<void> _notice(String title, String message) => showDialog<void>(
+        context: context,
+        builder: (BuildContext dialogContext) => AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(dialogContext.t('common.close')),
+            ),
+          ],
+        ),
+      );
+
   // ── Kayıt aç/kapa ──────────────────────────────────────────────────
 
+  /// Kayıtları durdurur ya da yeniden açar.
+  ///
+  /// Etkinlik YÜRÜRKEN (kapı açık ya da bir oturum ilerletilmiş — bkz.
+  /// [eventHasStarted]) kayıt yeniden AÇILAMAZ: başlamış bir etkinliğe yeni
+  /// öğrenci alınması, kapıda okutulmamış ve yoklaması tutulmamış bir katılımcı
+  /// üretirdi. Düğmeyi sessizce devre dışı bırakmak yerine sebebi ve çıkış
+  /// yolunu söyleyen bir pencere gösteriyoruz: önce kapı check-in'ini bitir,
+  /// sonra oturumları en başa (0) geri al — o noktada kayıt yeniden açılabilir
+  /// hâle gelir (oturumlar 0'a inince zaten kendiliğinden açılır, bkz.
+  /// [EventRepository.advanceSession]).
+  ///
+  /// Kayıtları DURDURMAK her zaman serbesttir; kısıt yalnızca açma yönünde.
   Future<void> _toggleRegistrations(AppEvent event) async {
     final bool reopening = event.registrationClosed;
+
+    if (reopening && eventHasStarted(event)) {
+      await _notice(
+        context.t('clubEvents.registrations.title'),
+        context.t('clubEvents.registrations.blockedRunning'),
+      );
+      return;
+    }
 
     final bool ok = await _confirm(
       context.t('clubEvents.registrations.title'),
@@ -235,6 +270,11 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
 
   // ── Oturum yönetimi ────────────────────────────────────────────────
 
+  /// İlk oturumu ilerletmek (0 -> 1) etkinliği "başlatır" — bu anda kayıtlar
+  /// da kendiliğinden durur (bkz. [EventRepository.advanceSession] >
+  /// [sessionRegistrationGateAction]): kayıt kapanınca etkinlik keşiften
+  /// düşer (bkz. [isDiscoverableEvent]), yani başlamış bir etkinliğe yeni
+  /// öğrenci kaydolamaz.
   Future<void> _advanceSession(AppEvent event) async {
     final int next = event.currentSession + 1;
 
@@ -281,7 +321,7 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
 
     await _run(() async {
       try {
-        await ref.read(eventRepositoryProvider).advanceSession(event.id, next);
+        await ref.read(eventRepositoryProvider).advanceSession(event, next);
         if (!mounted) return;
         _setFeedback(started, FeedbackTone.success);
         // Oturum başlar başlamaz QR ekrana gelsin: öğrenciler bunu okutacak.
@@ -299,17 +339,37 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
   /// görünemiyordu. Geri alınca eski oturumun QR'ı yeniden geçerli olur ve
   /// hemen ekrana gelir — kulübün ayrıca "QR'ı göster"e basması gerekmez.
   ///
-  /// Halihazırda o oturuma girmiş öğrenciler ikinci kez sayılmaz; okuma
-  /// tarafındaki `lastAttendedSession >= currentSession` kontrolü bunu
-  /// engeller.
+  /// O oturuma kendi QR'ıyla girmiş öğrencilerin yoklaması da geri alınır
+  /// (bkz. [EventRepository.revertSessionAttendance]) — yoksa öğrenci
+  /// ekranında "giriş yapıldı" görünmeye devam eder ve oturum yeniden
+  /// (doğru şekilde) başladığında okuma tarafındaki
+  /// `lastAttendedSession >= currentSession` kontrolü onu tekrar giriş
+  /// yapmaktan alıkoyardu.
+  ///
+  /// En başa (0'a) kadar geri alınırsa — yalnızca etkinlik başladığı için
+  /// kendiliğinden kapanmışsa (bkz. [sessionRegistrationGateAction]) —
+  /// kayıtlar da kendiliğinden yeniden açılır ve etkinlik, standartlara uyan
+  /// öğrencilerin keşfinde tekrar görünür. Kulübün ELLE kapattığı ya da
+  /// kontenjan yüzünden kapanan bir etkinliğe dokunulmaz.
+  ///
+  /// Kapı check-in'i olan etkinliklerde bu adım kapıyı da sıfırlar (bkz.
+  /// [EventRepository.advanceSession]): oturumları yeniden başlatmak için
+  /// check-in'in baştan Başlat→Bitir sırasıyla yeniden geçilmesi gerekir —
+  /// bu yüzden onay/sonuç metni bu durumda ayrıca uyarır.
   Future<void> _undoSession(AppEvent event) async {
     final int previous = event.currentSession - 1;
     if (previous < 0) return;
 
+    final bool resetsDoorCheckin = previous < 1 && event.hasDoorCheckin;
+
     final bool ok = await _confirm(
       context.t('clubEvents.session.undoTitle'),
       previous < 1
-          ? context.t('clubEvents.session.undoToStartConfirm')
+          ? context.t(
+              resetsDoorCheckin
+                  ? 'clubEvents.session.undoToStartConfirmWithCheckin'
+                  : 'clubEvents.session.undoToStartConfirm',
+            )
           : context.t('clubEvents.session.undoConfirm', <String, Object?>{
               'session': previous,
             }),
@@ -317,7 +377,11 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
     if (!ok || !mounted) return;
 
     final String done = previous < 1
-        ? context.t('clubEvents.session.undoneToStart')
+        ? context.t(
+            resetsDoorCheckin
+                ? 'clubEvents.session.undoneToStartWithCheckin'
+                : 'clubEvents.session.undoneToStart',
+          )
         : context.t('clubEvents.session.undone', <String, Object?>{
             'session': previous,
           });
@@ -325,9 +389,24 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
 
     await _run(() async {
       try {
+        // ÖNCE öğrenci tarafı geri alınır: firestore.rules >
+        // clubCanRevertSessionCheckIn, etkinliğin `currentSession`ı HÂLÂ eski
+        // (geri alınmamış) değerdeyken yazılmayı şart koşuyor. En iyi çaba:
+        // kural henüz üretime dağıtılmamışsa ya da tek bir kayıt reddedilirse
+        // bile asıl geri alma işlemi (currentSession) yine de tamamlanır.
+        try {
+          await ref
+              .read(eventRepositoryProvider)
+              .revertSessionAttendance(
+                eventId: event.id,
+                undoneSession: event.currentSession,
+              );
+        } catch (_) {
+          // Yoksay.
+        }
         await ref
             .read(eventRepositoryProvider)
-            .advanceSession(event.id, previous);
+            .advanceSession(event, previous);
         if (!mounted) return;
         _setFeedback(done, FeedbackTone.success);
         // Geri alınan oturumun QR'ı yeniden geçerli — hemen göster.
@@ -370,8 +449,9 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
   /// Kapıyı açar/kapatır. Kapı açıkken öğrenciler kapıdaki ortak QR'ı kendi
   /// telefonlarından okutup girişlerini onaylar; kapalıyken o QR hiçbir işe
   /// yaramaz (firestore.rules > studentCanMarkOwnEventCheckIn `entryOpen`
-  /// alanına bakar). Açar açmaz QR ekrana gelir — kulübün ikinci bir düğme
-  /// araması gerekmesin.
+  /// alanına bakar). Açar açmaz kamera ekrana gelir — görevli beklemeden
+  /// öğrenci bileti okutmaya başlar. QR ekranı isteyen kulüpler için "Göster"
+  /// düğmesiyle ayrıca, elle açılan bir seçenek olarak kalır.
   Future<void> _toggleDoorCheckin(AppEvent event) async {
     final bool opening = !event.entryOpen;
     // Metinler async iş BAŞLAMADAN çözülür (dosyadaki diğer eylemlerle aynı
@@ -383,19 +463,32 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
         await ref.read(eventRepositoryProvider).setEntryOpen(
               event.id,
               opening,
-              // Damga BİR KEZ atılır: "Bitir" sonrası aşama "hiç başlamadı"ya
-              // dönmesin, etkinlik Aktif listesinden düşmesin.
+              // Damga "Bitir" sonrası "Yeniden Başlat"ta korunur: aşama "hiç
+              // başlamadı"ya dönmesin, etkinlik Aktif listesinden düşmesin.
+              // (Oturumlar en başa kadar geri alınırsa sıfırlanır — bkz.
+              // EventRepository.advanceSession.)
               alreadyStartedAtMs: event.entryStartedAtMs,
+              // Kapı GERÇEKTEN ilk kez açılıyorsa kayıtları da kendiliğinden
+              // durdurur — kulübün zaten kapattığı bir kayda dokunmaz.
+              registrationClosed: event.registrationClosed,
             );
       } catch (_) {
         _setFeedback(failed, FeedbackTone.error);
         return;
       }
       if (opening && mounted) {
-        await showDoorCheckinQrDialog(context, event.id);
+        _openDoorScanner(event);
       }
     });
   }
+
+  /// Görevlinin öğrenci biletini kamerayla okutacağı ekranı açar.
+  ///
+  /// Kapı check-in'inin varsayılan yolu budur; QR gösterimi bunun yerine
+  /// değil, isteyen kulüpler için bunun yanında duran ikinci bir seçenektir.
+  void _openDoorScanner(AppEvent event) => context.push(
+        '${Routes.clubQrCheckin}?eventId=${Uri.encodeComponent(event.id)}',
+      );
 
   /// Kapıda check-in'i kaçıranların oturum yoklamasına doğrudan katılmasına
   /// izin veren anahtar (PDF: "oturumları başlattıktan sonra bir switch").
@@ -1169,6 +1262,7 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
                 _showSessionQr(event.id, event.currentSession),
             onToggleDoorCheckin: () => _toggleDoorCheckin(event),
             onShowDoorQr: () => showDoorCheckinQrDialog(context, event.id),
+            onScanDoorCheckin: () => _openDoorScanner(event),
             onAllowSessionWithoutCheckin: (bool allow) =>
                 _setAllowSessionWithoutCheckin(event, allow),
             onDistribute: () => _pickCertificate(event),
@@ -1202,6 +1296,7 @@ class _Body extends ConsumerWidget {
     required this.onShowSessionQr,
     required this.onToggleDoorCheckin,
     required this.onShowDoorQr,
+    required this.onScanDoorCheckin,
     required this.onAllowSessionWithoutCheckin,
     required this.onDistribute,
     required this.onDistributeLink,
@@ -1228,6 +1323,7 @@ class _Body extends ConsumerWidget {
   final VoidCallback onShowSessionQr;
   final VoidCallback onToggleDoorCheckin;
   final VoidCallback onShowDoorQr;
+  final VoidCallback onScanDoorCheckin;
   final ValueChanged<bool> onAllowSessionWithoutCheckin;
   final VoidCallback onDistribute;
   final VoidCallback onDistributeLink;
@@ -1331,6 +1427,11 @@ class _Body extends ConsumerWidget {
         // Ölçüt oturum sayısı değil MODDUR: "Check-in + Yoklama" modunda
         // etkinlik çok oturumlu olduğu hâlde kapıda bir check-in adımı vardır.
         // Eski kayıtlarda mod oturum sayısından türetilir, davranış değişmez.
+        //
+        // Öncelikli yol kamerayla okutmaktır: görevli öğrencinin biletini
+        // tarar. QR ekranı (öğrencinin kendi telefonundan kapıdaki ortak kodu
+        // okutması) isteyen kulüpler için burada "Göster" düğmesiyle elle
+        // açılan, ikinci planda bir seçenek olarak durur — otomatik açılmaz.
         if (event.hasDoorCheckin) ...<Widget>[
           const SizedBox(height: 22),
           EventSectionTitle(context.t('clubEvents.entry.title')),
@@ -1344,32 +1445,7 @@ class _Body extends ConsumerWidget {
             total: list.length,
             onToggle: onToggleDoorCheckin,
             onShowQr: onShowDoorQr,
-          ),
-        ],
-
-        // ── QR okutma ──────────────────────────────────────────────
-        // Yalnızca TEK oturumlu etkinliklerde. Oturumlu etkinlikte giriş ters
-        // yönde işler: kulüp oturum QR'ını ekrana basar, öğrenci kendi
-        // telefonundan okutur. Öğrencinin kişisel QR'ını okutmak orada bir
-        // yoklama üretmiyor, bu yüzden düğme kafa karıştırmaktan başka bir işe
-        // yaramıyordu.
-        // Kapı check-in'i olan her etkinlikte görevli bilet okutabilir:
-        // öğrenci ya biletini gösterir ya kapıdaki ortak kodu okutur.
-        // İki yön de aynı damgayı yazar; hangisinin kullanılacağı
-        // kulübün kapıdaki tercihidir (club-qr-checkin.js ile aynı).
-        if (event.hasDoorCheckin) ...<Widget>[
-          const SizedBox(height: 22),
-          EventSectionTitle(context.t('dashboard.drawer.qrCheckin')),
-          const SizedBox(height: 10),
-          _ActionCard(
-            icon: Icons.qr_code_scanner,
-            title: context.t('clubEvents.scan.action'),
-            subtitle: context.t('clubEvents.scan.subtitle'),
-            onPressed: past
-                ? null
-                : () => context.push(
-                      '${Routes.clubQrCheckin}?eventId=${Uri.encodeComponent(event.id)}',
-                    ),
+            onScan: onScanDoorCheckin,
           ),
         ],
 
@@ -1551,6 +1627,12 @@ class _Body extends ConsumerWidget {
 ///
 /// "Yeniden Başlat" **veriyi sıfırlamaz**: okunan girişler kayıtlarda durur
 /// (`checkedInAtMs` bir kez yazılır), yeni okutulanlar üzerine eklenir.
+///
+/// Bu üç aşama yalnızca kulüp oturumları en başa (0'a) kadar geri alırsa
+/// [CheckinStage.notStarted]'a döner — o zaman etkinlik gerçekten "hiç
+/// başlamamış" sayılır ve keşfe geri düşer (bkz.
+/// `EventRepository.advanceSession`, `domain/event_utils.dart >
+/// eventHasStarted`).
 class _CheckinStageBar extends StatelessWidget {
   const _CheckinStageBar({
     required this.event,
@@ -1559,6 +1641,7 @@ class _CheckinStageBar extends StatelessWidget {
     required this.total,
     required this.onToggle,
     required this.onShowQr,
+    required this.onScan,
   });
 
   final AppEvent event;
@@ -1570,6 +1653,10 @@ class _CheckinStageBar extends StatelessWidget {
 
   final VoidCallback onToggle;
   final VoidCallback onShowQr;
+
+  /// Görevlinin öğrenci biletini kamerayla okutacağı ekranı açar — kapı
+  /// check-in'inin varsayılan, birincil yolu.
+  final VoidCallback onScan;
 
   @override
   Widget build(BuildContext context) {
@@ -1639,10 +1726,19 @@ class _CheckinStageBar extends StatelessWidget {
           ),
           const SizedBox(height: 14),
 
-          // Kapı açıkken asıl iş QR'ı ekranda tutmaktır; "Bitir" ikincil
-          // kalır ki yanlışlıkla basılmasın.
+          // Kapı açıkken asıl iş görevlinin öğrenci biletini kamerayla
+          // okutmasıdır. QR'ı ekranda göstermek — öğrencinin kendi
+          // telefonundan kapıdaki ortak kodu okutması — isteyen kulüpler
+          // için ikinci planda, elle açılan bir seçenek olarak kalır; "Bitir"
+          // ise en geride durur ki yanlışlıkla basılmasın.
           if (running) ...<Widget>[
             FilledButton.icon(
+              onPressed: busy ? null : onScan,
+              icon: const Icon(Icons.qr_code_scanner, size: 18),
+              label: Text(context.t('clubEvents.scan.action')),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
               onPressed: busy ? null : onShowQr,
               icon: const Icon(Icons.qr_code_2, size: 18),
               label: Text(context.t('clubEvents.entry.show')),
@@ -1653,7 +1749,7 @@ class _CheckinStageBar extends StatelessWidget {
               icon: const Icon(Icons.stop_circle_outlined, size: 18),
               label: Text(action),
             ),
-          ] else
+          ] else ...<Widget>[
             FilledButton.icon(
               onPressed: busy ? null : onToggle,
               icon: Icon(
@@ -1664,6 +1760,17 @@ class _CheckinStageBar extends StatelessWidget {
               ),
               label: Text(action),
             ),
+            // Bitmiş kapıda da görevli geç gelen öğrenciyi kamerayla
+            // okutabilsin diye seçenek burada da durur.
+            if (stage == CheckinStage.finished) ...<Widget>[
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: busy ? null : onScan,
+                icon: const Icon(Icons.qr_code_scanner, size: 18),
+                label: Text(context.t('clubEvents.scan.action')),
+              ),
+            ],
+          ],
         ],
       ),
     );
@@ -2558,15 +2665,6 @@ class _StudentTile extends StatelessWidget {
               locale: context.lang,
             ),
           ),
-          // Ücretli etkinlikte öğrencinin onay damgası, kaydın hemen
-          // altında: listeye bakan kulüp onayın alındığını görsün.
-          if (event.isPaid && registration.studentConsentLog != null)
-            _Line(
-              icon: Icons.verified_outlined,
-              text:
-                  '${context.t('paidEventConsent.log.tileLabel')}: '
-                  '${registration.studentConsentLog!.stamp}',
-            ),
         ],
       ),
     );

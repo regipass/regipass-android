@@ -110,9 +110,54 @@ bool isEventFinished(AppEvent event, {DateTime? now}) {
   return isPastEvent(event, now: now);
 }
 
+/// Etkinlik ŞU AN yürüyor mu: kapı check-in'i açık ya da bir oturum
+/// ilerletilmiş durumda.
+///
+/// `registrationClosed` bayrağı etkinlik başlarken kendiliğinden kapanır
+/// (bkz. `EventRepository.setEntryOpen` ve `advanceSession`) ama kulüp bunu
+/// sonradan ELLE geri açabilir (`_toggleRegistrations`). Yürüyen bir
+/// etkinlikte bu, keşfe geri dönmeye yetmemeli — kayıt kapısı bu yüzden
+/// yalnızca bayrağa değil, etkinliğin o anki durumuna da bakar. Kulüp
+/// yürüyen etkinlikte kaydı zaten AÇAMAZ; ekran onu uyarıp geri çevirir
+/// (bkz. `_toggleRegistrations`), burası da okuma tarafındaki karşılığıdır.
+///
+/// Ölçüt bilerek `entryStartedAtMs` (kapı hiç açıldı mı) DEĞİL, `entryOpen`
+/// (kapı şu anda açık mı): damga "Bitir" → "Yeniden Başlat" döngüsünde
+/// korunduğu için, ölçüt o olsaydı kapısı bir kez açılmış etkinlik bir daha
+/// asla keşfe dönemezdi. Oturumu olmayan (`checkin_only`) etkinliklerde geri
+/// alınacak bir oturum da olmadığı için bu kalıcı bir çıkmaz olurdu.
+///
+/// Böylece "başa dönüş" iki adımla tamamlanır ve ikisi de geri alınabilir:
+/// kapıyı bitirmek (`entryOpen = false`) ve oturumları en başa (0) almak.
+/// Kulüp bu durumda kayıtları yeniden açabilir; oturumlar tek tek 0'a
+/// alındığında `advanceSession` zaten kendiliğinden açar.
+bool eventHasStarted(AppEvent event) =>
+    event.currentSession > 0 || event.entryOpen;
+
+/// Yeni bir öğrenci bu etkinliğe kaydolabilir mi (tersi: kapalı)?
+///
+/// Süresi geçmiş VEYA kulübün elle/otomatik kapattığı VEYA fiilen başlamış
+/// (bkz. [eventHasStarted]) bir etkinlikte kayıt kapısı kapalı sayılır —
+/// üçü de birbirinden bağımsız, herhangi biri yeter.
 bool isRegistrationClosed(AppEvent? event, {DateTime? now}) {
   if (event == null) return true;
-  return event.registrationClosed || isPastEvent(event, now: now);
+  return event.registrationClosed ||
+      isPastEvent(event, now: now) ||
+      eventHasStarted(event);
+}
+
+/// Zaten KAYITLI bir öğrenci için etkinlik gerçekten bitti mi?
+///
+/// Bilerek [isRegistrationClosed] KULLANILMAZ: o yalnızca YENİ kayıt açılıp
+/// açılmadığını söyler. Kulüp kayıtları elle durdurduğunda (kontenjan
+/// dolduğunda ya da elle) zaten kayıtlı öğrencinin randevusu hemen "geçmiş"
+/// sekmesine düşmemeli, bileti/QR'ı da üretilemez hâle gelmemeli — kulübün
+/// tek yaptığı yeni kayıt almayı durdurmaktır. Etkinlik, oturumları bitene VE
+/// süresi tam olarak dolana kadar öğrenci için hâlâ "devam eden" sayılır.
+bool isEventOverForAttendee(AppEvent? event, {DateTime? now}) {
+  if (event == null) return true;
+  final bool sessionsDone = !event.isMultiSession || event.sessionsCompleted;
+  return sessionsDone && isEventFinished(event, now: now);
 }
 
 /// Keşfet/öğrenci listesinde gösterilebilecek aktif etkinlik.

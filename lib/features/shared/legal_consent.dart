@@ -1,4 +1,3 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../../app/theme.dart';
@@ -11,15 +10,23 @@ import 'legal_document_screen.dart';
 ///
 /// 1. satır ZORUNLUDUR: Kullanıcı ve Kulüp Sözleşmesi + KVKK Aydınlatma
 ///    Metni'nin okunduğunu onaylar; bu onay verilmeden kayıt tamamlanamaz.
+///    Belge adları artık ortak bir cümlenin İÇİNE gömülü linkler değil,
+///    onay metninin ALTINDA kendi başına duran, geniş dokunma alanlı iki ayrı
+///    buton (bkz. [_DocumentChip]). Önceki tasarımda "KVKK Aydınlatma
+///    Metni" gibi uzun bir belge adı satır sonuna taştığında, ikinci
+///    satıra düşen kelimeye basmak gerçek cihazda güvenilir çalışmıyordu —
+///    metin akışı içindeki dar bir kelimeyi parmakla isabet ettirmek zordu.
+///    Belgelerin kendisi hâlâ ayrı ayrıdır (iki farklı [LegalDocument]);
+///    yalnızca ONAY EYLEMİ (imzalama) tek bir onay kutusuyla birleşiktir.
 /// 2. satır isteğe bağlıdır: pazarlama amaçlı üçüncü taraf paylaşımı — KVKK
 ///    Açık Rıza Metni'nin kendisi de bu maddeyi "reddetmeniz temel
 ///    işlevlerden yararlanmanızı engellemez" diye tarif ediyor, o yüzden
 ///    kayıt düğmesini bu ikinci kutu değil yalnızca birincisi kilitler.
 ///
 /// [readOnly] true olduğunda kutucuklar dokunulamaz hâle gelir (bkz.
-/// bilgi formu ekranlarındaki "onayladığın metinler" özeti); belge adları
-/// yine de dokunulabilir kalır.
-class LegalConsentSection extends StatefulWidget {
+/// bilgi formu ekranlarındaki "onayladığın metinler" özeti); belge
+/// butonları yine de dokunulabilir kalır.
+class LegalConsentSection extends StatelessWidget {
   const LegalConsentSection({
     super.key,
     required this.termsAccepted,
@@ -42,74 +49,16 @@ class LegalConsentSection extends StatefulWidget {
   final Color? accentColor;
 
   @override
-  State<LegalConsentSection> createState() => _LegalConsentSectionState();
-}
-
-class _LegalConsentSectionState extends State<LegalConsentSection> {
-  /// Belge başına TEK ve kalıcı dokunma tanıyıcısı.
-  ///
-  /// Tanıyıcılar her build'de yeniden üretilmemeli: parmak metnin üzerindeyken
-  /// (pointer down ile pointer up arasında) bir yeniden çizim olursa — ekranı
-  /// besleyen bir provider yayın yapınca, belge ekranından geri dönülünce ya
-  /// da bir setState çalışınca — eski tanıyıcı dispose edilir ve dokunuş
-  /// sessizce yutulur. Kullanıcı açısından bu "basıyorum ama hiçbir şey
-  /// olmuyor" demek; özellikle satır sonuna taşan uzun belge adlarında
-  /// (ör. "KVKK Aydınlatma Metni") sık görülüyordu. Tanıyıcılar bir kez
-  /// üretilir ve yalnızca [dispose] içinde bırakılır.
-  final Map<LegalDocument, TapGestureRecognizer> _recognizers =
-      <LegalDocument, TapGestureRecognizer>{};
-
-  @override
-  void dispose() {
-    for (final TapGestureRecognizer recognizer in _recognizers.values) {
-      recognizer.dispose();
-    }
-    super.dispose();
-  }
-
-  TapGestureRecognizer _openRecognizer(LegalDocument doc) {
-    return _recognizers.putIfAbsent(
-      doc,
-      () => TapGestureRecognizer()
-        ..onTap = () => openLegalDocument(context, doc),
-    );
-  }
-
-  InlineSpan _linkSpan(LegalDocument doc, String language, Color color) {
-    return TextSpan(
-      text: doc.title(language),
-      style: TextStyle(
-        color: color,
-        fontWeight: FontWeight.w700,
-        decoration: TextDecoration.underline,
-        decorationColor: color,
-      ),
-      recognizer: _openRecognizer(doc),
-    );
-  }
-
-  @override
   Widget build(BuildContext context) {
     final String language = context.lang;
-    final Color ink = widget.textColor ?? context.ink;
-    final Color muted = widget.mutedColor ?? context.inkMuted;
-    final Color accent = widget.accentColor ?? BrandColors.red;
+    final Color ink = textColor ?? context.ink;
+    final Color muted = mutedColor ?? context.inkMuted;
+    final Color accent = accentColor ?? BrandColors.red;
     final bool isEn = language == 'en';
 
-    final List<InlineSpan> termsSpans = isEn
-        ? <InlineSpan>[
-            const TextSpan(text: 'I have read and approve the '),
-            _linkSpan(kUserClubAgreement, language, accent),
-            const TextSpan(text: ' and the '),
-            _linkSpan(kKvkkNotice, language, accent),
-            const TextSpan(text: '.'),
-          ]
-        : <InlineSpan>[
-            _linkSpan(kUserClubAgreement, language, accent),
-            const TextSpan(text: "'ni ve "),
-            _linkSpan(kKvkkNotice, language, accent),
-            const TextSpan(text: "'ni okudum, onaylıyorum."),
-          ];
+    final String introText = isEn
+        ? 'I have read and approve the following documents:'
+        : 'Aşağıdaki belgeleri okudum ve onaylıyorum:';
 
     final String marketingText = isEn
         ? 'I allow my personal data to be shared with third-party '
@@ -122,23 +71,98 @@ class _LegalConsentSectionState extends State<LegalConsentSection> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         _ConsentRow(
-          value: widget.termsAccepted,
-          onChanged: widget.readOnly ? null : widget.onTermsChanged,
-          readOnly: widget.readOnly,
+          value: termsAccepted,
+          onChanged: readOnly ? null : onTermsChanged,
+          readOnly: readOnly,
           accent: accent,
           textColor: ink,
-          spans: termsSpans,
+          spans: <InlineSpan>[TextSpan(text: introText)],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
+        Padding(
+          // 24 (kutucuk) + 8 (ara boşluk) — üstteki metnin başladığı yerle
+          // hizalanır.
+          padding: const EdgeInsets.only(left: 32),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: <Widget>[
+              _DocumentChip(
+                label: kUserClubAgreement.title(language),
+                color: accent,
+                onTap: () => openLegalDocument(context, kUserClubAgreement),
+              ),
+              _DocumentChip(
+                label: kKvkkNotice.title(language),
+                color: accent,
+                onTap: () => openLegalDocument(context, kKvkkNotice),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
         _ConsentRow(
-          value: widget.marketingConsent,
-          onChanged: widget.readOnly ? null : widget.onMarketingChanged,
-          readOnly: widget.readOnly,
+          value: marketingConsent,
+          onChanged: readOnly ? null : onMarketingChanged,
+          readOnly: readOnly,
           accent: accent,
           textColor: muted,
           spans: <InlineSpan>[TextSpan(text: marketingText)],
         ),
       ],
+    );
+  }
+}
+
+/// Bir hukuki belgeyi açan, kendi başına duran dokunma hedefi.
+///
+/// Cümle içine gömülü bir link yerine bağımsız bir buton olması, hem
+/// dokunma alanını büyütür (satır sonuna taşan bir kelimeye değil, tüm
+/// çipe basılabilir) hem de belgenin kendi kimliğini (ayrı sözleşme, ayrı
+/// KVKK metni) görsel olarak netleştirir.
+class _DocumentChip extends StatelessWidget {
+  const _DocumentChip({
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: color.withValues(alpha: 0.10),
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Icon(Icons.description_outlined, size: 15, color: color),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  label,
+                  softWrap: true,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    decoration: TextDecoration.underline,
+                    decorationColor: color,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

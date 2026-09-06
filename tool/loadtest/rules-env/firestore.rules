@@ -17,31 +17,151 @@ service cloud.firestore {
         && request.auth.uid == "AY1gi7Zi9AcqhjZinEkR1baB9T72";
     }
 
-    function userData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    // ── Kulup yetkisi ─────────────────────────────────────────────────────
+    // ONEMLI: Yetki "users" belgesinden OKUNMAZ. O belgeyi kullanicinin
+    // kendisi yazabildigi icin (asagidaki users kurali) role/lastRole alanlari
+    // istemcinin BEYANIDIR, kanit degil. Eskiden isClubUser() bu beyana
+    // bakiyordu: herhangi bir ogrenci kendi users belgesine role: "club"
+    // yazip etkinlik olusturabiliyordu. Yetki artik yalnizca kulup profilinin
+    // kendisinden gelir; o belgede onay durumunu ise sadece admin degistirebilir
+    // (bkz. club_profiles kurallari).
+    function clubProfileRef() {
+      return get(/databases/$(database)/documents/club_profiles/$(request.auth.uid));
     }
 
+    // Bilgi formunu tamamlamis, engellenmemis kulup.
+    //
+    // Alanlar get(...) ile VARSAYILANLI okunur: eski belgelerde clubStatus ya
+    // da onboardingCompleted hic olmayabilir ve dogrudan erisim kuralin
+    // degerlendirme hatasiyla patlamasina, yani mesru bir kulubun de
+    // reddedilmesine yol acardi.
     function isClubUser() {
       return isSignedIn()
-        && (
-          userData().role == "club"
-          || userData().lastRole == "club"
-        );
+        && clubProfileRef() != null
+        && clubProfileRef().data.get("onboardingCompleted", false) == true
+        && clubProfileRef().data.get("clubStatus", "") != "banned";
+    }
+
+    // Belgeleri admin tarafindan onaylanmis kulup. Etkinlik olusturmak icin
+    // sart: onay kapisini atlayan bir hesap etkinlik yayinlayamaz.
+    function isApprovedClub() {
+      return isClubUser()
+        && clubProfileRef().data.get("clubStatus", "") == "approved";
     }
 
     function eventDoc(eventId) {
       return get(/databases/$(database)/documents/events/$(eventId));
     }
 
-    // Gecici tanilama modu:
-    // true iken event_registrations create/update icin event kosullari bypass edilir.
-    // Sorun cozulunce mutlaka false yap.
-    function registrationDebugMode() {
-      return true;
+    // ── Ucretli etkinlik onay logu ────────────────────────────────────────
+    // Ucretli etkinliklerde iki taraf da bir metni onaylar ve onay logu
+    // ETKINLIK verisine yazilir (bkz. mobil docs/ucretli-etkinlik-onay-logu.md):
+    //   • kulup  -> events/{eventId}.paidConsentLog
+    //   • ogrenci-> event_registrations/{id}.paidConsentLog
+    // Sema iki istemcide de ayni (web: club-create-event.js / dashboard.js,
+    // mobil: lib/domain/paid_event_consent.dart).
+    //
+    // Bu kurallar onayi ZORUNLU tutar: onaysiz ucretli etkinlik olusturulamaz
+    // ve onaysiz ucretli kayit yazilamaz. Istemcideki pop-up atlatilsa bile
+    // sinir burasidir.
+    // Alanlar get(...) ile VARSAYILANLI okunur: log hic yoksa ya da yanlis
+    // tipteyse kural degerlendirme HATASI vermez, dogal olarak false doner.
+    function paidConsentLog(data) {
+      return data.get("paidConsentLog", {});
     }
 
+    function paidConsentLogValid(data) {
+      return paidConsentLog(data) is map
+        && paidConsentLog(data).get("approved", false) == true
+        && paidConsentLog(data).get("text", "") is string
+        && paidConsentLog(data).get("text", "").size() > 0
+        && paidConsentLog(data).get("approvedAtMs", 0) is int
+        && paidConsentLog(data).get("approvedAtMs", 0) > 0;
+    }
+
+    function isPaidEventData(data) {
+      return data.get("feeType", "") == "paid";
+    }
+
+    // Uretimde kayit kosullarini asla atlama. Gecici tanilama icin bu deger
+    // yalnizca yerel bir test dalinda acilabilir; yayinlanan kuralda kapali
+    // kalmalidir.
+    function registrationDebugMode() {
+      return false;
+    }
+
+    // "users" belgesi kullanicinin kendi ozet kaydidir (panel gosterimi ve
+    // yonetici listeleri). YETKI KAYNAGI DEGILDIR — role/lastRole/roles
+    // alanlari istemci beyanidir ve hicbir kural bunlara bakmaz.
+    //
+    // Buna karsilik onay/engel alanlari burada da kilitlidir: kullanici kendi
+    // kaydina "clubStatus: approved" ya da "banned: false" yazip yonetici
+    // ekranlarini yaniltamasin, kendi engelini kaldiramasin.
+    //
+    // DIKKAT: merge/update yazmalarinda request.resource.data BIRLESMIS
+    // belgedir; istemci alana hic dokunmasa bile belgede varsa burada gorunur.
+    // Bu yuzden "alan istekte var mi" degil "degeri degisti mi" sorulur.
     match /users/{userId} {
-      allow read, write: if isOwner(userId) || isAdmin();
+      function clubStatusUnchanged() {
+        return !("clubStatus" in request.resource.data)
+          || (
+            resource != null
+            && "clubStatus" in resource.data
+            && request.resource.data.clubStatus == resource.data.clubStatus
+          );
+      }
+
+      // Kulup kendini yalnizca inceleme ONCESI durumlara alabilir; "approved"
+      // ve "banned" kararlari admin'e aittir.
+      function clubStatusSelfWritable() {
+        return request.resource.data.clubStatus in ["documents_pending", "pending_review"];
+      }
+
+      // Yetkili kaynak club_profiles; oradaki deger buraya kopyalanabilir.
+      // (Kulup bilgilerini duzenleyen ONAYLI bir kulubun yazmasi bu daldan gecer.)
+      function clubStatusMatchesProfile() {
+        return clubProfileRef() != null
+          && request.resource.data.clubStatus == clubProfileRef().data.get("clubStatus", "");
+      }
+
+      function banFlagUnchanged() {
+        return !("banned" in request.resource.data)
+          || (
+            resource != null
+            && "banned" in resource.data
+            && request.resource.data.banned == resource.data.banned
+          );
+      }
+
+      allow read: if isOwner(userId) || isAdmin();
+
+      // "write" DEGIL "create, update": silme ayri ele alinmali. Silme
+      // isteginde request.resource null'dur, bu yuzden yukaridaki
+      // clubStatusUnchanged/banFlagUnchanged kontrolleri (hepsi
+      // request.resource.data okur) hata verir ve silme HER ZAMAN reddedilirdi.
+      allow create, update: if isAdmin()
+        || (
+          isOwner(userId)
+          && (
+            clubStatusUnchanged()
+            || clubStatusSelfWritable()
+            || clubStatusMatchesProfile()
+          )
+          && banFlagUnchanged()
+        );
+
+      // Hesap silme: kullanici kendi users belgesini kaldirabilir (bkz.
+      // js/modules/auth/account-delete-modal.js ve account-expiry.js'teki
+      // suresi dolan kayit temizligi).
+      //
+      // Engellenmis hesap SILEMEZ: silip ayni e-postayla yeniden kaydolarak
+      // engeli asmasin (student_profiles / club_profiles ile ayni desen).
+      allow delete: if isAdmin()
+        || (
+          isOwner(userId)
+          && resource.data.get("banned", false) != true
+          && resource.data.get("clubStatus", "") != "banned"
+        );
     }
 
     // Telefon dogrulamasi: phoneVerified yalnizca gercek Firebase Auth telefon
@@ -92,7 +212,7 @@ service cloud.firestore {
     // ── Dogrulanmamis kaydin omru ("expireAt") ────────────────────────────
     // "expireAt", Firestore TTL politikasinin okudugu tarihtir: tarih gecince
     // belge KENDILIGINDEN silinir (bkz. firestore.indexes.json > fieldOverrides
-    // ve js/modules/auth/account-expiry.js). Telefonunu 3 dakika icinde
+    // ve js/modules/auth/account-expiry.js). Telefonunu 3 gun icinde
     // dogrulamayan ogrenci kaydi boylece veritabaninda kalmaz.
     //
     // Tarih istemcide hesaplanir (TTL gercek bir zaman damgasi ister,
@@ -125,6 +245,18 @@ service cloud.firestore {
     // Ogrenci profilleri: sahibi tam erisim (telefon dogrulama korumasiyla);
     // admin istatistik/ban ekranlari icin okuma+yazma (kulup profilleriyle ayni desen).
     match /student_profiles/{userId} {
+      // Engelleme kararini yalnizca admin verir; ogrenci kendi kaydindaki
+      // "banned" bayragini temizleyip engelini kaldiramaz.
+      // (merge yazmalarinda alan istekte GORUNUR, bu yuzden degeri karsilastirilir.)
+      function banFlagUnchanged() {
+        return !("banned" in request.resource.data)
+          || (
+            resource != null
+            && "banned" in resource.data
+            && request.resource.data.banned == resource.data.banned
+          );
+      }
+
       allow read: if isOwner(userId) || isAdmin();
       allow create, update: if isAdmin()
         || (
@@ -132,20 +264,85 @@ service cloud.firestore {
           && phoneVerificationValid()
           && expiryDeadlineValid()
           && expiryNotDropped()
+          && banFlagUnchanged()
         );
-      allow delete: if isOwner(userId);
+      // Engellenmis ogrenci profilini SILEMEZ: aksi halde kaydini silip
+      // ayni hesapla yeniden kaydolarak engeli asardi.
+      allow delete: if isAdmin()
+        || (isOwner(userId) && resource.data.get("banned", false) != true);
     }
 
     // Kulup profilleri: sahibi tam erisim (telefon dogrulama korumasiyla); admin onay/engelleme icin okuma+yazma.
     match /club_profiles/{userId} {
+      // ── Onay kapisi ─────────────────────────────────────────────────────
+      // Bu belge kulup yetkisinin TEK kaynagidir (bkz. isClubUser /
+      // isApprovedClub). Dolayisiyla onay ve engel alanlari sahibine kapali:
+      // aksi halde kulup kendi belgesine "clubStatus: approved" yazip belge
+      // incelemesini atlar ve etkinlik yayinlardi.
+      //
+      // Sahibin yazabildigi durumlar yalnizca inceleme ONCESI olanlar:
+      //   documents_pending -> belge yukleme asamasi (ilk kayit / admin iade)
+      //   pending_review    -> belgeler yuklendi, kuyruga alindi
+      // "approved" ve "banned" yalnizca admin tarafindan yazilabilir.
+      function clubStatusUnchanged() {
+        return !("clubStatus" in request.resource.data)
+          || (
+            resource != null
+            && "clubStatus" in resource.data
+            && request.resource.data.clubStatus == resource.data.clubStatus
+          );
+      }
+
+      function clubStatusSelfWritable() {
+        return request.resource.data.clubStatus in ["documents_pending", "pending_review"];
+      }
+
+      function banFlagUnchanged() {
+        return !("banned" in request.resource.data)
+          || (
+            resource != null
+            && "banned" in resource.data
+            && request.resource.data.banned == resource.data.banned
+          );
+      }
+
+      // Yoneticinin kulube yazdigi mesajlar (bkz. js/modules/admin/club-messages.js)
+      // bu belgede durur ama SAHIBINE kapalidir: kulup kendisine gonderilen
+      // "eksik belge" notunu silemez ya da kendi kendine mesaj uyduramaz.
+      // Alan zaten varsa istekte AYNEN gelmelidir; boylece merge olmayan bir
+      // yazma da diziyi silemez.
+      function adminMessagesUnchanged() {
+        return (resource != null && "adminMessages" in resource.data)
+          ? (
+            "adminMessages" in request.resource.data
+            && request.resource.data.adminMessages == resource.data.adminMessages
+          )
+          : !("adminMessages" in request.resource.data);
+      }
+
       allow read: if isOwner(userId) || isAdmin();
-      allow create, update: if isAdmin() || (isOwner(userId) && phoneVerificationValid());
-      allow delete: if isOwner(userId) || isAdmin();
+      allow create, update: if isAdmin()
+        || (
+          isOwner(userId)
+          && phoneVerificationValid()
+          && (clubStatusUnchanged() || clubStatusSelfWritable())
+          && banFlagUnchanged()
+          && adminMessagesUnchanged()
+        );
+      // Engellenmis kulup profilini SILEMEZ: silip yeniden kaydolarak
+      // engeli asmasin.
+      allow delete: if isAdmin()
+        || (
+          isOwner(userId)
+          && resource.data.get("clubStatus", "") != "banned"
+          && resource.data.get("banned", false) != true
+        );
     }
 
     // ── Telefon ipuclari (sifre sifirlama ekrani icin) ────────────────────
-    // Anahtar: e-postanin SHA-256'si. Icerik: maskelenmis telefon ve hesabin
-    // student/club rolleridir. Tam numara, e-posta veya baska profil alani
+    // Anahtar: e-postanin SHA-256'si. Icerik: maskelenmis metin
+    // ("+90 XXX XXX XX 67") VE tam numaranin SHA-256 hash'i (phoneHash, geri
+    // cevrilemez). Tam numaranin DUZ METNI, e-posta veya baska profil alani
     // BURADA TUTULMAZ (bkz. js/modules/auth/phone-hint.js).
     //
     // get  : acik — sifresini unutmus kullanici giris YAPMAMIS durumdadir,
@@ -164,24 +361,11 @@ service cloud.firestore {
       allow list: if false;
 
       allow create, update: if isSignedIn()
-        && request.resource.data.keys().hasOnly(["maskedPhone", "roles", "updatedAt"])
+        && request.resource.data.keys().hasOnly(["maskedPhone", "phoneHash", "updatedAt"])
         && request.resource.data.maskedPhone is string
         && request.resource.data.maskedPhone.size() <= 40
-        && (
-          (
-            "roles" in request.resource.data
-            && request.resource.data.roles is list
-            && request.resource.data.roles.size() >= 1
-            && request.resource.data.roles.size() <= 2
-            && request.resource.data.roles.hasOnly(["student", "club"])
-          )
-          // Eski web istemcisi roles yazmaz. Eski belgeyi güncelleyebilir ama
-          // mobilin eklediği rol listesini sonradan silemez.
-          || (
-            !("roles" in request.resource.data)
-            && !(resource != null && "roles" in resource.data)
-          )
-        );
+        && request.resource.data.phoneHash is string
+        && request.resource.data.phoneHash.size() == 64;
 
       allow delete: if false;
     }
@@ -268,8 +452,39 @@ service cloud.firestore {
       // profiller etkilenmez, onlarin kurallari ayri.
       allow read: if isSignedIn() || resource.data.hiddenGlobally == false;
 
-      allow create: if isClubUser() && request.resource.data.clubId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.clubId == request.auth.uid;
+      // Etkinlik yayinlamak icin ONAYLI kulup olmak sart: belge incelemesini
+      // bekleyen ya da beyanla kulup gorunen bir hesap etkinlik olusturamaz.
+      //
+      // UCRETLI etkinlik ayrica onay logu olmadan OLUSTURULAMAZ.
+      allow create: if isApprovedClub()
+        && request.resource.data.clubId == request.auth.uid
+        && (
+          !isPaidEventData(request.resource.data)
+          || paidConsentLogValid(request.resource.data)
+        );
+
+      // Guncellemede iki sart:
+      //   • Ucretsizden UCRETLIYE gecen etkinlik onay logu tasimali.
+      //     (Zaten ucretli olan ESKI etkinlikler bu kural yayinlanmadan once
+      //     olusmus olabilir; onlari kilitlemiyoruz, yoksa kulup kendi
+      //     etkinliginin kaydini bile kapatamaz hale gelirdi.)
+      //   • Var olan gecerli bir log SILINEMEZ/BOZULAMAZ.
+      allow update: if isSignedIn()
+        && resource.data.clubId == request.auth.uid
+        && (
+          !isPaidEventData(request.resource.data)
+          || isPaidEventData(resource.data)
+          || paidConsentLogValid(request.resource.data)
+        )
+        && (
+          !paidConsentLogValid(resource.data)
+          // Etkinlik UCRETSIZE cevriliyorsa log anlamini yitirir ve silinebilir
+          // (web: club-create-event.js -> paidConsentLog: deleteField()).
+          || !isPaidEventData(request.resource.data)
+          || paidConsentLogValid(request.resource.data)
+        );
+
+      allow delete: if isSignedIn() && resource.data.clubId == request.auth.uid;
     }
 
     // ── Kontenjan parcalari (sharded counter) ─────────────────────────────
@@ -375,6 +590,31 @@ service cloud.firestore {
           && request.resource.data.checkedInAtMs > 0;
       }
 
+      // Kulup "Oturumu Geri Al" ile etkinligin oturum imlecini bir adim geri
+      // aldiginda, o oturumda giris yapmis ogrencilerin girisi de geri alinir
+      // — aksi halde ogrenci girisin onaylandigini gorurken kulup panelinde
+      // o oturum artik yasanmamis olur. Yalnizca GERI ALINAN oturuma ait
+      // kayitlar dokunulabilir (lastAttendedSession, etkinligin O ANKI —
+      // henuz geri alinmamis — currentSession'ina esit olmali) ve deger tam
+      // olarak bir adim geri gitmeli; toplu/keyfi degisiklik engellenir.
+      function clubCanRevertSessionCheckIn() {
+        return isClubUser()
+          && eventDoc(resource.data.eventId).data != null
+          && eventDoc(resource.data.eventId).data.clubId == request.auth.uid
+          && request.resource.data.eventId == resource.data.eventId
+          && request.resource.data.studentId == resource.data.studentId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "sessionsAttended",
+            "lastAttendedSession",
+            "updatedAt"
+          ])
+          && resource.data.lastAttendedSession is int
+          && resource.data.lastAttendedSession == eventDoc(resource.data.eventId).data.currentSession
+          && request.resource.data.lastAttendedSession == eventDoc(resource.data.eventId).data.currentSession - 1
+          && request.resource.data.sessionsAttended
+              == (resource.data.sessionsAttended is int ? resource.data.sessionsAttended : 0) - 1;
+      }
+
       // Ogrenci, kulubun ekrana bastigi oturum QR'ini kendi kamerasindan
       // okuttugunda SADECE KENDI kaydindaki oturum alanlarini gunceller.
       // Kopyalama/hile onlemleri:
@@ -399,47 +639,78 @@ service cloud.firestore {
             "updatedAt"
           ])
           && eventDoc(resource.data.eventId).data != null
-          && eventDoc(resource.data.eventId).data.sessionsCompleted != true
-          // Yeni Check-in + Yoklama modunda kapı kaydı olmadan oturum
-          // sayacı artırılamaz. Alanı olmayan eski kayıtlar eski akışını
-          // korur; kulübün gec kalanlar için açtığı anahtar istisnadır.
+          && eventDoc(resource.data.eventId).data.get("sessionsCompleted", false) != true
+          // KAPI SARTI: "Check-in + Yoklama" modunda (checkinMode ==
+          // "checkin_attendance") oturum yoklamasi ancak ogrenci sabah
+          // kapida check-in yaptiysa gecerlidir. Kulup gec kalanlari da
+          // almak isterse etkinlik panelinden allowSessionWithoutCheckin
+          // anahtarini acar ve sart kalkar.
+          //
+          // .get(alan, varsayilan) kullaniliyor: bu iki alan eklenmeden
+          // once olusturulmus etkinliklerde YOKTUR. Varsayilanlarla eski
+          // kayitlar "checkin_attendance degil" sayilir ve kosul, bugunku
+          // davranisi aynen koruyarak dogrudan gecer.
           && (
-            !eventDoc(resource.data.eventId).data.keys().hasAll(["checkinMode"])
-            || eventDoc(resource.data.eventId).data.checkinMode != "checkin_attendance"
-            || eventDoc(resource.data.eventId).data.allowSessionWithoutCheckin == true
-            || (resource.data.checkedInAtMs is int && resource.data.checkedInAtMs > 0)
+            eventDoc(resource.data.eventId).data.get("checkinMode", "") != "checkin_attendance"
+            || eventDoc(resource.data.eventId).data.get("allowSessionWithoutCheckin", false) == true
+            || (resource.data.get("checkedInAtMs", 0) is int
+              && resource.data.get("checkedInAtMs", 0) > 0)
           )
-          && request.resource.data.lastAttendedSession == eventDoc(resource.data.eventId).data.currentSession
-          && request.resource.data.lastAttendedSession == eventDoc(resource.data.eventId).data.currentSession
+          // DIKKAT: asagidaki sayaclar KAYIT ANINDA YAZILMIYOR — ne web
+          // (dashboard.js) ne mobil (EventRepository.registerToEvent) bu iki
+          // alani olusturuyor. Alan yokken `resource.data.sessionsAttended`
+          // yazmak kural degerlendirmesini HATAYA dusurur ("Property ... is
+          // undefined on object") ve `is int ? : 0` uclusu bunu kurtarmaz:
+          // tip kontrolunden ONCE alana erisilir. Sonuc, ogrencinin ILK
+          // oturum yoklamasinin her zaman permission-denied almasiydi.
+          // Bu yuzden hepsi .get(alan, varsayilan) ile okunur.
           && request.resource.data.lastAttendedSession
-              > (resource.data.lastAttendedSession is int ? resource.data.lastAttendedSession : 0)
+              == eventDoc(resource.data.eventId).data.get("currentSession", 0)
+          && request.resource.data.lastAttendedSession
+              > (resource.data.get("lastAttendedSession", 0) is int
+                ? resource.data.get("lastAttendedSession", 0) : 0)
           && request.resource.data.sessionsAttended
-              == (resource.data.sessionsAttended is int ? resource.data.sessionsAttended : 0) + 1
+              == (resource.data.get("sessionsAttended", 0) is int
+                ? resource.data.get("sessionsAttended", 0) : 0) + 1
           && request.resource.data.checkedInAtMs is int
           && request.resource.data.checkedInAtMs > 0;
       }
 
-      // Kapıda gösterilen ortak QR'ı okuyan öğrenci yalnızca kendi ilk giriş
-      // damgasını yazabilir. QR'ın açık/kapalı olması etkinlik belgesinden
-      // denetlenir; oturum sayaçları bu yoldan değiştirilemez.
-      function studentCanMarkOwnDoorCheckIn() {
+      // Tek oturumlu etkinlik: ogrenci, kulubun KAPIDA gosterdigi giris QR'ini
+      // telefon kamerasindan okuttugunda kendi kaydini "giris yapildi" olarak
+      // isaretler. QR'in kendisi bir sir DEGILDIR (ekran goruntusu paylasilabilir);
+      // asil sinirlar burada:
+      //  - events.entryOpen true olmali: kapiyi kulup acar ve kapatir, kapali
+      //    kapida hicbir QR ise yaramaz.
+      //  - Kayit ZATEN giris yapmis olmamali (checkedInAtMs bir kez yazilir);
+      //    ayni kayit ikinci kez giris bildiremez.
+      //  - checkedInByClubId bu yoldan YAZILAMAZ; girisin kulup dogrulamasiyla
+      //    mi yoksa ogrencinin kendisi tarafindan mi yapildigi ayirt edilsin
+      //    diye kaynak checkedInVia == "self-qr" olarak isaretlenir.
+      //  - Oturum alanlarina dokunulamaz; oturumlu etkinligin yolu ayridir
+      //    (bkz. studentCanMarkOwnSessionCheckIn).
+      function studentCanMarkOwnEventCheckIn() {
         return isSignedIn()
+          && resource != null
           && resource.data.studentId == request.auth.uid
           && request.resource.data.eventId == resource.data.eventId
           && request.resource.data.studentId == resource.data.studentId
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             "checkedInAt",
             "checkedInAtMs",
+            "checkedInVia",
             "updatedAt"
           ])
           && eventDoc(resource.data.eventId).data != null
-          && eventDoc(resource.data.eventId).data.doorCheckinOpen == true
-          && (
-            eventDoc(resource.data.eventId).data.keys().hasAll(["checkinMode"])
-            && eventDoc(resource.data.eventId).data.checkinMode == "checkin_attendance"
-            || (eventDoc(resource.data.eventId).data.keys().hasAll(["checkinMode"])
-              && eventDoc(resource.data.eventId).data.checkinMode == "checkin_only")
-          )
+          // .get(...): "entryOpen" alani bu ozellik eklenmeden once
+          // olusturulmus etkinliklerde YOKTUR; varsayilan false ile kapi
+          // kapali sayilir. `checkedInAtMs` de HENUZ GIRIS YAPMAMIS kayitta
+          // bulunmaz — dogrudan erisim kural degerlendirmesini hataya
+          // dusurup ogrencinin ilk kapi okutmasini reddediyordu.
+          && eventDoc(resource.data.eventId).data.get("entryOpen", false) == true
+          && !(resource.data.get("checkedInAtMs", 0) is int
+            && resource.data.get("checkedInAtMs", 0) > 0)
+          && request.resource.data.checkedInVia == "self-qr"
           && request.resource.data.checkedInAtMs is int
           && request.resource.data.checkedInAtMs > 0;
       }
@@ -466,6 +737,7 @@ service cloud.firestore {
             "studentLastName",
             "studentEmail",
             "studentPhone",
+            "studentPhotoUrl",
             "studentUniversity",
             "studentDepartment",
             "studentClassYear",
@@ -487,6 +759,75 @@ service cloud.firestore {
         return eventDoc(request.resource.data.eventId).data != null
           && eventDoc(request.resource.data.eventId).data.hiddenGlobally != true
           && eventDoc(request.resource.data.eventId).data.registrationClosed != true;
+      }
+
+      // ── Kontenjan (parca sayaci) ─────────────────────────────────────────
+      // Kontenjan yalnizca istemcide kontrol edilseydi hicbir sey ifade
+      // etmezdi: ogrenci konsoldan dogrudan setDoc cagirip kontenjani
+      // asabilirdi. Asil sinir burasi.
+      //
+      // Kural: etkinlik parcalara ayrilmissa (quotaShardCount > 0), kayit
+      // belgesi ancak AYNI ISLEMDE isaret ettigi parcanin sayaci 1 arttiysa
+      // olusabilir. getAfter(), islem TAMAMLANDIKTAN sonraki hali dondurur;
+      // yani "once sayaci artir, sonra kaydi yaz" hilesi yapilamaz — ikisi
+      // tek bir atomik islem olmak zorundadir.
+      //
+      // Parca sistemi gelmeden once olusturulmus etkinliklerde
+      // quotaShardCount alani yoktur; onlar eski davranisla calismaya devam
+      // eder (eventUsesQuotaShards() false doner).
+      function eventUsesQuotaShards() {
+        return eventDoc(request.resource.data.eventId).data.quotaShardCount is int
+          && eventDoc(request.resource.data.eventId).data.quotaShardCount > 0;
+      }
+
+      function claimedShardPath() {
+        return /databases/$(database)/documents/events/$(request.resource.data.eventId)/quota_shards/$(string(request.resource.data.quotaShard));
+      }
+
+      function slotClaimedInSameCommit() {
+        return request.resource.data.quotaShard is int
+          && request.resource.data.quotaShard >= 0
+          && request.resource.data.quotaShard < eventDoc(request.resource.data.eventId).data.quotaShardCount
+          && exists(claimedShardPath())
+          && existsAfter(claimedShardPath())
+          && getAfter(claimedShardPath()).data.count == get(claimedShardPath()).data.count + 1;
+      }
+
+      // Kaydin yazildigi etkinlik ucretli mi? Ucretliyse kayit belgesi
+      // ogrencinin onay logunu TASIMAK ZORUNDA.
+      function targetEventIsPaid() {
+        return eventDoc(request.resource.data.eventId).data.get("feeType", "") == "paid";
+      }
+
+      function paidRegistrationConsentGiven() {
+        return !targetEventIsPaid()
+          || paidConsentLogValid(request.resource.data);
+      }
+
+      // GUNCELLEMEDE kullanilir. Etkinligi bir kez daha okumak (yukaridaki
+      // targetEventIsPaid) kural degerlendirmesinin 1000 ifade butcesini
+      // asiyor ve MESRU guncellemeler bile "evaluation error" ile
+      // reddediliyordu. Guncellemede zaten kaydin kendisi elimizde: var olan
+      // gecerli bir onay logu SILINEMEZ/BOZULAMAZ demek yeterli, cunku log
+      // olusturma aninda zorunlu tutuluyor.
+      function consentLogNotWeakened() {
+        return !paidConsentLogValid(resource.data)
+          || paidConsentLogValid(request.resource.data);
+      }
+
+      function quotaRespected() {
+        return !eventUsesQuotaShards() || slotClaimedInSameCommit();
+      }
+
+      // Kayit belgesi bir kez yazildiktan sonra hangi parcaya ait oldugu
+      // DEGISTIRILEMEZ. Aksi halde ogrenci kaydini bos bir parcaya tasiyip
+      // dolu parcanin sayacini kalici olarak sisirebilirdi.
+      function shardBindingUnchanged() {
+        return !eventUsesQuotaShards()
+          || (
+            resource.data.quotaShard is int
+            && request.resource.data.quotaShard == resource.data.quotaShard
+          );
       }
 
       // ── Hedef kitle (kapsam) kontrolu ────────────────────────────────────
@@ -557,15 +898,34 @@ service cloud.firestore {
           && studentMeetsEventScope(eventDoc(request.resource.data.eventId).data);
       }
 
+      // Kendi kaydini okumak, belge HENUZ YOKKEN de mumkun olmali.
+      //
+      // Kontenjan islemi (bkz. quota-shards.js claimSpecificShard) cift kayit
+      // olusmasin diye ONCE ogrencinin kendi kayit belgesini okur. Belge
+      // yoksa `resource` null olur; alttaki `resource.data.studentId`
+      // kontrolu bu durumda hata verip erisimi reddediyordu — yani kayit
+      // olmayan HERKES icin islem daha ilk okumada patliyordu.
+      //
+      // Kimlik deterministik oldugu icin (eventId + "_" + uid) belgenin
+      // istegi yapan kisiye ait olup olmadigi, belge olmasa bile kimlikten
+      // anlasilir. Baskasinin kaydina bu daldan erisilemez.
+      function readingOwnMissingRegistration() {
+        return resource == null
+          && registrationId.matches('^.*_' + request.auth.uid + '$');
+      }
+
       allow read: if isSignedIn()
         && (
-          resource.data.studentId == request.auth.uid
+          readingOwnMissingRegistration()
+          || (resource != null && resource.data.studentId == request.auth.uid)
           || clubCanReadRegistration()
         );
 
       allow create: if isSignedIn()
         && registrationPayloadValid()
         && studentEligibleForTargetEvent()
+        && quotaRespected()
+        && paidRegistrationConsentGiven()
         && (
           registrationDebugMode()
           || targetEventAllowsRegistration()
@@ -575,14 +935,17 @@ service cloud.firestore {
           isSignedIn()
           && registrationPayloadValid()
           && studentEligibleForTargetEvent()
+          && shardBindingUnchanged()
+          && consentLogNotWeakened()
           && (
             registrationDebugMode()
             || targetEventAllowsRegistration()
           )
         )
         || clubCanMarkCheckIn()
+        || clubCanRevertSessionCheckIn()
         || studentCanMarkOwnSessionCheckIn()
-        || studentCanMarkOwnDoorCheckIn()
+        || studentCanMarkOwnEventCheckIn()
         || studentCanRefreshOwnSnapshot();
 
       allow delete: if isSignedIn()
@@ -603,6 +966,30 @@ service cloud.firestore {
 
       allow delete: if isSignedIn()
         && (resource.data.studentId == request.auth.uid || resource.data.clubId == request.auth.uid);
+    }
+
+    // ── Yonetici bildirimleri ─────────────────────────────────────────────
+    // Yonetici bir universiteyi hedefleyerek tek bir bildirim belgesi yazar;
+    // alici basina kopya URETILMEZ (Cloud Functions yok). Kullanicilar kendi
+    // universitelerini ve rollerini filtreleyerek okur:
+    //   where('university','==',...) + where('audience','in',[rol,'both'])
+    //
+    // Okuma giris yapmis herkese acik: bildirim metni duyuru niteliginde,
+    // kisisel veri tasimaz. Yazma YALNIZCA admin.
+    match /notifications/{notificationId} {
+      // Bildirimler yalnizca yonetici panelinden gonderilir; kullanici
+      // arayuzunde okunmadigi icin okuma da yoneticiye kapali tutulur.
+      allow read: if isAdmin();
+
+      allow create: if isAdmin()
+        && request.resource.data.university is string
+        && request.resource.data.university.size() > 0
+        && request.resource.data.audience in ["student", "club", "both"]
+        && request.resource.data.message is string
+        && request.resource.data.message.size() > 0
+        && request.resource.data.message.size() <= 1000;
+
+      allow update, delete: if isAdmin();
     }
 
     match /{document=**} {

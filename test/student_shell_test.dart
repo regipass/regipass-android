@@ -111,7 +111,7 @@ void main() {
     expect(actionsHitTestable(), isTrue);
     expect(find.byKey(qrGenerateActionKey), findsOneWidget);
     expect(find.text('QR Okut'), findsOneWidget);
-    expect(find.text('QR Oluştur'), findsOneWidget);
+    expect(find.text('Biletim'), findsOneWidget);
 
     // QR eylemleri açıldığında beyaz bir plaka/çubuk oluşmaz.
     final Material actionSurface = tester.widget<Material>(

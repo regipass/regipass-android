@@ -126,6 +126,15 @@ kExtraTranslations = <String, Map<String, String>>{
     'admin.notify.sent': '{{university}} için duyuru gönderildi.',
     'admin.notify.sendError': 'Duyuru gönderilemedi. Lütfen tekrar dene.',
     'admin.notify.sendDenied': 'Duyuru gönderme yetkin yok.',
+    'admin.notify.broadcastButton': 'Genel Duyuru',
+    'admin.notify.broadcastSubtitle':
+        'Tüm şehirlerdeki üniversitelere aynı anda gönderilir.',
+    'admin.notify.broadcastHeader': 'Tüm Üniversiteler',
+    'admin.notify.broadcastConfirmTitle': 'Genel duyuru gönderilsin mi?',
+    'admin.notify.broadcastConfirmBody':
+        'Bu duyuru {{count}} üniversitedeki tüm hedef kitleye tek seferde '
+        'gönderilecek. Bu işlem geri alınamaz.',
+    'admin.notify.broadcastSent': 'Genel duyuru tüm üniversitelere gönderildi.',
 
     // Üretilen sözlükte diakritiksiz kalmış öğrenci metinleri
     'studentAccount.title': 'Hesabım',
@@ -259,6 +268,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'scan.qrSlotExpired':
         'Bu kod artık geçerli değil — ekrandaki QR 20 saniyede bir yenileniyor. Güncel kodu okut.',
     'scan.notRegistered': 'Bu etkinliğe kayıtlı değilsiniz.',
+    'scan.eventClosedNotRegistered': 'Bu etkinliğin süresi geçmiştir.',
     'scan.alreadyCheckedInSession':
         'Bu oturumda ({{current}}/{{total}}) zaten giriş yaptınız.',
     'scan.checkinSaveFailed': 'Giriş kaydedilemedi. Tekrar dene.',
@@ -344,6 +354,11 @@ kExtraTranslations = <String, Map<String, String>>{
         'Bu etkinlik için kayıtları yeniden başlatmak istiyor musun?',
     'clubEvents.registrations.closed': 'Etkinlik kayıtları durduruldu.',
     'clubEvents.registrations.opened': 'Etkinlik kayıtları yeniden başlatıldı.',
+    'clubEvents.registrations.blockedRunning':
+        'Etkinlik başladığı için kayıtlar durduruldu ve şu anda yeniden açılamaz.\n\n'
+        'Yeniden açmak için etkinliği en başa döndürmen gerekiyor: önce kapı '
+        'check-in\'ini bitir, sonra oturumları tek tek en başa (0) geri al. '
+        'Etkinlik başa döndüğünde kayıtlar yeniden açılabilir olur.',
 
     'clubEvents.session.title': 'Oturumlar',
     'clubEvents.session.notStarted': 'Oturum başlatılmadı (0/{{total}})',
@@ -370,10 +385,18 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubEvents.session.undoToStartConfirm':
         'Etkinliği "oturum başlatılmadı" durumuna döndürmek istiyor musun? '
         'QR girişleri, sen yeniden başlatana kadar durur.',
+    'clubEvents.session.undoToStartConfirmWithCheckin':
+        'Etkinliği "oturum başlatılmadı" durumuna döndürmek istiyor musun? '
+        'Check-in de "başlatılmadı" durumuna döner ve etkinlik yeniden '
+        'keşfette görünür; oturumları tekrar başlatmadan önce check-in\'i '
+        'baştan başlatıp bitirmen gerekir.',
     'clubEvents.session.undone':
         '{{session}}. oturuma dönüldü. Bu oturumun QR\'ı yeniden geçerli.',
     'clubEvents.session.undoneToStart':
         'Oturumlar başlangıca alındı. QR girişleri şimdilik durdu.',
+    'clubEvents.session.undoneToStartWithCheckin':
+        'Oturumlar ve check-in başlangıca alındı. Etkinlik, standartlara '
+        'uyan öğrencilerin keşfinde tekrar görünür.',
     'clubEvents.session.finish': 'Oturumları Bitir',
     'clubEvents.session.reopen': 'Oturumları Tekrar Aç',
     'clubEvents.session.reopenTitle': 'Oturumları tekrar aç',
@@ -1003,6 +1026,15 @@ kExtraTranslations = <String, Map<String, String>>{
     'admin.notify.required': 'This field cannot be empty.',
     'admin.notify.send': 'Send',
     'admin.notify.sent': 'Notice sent to {{university}}.',
+    'admin.notify.broadcastButton': 'Broadcast to Everyone',
+    'admin.notify.broadcastSubtitle':
+        'Sent to universities in every city at once.',
+    'admin.notify.broadcastHeader': 'All Universities',
+    'admin.notify.broadcastConfirmTitle': 'Send this broadcast?',
+    'admin.notify.broadcastConfirmBody':
+        'This will be sent at once to every target audience in {{count}} '
+        'universities. This action cannot be undone.',
+    'admin.notify.broadcastSent': 'Broadcast sent to all universities.',
     'admin.notify.sendError':
         'The announcement could not be sent. Please try again.',
     'admin.notify.sendDenied':
@@ -1092,6 +1124,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'scan.qrSlotExpired':
         'This code has expired — the on-screen QR refreshes every 20 seconds. Scan the current one.',
     'scan.notRegistered': 'You are not registered for this event.',
+    'scan.eventClosedNotRegistered': 'This event has expired.',
     'scan.alreadyCheckedInSession':
         'You already checked in for this session ({{current}}/{{total}}).',
     'scan.checkinSaveFailed': 'The check-in could not be saved. Try again.',
@@ -1198,6 +1231,12 @@ kExtraTranslations = <String, Map<String, String>>{
         'Do you want to reopen registrations for this event?',
     'clubEvents.registrations.closed': 'Registrations stopped.',
     'clubEvents.registrations.opened': 'Registrations reopened.',
+    'clubEvents.registrations.blockedRunning':
+        'Registrations stopped because the event has started, and they cannot be '
+        'reopened right now.\n\n'
+        'To reopen them, take the event back to the start: first finish the door '
+        'check-in, then roll the sessions back to the start (0). Once the event is '
+        'back at the start, registrations can be reopened.',
 
     'clubEvents.session.title': 'Sessions',
     'clubEvents.session.notStarted': 'No session started (0/{{total}})',
@@ -1223,10 +1262,18 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubEvents.session.undoToStartConfirm':
         'Reset the event to "not started"? QR check-ins stop until you start '
         'a session again.',
+    'clubEvents.session.undoToStartConfirmWithCheckin':
+        'Reset the event to "not started"? Check-in also resets to "not '
+        'started" and the event becomes visible in discover again; you\'ll '
+        'need to start and finish check-in again before sessions can '
+        'restart.',
     'clubEvents.session.undone':
         'Back on session {{session}}. Its QR is valid again.',
     'clubEvents.session.undoneToStart':
         'Sessions reset to the start. QR check-ins are paused for now.',
+    'clubEvents.session.undoneToStartWithCheckin':
+        'Sessions and check-in reset to the start. The event is visible '
+        'again in discover for eligible students.',
     'clubEvents.session.finish': 'Finish Sessions',
     'clubEvents.session.reopen': 'Reopen Sessions',
     'clubEvents.session.reopenTitle': 'Reopen sessions',

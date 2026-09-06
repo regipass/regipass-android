@@ -266,22 +266,42 @@ class EventRepository {
 
   /// Kapıyı açar/kapatır. Öğrenci verisine hiçbir aşamada dokunulmaz.
   ///
-  /// `entryStartedAtMs` **bir kez** yazılır (club-events.js#setEntryOpen ile
-  /// aynı davranış): "Check-in'i Bitir" sonrasında etkinliğin Aktif listesinden
-  /// düşmemesi ve aşamanın "hiç başlamadı"ya geri dönmemesi için. Bu sayede
-  /// "Yeniden Başlat" veriyi sıfırlamadan çalışır.
+  /// `entryStartedAtMs` "Check-in'i Bitir" sonrasında "Yeniden Başlat"ta
+  /// **korunur** (club-events.js#setEntryOpen ile aynı davranış): aşama
+  /// "hiç başlamadı"ya dönmesin, okunan girişler kaybolmasın diye
+  /// [alreadyStartedAtMs] geçirilir. Etkinliğin oturumları en başa kadar
+  /// geri alındığında bu damga [advanceSession] tarafından sıfırlanır — o
+  /// zaman kapı da gerçekten "hiç açılmamış" durumuna döner (bkz.
+  /// `sessionRegistrationGateAction`).
+  ///
+  /// Kapı her AÇILDIĞINDA (yalnızca ilkinde değil) kayıtlar da kendiliğinden
+  /// durdurulur: kulüp kapıyı bitirip kayıtları elle yeniden açmış olabilir
+  /// (bkz. `_toggleRegistrations`), sonra kapıyı tekrar açtığında kayıt
+  /// bayrağının açık kalması kulübün panelini gerçekle çelişir hâle
+  /// getirirdi. Okuma tarafındaki asıl kapı zaten [eventHasStarted]'tır —
+  /// bayrak, kulübün gördüğü durumun onunla aynı kalması için yazılır.
+  /// Kulübün ELLE ya da kontenjan yüzünden zaten kapattığı bir kayda
+  /// dokunulmaz (sebep korunur).
   Future<void> setEntryOpen(
     String eventId,
     bool open, {
     int alreadyStartedAtMs = 0,
-  }) =>
-      eventDoc(eventId).update(<String, dynamic>{
-        'entryOpen': open,
-        if (open && alreadyStartedAtMs <= 0)
-          'entryStartedAtMs': DateTime.now().millisecondsSinceEpoch,
-        'entryOpenUpdatedAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+    bool registrationClosed = false,
+  }) {
+    final bool firstOpen = open && alreadyStartedAtMs <= 0;
+    return eventDoc(eventId).update(<String, dynamic>{
+      'entryOpen': open,
+      if (firstOpen) 'entryStartedAtMs': DateTime.now().millisecondsSinceEpoch,
+      'entryOpenUpdatedAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+      if (open && !registrationClosed) ...<String, dynamic>{
+        'registrationClosed': true,
+        'registrationClosedAt': FieldValue.serverTimestamp(),
+        'registrationClosedReason': ClosedReason.checkinStarted,
+        'registrationReopenedAt': null,
+      },
+    });
+  }
 
   Future<void> setAllowSessionWithoutCheckin(String eventId, bool allow) =>
       eventDoc(eventId).update(<String, dynamic>{
@@ -291,11 +311,108 @@ class EventRepository {
 
   // ── Oturum yönetimi (kulüp) ─────────────────────────────────────────
 
-  Future<void> advanceSession(String eventId, int nextSession) =>
-      eventDoc(eventId).update(<String, dynamic>{
-        'currentSession': nextSession,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+  /// Etkinlik başlarken (0 -> 1) kayıtları kendiliğinden durdurur; en başa
+  /// geri alınırken (-> 0) — yalnızca bu yüzden kapalıysa — kendiliğinden
+  /// açar (bkz. [sessionRegistrationGateAction]). Kulübün elle kapattığı ya
+  /// da kontenjan yüzünden kapanan bir etkinliğe dokunmaz.
+  ///
+  /// [nextSession] `<= 0` ise (kulüp oturumları tek tek en başa kadar geri
+  /// aldı) kapı check-in'i de sıfırlanır: `entryOpen: false`,
+  /// `entryStartedAtMs: 0`. Etkinlik böylece kulübün ekranında da gerçekten
+  /// "hiç başlamamış" görünür — kapı aşaması [CheckinStage.notStarted]'a
+  /// döner ve oturumları yeniden başlatmak için (varsa) kapı check-in'inin
+  /// baştan Başlat→Bitir sırasıyla geçilmesi gerekir
+  /// ([doorCheckinBlocksSessionsFor] zaten bunu zorunlu kılar). Kapı
+  /// check-in'i olmayan modlarda alan zaten hep 0'dır; yazım no-op'tur.
+  ///
+  /// Keşfe dönüşün ölçütü bu damga DEĞİL, `entryOpen` + `currentSession`
+  /// (bkz. [eventHasStarted]): kapıyı "Bitir" ile kapatmak da etkinliği
+  /// yürümüyor sayar, kulüp o noktada kayıtları elle yeniden açabilir.
+  Future<void> advanceSession(AppEvent event, int nextSession) {
+    final Map<String, dynamic> data = <String, dynamic>{
+      'currentSession': nextSession,
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    if (nextSession <= 0) {
+      data['entryOpen'] = false;
+      data['entryStartedAtMs'] = 0;
+    }
+
+    switch (sessionRegistrationGateAction(
+      previousSession: event.currentSession,
+      nextSession: nextSession,
+      registrationClosed: event.registrationClosed,
+      closedReason: event.registrationClosedReason,
+    )) {
+      case SessionRegistrationGateAction.close:
+        data['registrationClosed'] = true;
+        data['registrationClosedAt'] = FieldValue.serverTimestamp();
+        data['registrationClosedReason'] = ClosedReason.sessionsStarted;
+        data['registrationReopenedAt'] = null;
+      case SessionRegistrationGateAction.reopen:
+        data['registrationClosed'] = false;
+        data['registrationClosedAt'] = null;
+        data['registrationClosedReason'] = null;
+        data['registrationReopenedAt'] = FieldValue.serverTimestamp();
+      case SessionRegistrationGateAction.none:
+        break;
+    }
+
+    return eventDoc(event.id).update(data);
+  }
+
+  /// Kulüp "Oturumu Geri Al"a bastığında (js/pages/club-events.js#revertSessionBtn
+  /// ile aynı gerekçe), o oturuma kendi QR'ıyla girmiş öğrencilerin
+  /// yoklamasını da geri alır.
+  ///
+  /// Yalnızca `currentSession` geri alınsaydı bu öğrencilerin
+  /// `lastAttendedSession`'ı, hiç yaşanmamış sayılan oturumu işaretli
+  /// bırakırdı — oturum yeniden (doğru şekilde) başladığında okuma
+  /// tarafındaki `lastAttendedSession >= currentSession` kontrolü onları
+  /// ikinci kez giriş yapmaktan alıkoyardu.
+  ///
+  /// SIRA ÖNEMLİ: firestore.rules > `clubCanRevertSessionCheckIn`, bu yazımı
+  /// yalnızca etkinliğin **canlı** `currentSession` alanı hâlâ
+  /// [undoneSession]'a eşitken kabul eder; çağıran bunu etkinlik
+  /// dokümanındaki `currentSession`'ı geri almadan (bkz. [advanceSession])
+  /// ÖNCE çağırmalı.
+  ///
+  /// Yazım **en iyi çaba** ve kayıt kayıt yapılır (bkz.
+  /// [syncStudentInfoOnRegistrations] ile aynı gerekçe): bu kural web'in
+  /// aksine henüz üretime dağıtılmamış olabilir; tek bir kaydın (hatta
+  /// tümünün) reddi asıl geri alma işlemini (`currentSession`) hiçbir zaman
+  /// engellememeli — çağıran taraf bu yüzden bunu ayrı bir try/catch'e alır.
+  ///
+  /// Etkilenen öğrenci sayısını döndürür.
+  Future<int> revertSessionAttendance({
+    required String eventId,
+    required int undoneSession,
+  }) async {
+    if (undoneSession < 1) return 0;
+
+    final List<EventRegistration> registrations = await fetchEventRegistrations(
+      eventId,
+    );
+    final Iterable<EventRegistration> affected = registrations.where(
+      (EventRegistration r) => r.lastAttendedSession == undoneSession,
+    );
+
+    int updated = 0;
+    for (final EventRegistration reg in affected) {
+      try {
+        await registrationsCol.doc(reg.id).update(<String, dynamic>{
+          'lastAttendedSession': undoneSession - 1,
+          'sessionsAttended': FieldValue.increment(-1),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+        updated += 1;
+      } catch (_) {
+        // Yoksay: kalan kayıtlar denenmeye devam eder.
+      }
+    }
+    return updated;
+  }
 
   Future<void> finishSessions(String eventId) =>
       eventDoc(eventId).update(<String, dynamic>{
@@ -818,6 +935,27 @@ class EventRepository {
     await _syncClubFields(clubId, <String, dynamic>{
       'clubPhone': phone,
       'clubEmail': email,
+    });
+  }
+
+  /// Kulübün adını, üniversitesini ve alan(lar)ını TÜM etkinliklerine işler.
+  ///
+  /// Logo ve iletişim bilgileriyle aynı gerekçe (bkz. [syncClubLogo]):
+  /// öğrenci `club_profiles` dokümanını okuyamadığı için bu alanlar da
+  /// etkinlik dokümanına kopyalanır. Kulüp adını (veya üniversite/alanını)
+  /// hesap ekranından değiştirdiğinde eski etkinliklerin penceresi eski
+  /// bilgide kalmasın diye kayıt bunu çağırır.
+  Future<void> syncClubIdentity({
+    required String clubId,
+    required String clubName,
+    required String clubUniversity,
+    required List<String> clubFields,
+  }) async {
+    await _syncClubFields(clubId, <String, dynamic>{
+      'clubName': clubName,
+      'clubUniversity': clubUniversity,
+      'clubField': clubFields.isEmpty ? '' : clubFields.first,
+      'clubFields': clubFields,
     });
   }
 

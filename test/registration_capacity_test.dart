@@ -402,6 +402,112 @@ void main() {
     });
   });
 
+  group('sessionRegistrationGateAction — etkinlik başlayınca kayıt durdurma', () {
+    test('ilk oturum ilerletilince (0 -> 1) kayıtlar durdurulur', () {
+      expect(
+        sessionRegistrationGateAction(
+          previousSession: 0,
+          nextSession: 1,
+          registrationClosed: false,
+          closedReason: '',
+        ),
+        SessionRegistrationGateAction.close,
+      );
+    });
+
+    test('zaten kapalıysa tekrar yazılmaz', () {
+      expect(
+        sessionRegistrationGateAction(
+          previousSession: 0,
+          nextSession: 1,
+          registrationClosed: true,
+          closedReason: ClosedReason.manual,
+        ),
+        SessionRegistrationGateAction.none,
+      );
+    });
+
+    test('sonraki oturumlara ilerlemek (1 -> 2) kayda dokunmaz', () {
+      expect(
+        sessionRegistrationGateAction(
+          previousSession: 1,
+          nextSession: 2,
+          registrationClosed: false,
+          closedReason: '',
+        ),
+        SessionRegistrationGateAction.none,
+      );
+    });
+
+    test('en başa geri alınınca (-> 0) etkinlik başladığı için kapanan kayıt açılır', () {
+      expect(
+        sessionRegistrationGateAction(
+          previousSession: 1,
+          nextSession: 0,
+          registrationClosed: true,
+          closedReason: ClosedReason.sessionsStarted,
+        ),
+        SessionRegistrationGateAction.reopen,
+      );
+    });
+
+    test('kulübün ELLE durdurduğu kayıt en başa dönülünce AÇILMAZ', () {
+      // Bu ayrım olmasaydı kulübün kendi kararı ezilirdi (quotaGateAction ile
+      // aynı gerekçe).
+      expect(
+        sessionRegistrationGateAction(
+          previousSession: 1,
+          nextSession: 0,
+          registrationClosed: true,
+          closedReason: ClosedReason.manual,
+        ),
+        SessionRegistrationGateAction.none,
+      );
+    });
+
+    test('kontenjan yüzünden kapanan kayıt en başa dönülünce AÇILMAZ', () {
+      expect(
+        sessionRegistrationGateAction(
+          previousSession: 1,
+          nextSession: 0,
+          registrationClosed: true,
+          closedReason: ClosedReason.quotaFull,
+        ),
+        SessionRegistrationGateAction.none,
+      );
+    });
+
+    test('sadece bir sonraki oturuma geri alınırken (2 -> 1) kayda dokunmaz', () {
+      expect(
+        sessionRegistrationGateAction(
+          previousSession: 2,
+          nextSession: 1,
+          registrationClosed: true,
+          closedReason: ClosedReason.sessionsStarted,
+        ),
+        SessionRegistrationGateAction.none,
+      );
+    });
+
+    test(
+      'kapı check-in\'i yüzünden kapanan kayıt en başa dönülünce de AÇILIR',
+      () {
+        // Kapı, ilk oturum hiç ilerletilmeden açılıp kaydı kendiliğinden
+        // kapatmış olabilir (bkz. EventRepository.setEntryOpen) — en başa
+        // dönüşte bu da diğer "kendiliğinden kapandı" hâli gibi açılmalı.
+        expect(
+          sessionRegistrationGateAction(
+            previousSession: 1,
+            nextSession: 0,
+            registrationClosed: true,
+            closedReason: ClosedReason.checkinStarted,
+          ),
+          SessionRegistrationGateAction.reopen,
+        );
+      },
+    );
+  });
+
   group('AppLog', () {
     setUp(AppLog.clear);
 

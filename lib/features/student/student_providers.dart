@@ -150,8 +150,14 @@ class RegistrationWithEvent {
 
   int get currentSession => event?.currentSession ?? 0;
 
-  /// Etkinlik silinmişse kayıt "kapalı" sayılır (yeni QR üretilemez).
-  bool get isClosed => event == null || isRegistrationClosed(event);
+  /// Etkinlik silinmişse ya da GERÇEKTEN bitmişse kayıt "kapalı" sayılır
+  /// (bkz. [isEventOverForAttendee]).
+  ///
+  /// Bilerek [isRegistrationClosed] KULLANILMAZ: kulübün kayıtları elle
+  /// durdurması, öğrenci zaten kayıtlıyken randevuyu "geçmiş" sekmesine
+  /// düşürmemeli ve biletini/QR'ını üretmesini engellememeli — kulübün tek
+  /// etkisi yeni kayıtların kapanmasıdır.
+  bool get isClosed => isEventOverForAttendee(event);
 
   /// student-appointments.js#updateQrButtonVisibility:
   ///  • Tek oturumlu: giriş onaylandıysa QR üretilemez.
@@ -184,11 +190,11 @@ class RegistrationWithEvent {
 
   /// Oturumlu etkinlikte QR okutma düğmesinin durumu.
   ///
-  /// Bilerek [isClosed] KULLANILMAZ: o, son başvuru tarihine bakar ve
-  /// oturumlar neredeyse her zaman kayıtlar kapandıktan SONRA yapılır —
-  /// son başvuru geçtiği için düğmenin kaybolması, öğrencinin hiçbir
-  /// oturuma giriş yapamaması demekti. Kaynak burada oturum durumudur;
-  /// firestore.rules'un öğrenci girişi için baktığı şart da aynı
+  /// Bilerek [isClosed] KULLANILMAZ: o tek bir "bitti mi" bilgisi verir,
+  /// oysa düğme "henüz başlamadı" / "sırası geldi" / "bu oturum zaten
+  /// okutuldu" durumlarını AYRI AYRI göstermek zorunda — kaynak burada
+  /// oturum durumudur; firestore.rules'un öğrenci girişi için baktığı şart
+  /// da aynı
   /// (`sessionsCompleted` + `currentSession`).
   SessionScanState get sessionScanState {
     if (event == null) return SessionScanState.unavailable;

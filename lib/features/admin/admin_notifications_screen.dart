@@ -123,6 +123,92 @@ class _AdminNotificationsScreenState
     }
   }
 
+  /// Tek bir üniversite yerine ÜLKEDEKİ TÜMÜNE gönderilen genel duyuru.
+  ///
+  /// Geniş etkisi yüzünden (potansiyel olarak binlerce cihaz) önce sayıyla
+  /// birlikte bir onay adımı var — yanlışlıkla dokunup geri alınamaz bir
+  /// gönderim yapmasın diye.
+  Future<void> _openBroadcast() async {
+    final _ComposedAnnouncement? result =
+        await showDialog<_ComposedAnnouncement>(
+          context: context,
+          builder: (BuildContext _) => const _AnnouncementDialog(
+            city: null,
+            university: null,
+          ),
+        );
+
+    if (result == null || !mounted) return;
+
+    final int universityCount = kCityUniversities.values.fold<int>(
+      0,
+      (int sum, List<String> list) => sum + list.length,
+    );
+
+    final bool confirmed =
+        await showDialog<bool>(
+          context: context,
+          builder: (BuildContext _) => AlertDialog(
+            title: Text(context.t('admin.notify.broadcastConfirmTitle')),
+            content: Text(
+              context.t('admin.notify.broadcastConfirmBody', <String, Object?>{
+                'count': universityCount,
+              }),
+            ),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text(context.t('common.cancel')),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: Text(context.t('admin.notify.send')),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+
+    if (!confirmed || !mounted) return;
+
+    final String? uid = ref.read(currentUidProvider);
+    if (uid == null) return;
+
+    try {
+      await ref
+          .read(announcementRepositoryProvider)
+          .sendBroadcast(
+            title: result.title,
+            body: result.body,
+            audience: result.audience,
+            senderUid: uid,
+          );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.t('admin.notify.broadcastSent'))),
+      );
+    } on FirebaseException catch (error) {
+      if (!mounted) return;
+      AppLog.error('announcement.sendBroadcast', error: error);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error.code == 'permission-denied'
+                ? context.t('admin.notify.sendDenied')
+                : '${context.t('admin.notify.sendError')} (${error.code})',
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      AppLog.error('announcement.sendBroadcast', error: error);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.t('admin.notify.sendError'))),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final List<({String city, List<String> universities})> sections =
@@ -133,6 +219,10 @@ class _AdminNotificationsScreenState
       appBar: AdminAppBar(title: context.t('student.notifications.title')),
       body: Column(
         children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+            child: _BroadcastCard(onTap: _openBroadcast),
+          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
             child: TextField(
@@ -187,6 +277,60 @@ class _AdminNotificationsScreenState
                   ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Arama listesinin üstündeki "genel duyuru" girişi — tek bir üniversite
+/// yerine ülkedeki tüm üniversitelere (dolayısıyla tüm öğrenci/kulüplere)
+/// gönderim başlatır.
+class _BroadcastCard extends StatelessWidget {
+  const _BroadcastCard({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color accent = context.brandInk;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: accent.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: accent.withValues(alpha: 0.35)),
+        ),
+        child: Row(
+          children: <Widget>[
+            Icon(Icons.campaign_rounded, color: accent),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    context.t('admin.notify.broadcastButton'),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: accent,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    context.t('admin.notify.broadcastSubtitle'),
+                    style: TextStyle(fontSize: 11.5, color: context.inkMuted),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: accent),
+          ],
+        ),
       ),
     );
   }
@@ -275,8 +419,9 @@ class _ComposedAnnouncement {
 class _AnnouncementDialog extends StatefulWidget {
   const _AnnouncementDialog({required this.city, required this.university});
 
-  final String city;
-  final String university;
+  /// `null` ise bu bir genel duyuru (tüm üniversiteler) penceresidir.
+  final String? city;
+  final String? university;
 
   @override
   State<_AnnouncementDialog> createState() => _AnnouncementDialogState();
@@ -328,12 +473,12 @@ class _AnnouncementDialogState extends State<_AnnouncementDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Text(
-            widget.university,
+            widget.university ?? context.t('admin.notify.broadcastHeader'),
             style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 2),
           Text(
-            widget.city,
+            widget.city ?? context.t('admin.notify.broadcastSubtitle'),
             style: TextStyle(fontSize: 12, color: context.inkMuted),
           ),
         ],

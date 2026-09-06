@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:io' show Platform;
 import 'dart:typed_data';
 
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -311,19 +313,98 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
 
   /// Saat sorar.
   ///
-  /// Material'ın kendi seçicisi klavye kipiyle açılır: kulüp istediği saati ve
-  /// dakikayı doğrudan yazabilir (kadran kipine de geçebilir). 15 dakikalık
-  /// hazır listeye dönmüyoruz — 19:40'ta başlayan bir etkinlik yazılamıyordu.
-  Future<TimeOfDay?> _askTime(TimeOfDay? initial) => showTimePicker(
-    context: context,
-    initialTime: initial ?? const TimeOfDay(hour: 10, minute: 0),
-    initialEntryMode: TimePickerEntryMode.input,
-    builder: (BuildContext context, Widget? child) => MediaQuery(
-      // Türkiye'de saat 24'lük yazılır; ÖÖ/ÖS kutusu kafa karıştırıyordu.
-      data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-      child: child!,
-    ),
-  );
+  /// Android'de Material'ın kendi seçicisi klavye kipiyle açılır: kulüp
+  /// istediği saati ve dakikayı doğrudan yazabilir (kadran kipine de
+  /// geçebilir). 15 dakikalık hazır listeye dönmüyoruz — 19:40'ta başlayan
+  /// bir etkinlik yazılamıyordu. iOS'ta aynı davranış (serbest dakika, 24
+  /// saatlik biçim, aynı varsayılan) yerli tekerlek seçiciyle sunulur —
+  /// yalnızca görünüm platforma uyar, mantık değişmez.
+  Future<TimeOfDay?> _askTime(TimeOfDay? initial) => Platform.isIOS
+      ? _askTimeCupertino(initial)
+      : showTimePicker(
+          context: context,
+          initialTime: initial ?? const TimeOfDay(hour: 10, minute: 0),
+          initialEntryMode: TimePickerEntryMode.input,
+          builder: (BuildContext context, Widget? child) => MediaQuery(
+            // Türkiye'de saat 24'lük yazılır; ÖÖ/ÖS kutusu kafa karıştırıyordu.
+            data: MediaQuery.of(
+              context,
+            ).copyWith(alwaysUse24HourFormat: true),
+            child: child!,
+          ),
+        );
+
+  /// iOS'un yerli saat tekerleğini bir alt sayfada gösterir.
+  ///
+  /// Material sürümüyle aynı varsayılan saati başlangıç alır, aynı 24 saatlik
+  /// biçimi kullanır ve dakikayı serbestçe (1'er dakikalık adımlarla, kadranı
+  /// çevirerek) seçtirir — klavye yerine tekerlek olması dışında davranış
+  /// Android'dekiyle birebir aynıdır.
+  Future<TimeOfDay?> _askTimeCupertino(TimeOfDay? initial) {
+    final TimeOfDay start = initial ?? const TimeOfDay(hour: 10, minute: 0);
+    DateTime selected = DateTime(2000, 1, 1, start.hour, start.minute);
+
+    return showCupertinoModalPopup<TimeOfDay>(
+      context: context,
+      builder: (BuildContext sheetContext) => Container(
+        decoration: BoxDecoration(
+          color: context.surface,
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(BrandShape.cardRadius),
+          ),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: <Widget>[
+                  CupertinoButton(
+                    onPressed: () => Navigator.of(sheetContext).pop(),
+                    child: Text(context.t('common.cancel')),
+                  ),
+                  CupertinoButton(
+                    onPressed: () => Navigator.of(sheetContext).pop(
+                      TimeOfDay(hour: selected.hour, minute: selected.minute),
+                    ),
+                    child: Text(
+                      context.t('common.done'),
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
+              ),
+              Divider(height: 1, color: context.hairline),
+              SizedBox(
+                height: 216,
+                child: CupertinoTheme(
+                  data: CupertinoThemeData(
+                    brightness: context.isDarkMode
+                        ? Brightness.dark
+                        : Brightness.light,
+                    textTheme: CupertinoTextThemeData(
+                      dateTimePickerTextStyle: TextStyle(
+                        color: context.ink,
+                        fontSize: 21,
+                      ),
+                    ),
+                  ),
+                  child: CupertinoDatePicker(
+                    mode: CupertinoDatePickerMode.time,
+                    use24hFormat: true,
+                    initialDateTime: selected,
+                    onDateTimeChanged: (DateTime value) => selected = value,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   Future<void> _pickStartTime() async {
     final TimeOfDay? picked = await _askTime(_startTime);

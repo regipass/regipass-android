@@ -60,6 +60,153 @@ void main() {
     });
   });
 
+  group('baslamis etkinlik kayda ve kesfe kapanir', () {
+    test('oturum baslamissa kayit bayragi elle acilsa bile kesfe kapali', () {
+      // Kulup "kayitlari ac" diyerek registrationClosed'i elle false yapabilir
+      // (bkz. club_event_detail_screen.dart > _toggleRegistrations); bu, zaten
+      // basalamis bir etkinligin yeniden kesfe dusmesine izin vermemeli.
+      final AppEvent event = AppEvent.fromMap('event-started', <String, dynamic>{
+        'registrationClosed': false,
+        'currentSession': 1,
+        'hiddenGlobally': false,
+      });
+
+      expect(eventHasStarted(event), isTrue);
+      expect(isRegistrationClosed(event), isTrue);
+      expect(isDiscoverableEvent(event), isFalse);
+    });
+
+    test('kapi checkini ACIKKEN kayit bayragi elle acilsa bile kesfe kapali', () {
+      final AppEvent event = AppEvent.fromMap('event-door', <String, dynamic>{
+        'registrationClosed': false,
+        'currentSession': 0,
+        'entryStartedAtMs': DateTime(2026, 9, 1).millisecondsSinceEpoch,
+        'entryOpen': true,
+        'hiddenGlobally': false,
+      });
+
+      expect(eventHasStarted(event), isTrue);
+      expect(isDiscoverableEvent(event), isFalse);
+    });
+
+    test('checkin BITIRILIP kayitlar yeniden acilirsa etkinlik kesfe doner', () {
+      // Kulup kapiyi "Bitir" ile kapatti (damga duruyor ama kapi kapali) ve
+      // kayitlari elle yeniden acti. Olcut damga olsaydi, kapisi bir kez
+      // acilmis etkinlik bir daha asla kesfe donemezdi — oturumsuz
+      // (checkin_only) etkinlikte geri alinacak oturum da olmadigi icin bu
+      // kalici bir cikmaz olurdu.
+      final AppEvent event = AppEvent.fromMap('event-door-done', <String, dynamic>{
+        'registrationClosed': false,
+        'currentSession': 0,
+        'entryStartedAtMs': DateTime(2026, 9, 1).millisecondsSinceEpoch,
+        'entryOpen': false,
+        'hiddenGlobally': false,
+      });
+
+      expect(eventHasStarted(event), isFalse);
+      expect(isDiscoverableEvent(event), isTrue);
+    });
+
+    test('oturumlar en basa alinip kayitlar acilinca etkinlik kesfe doner', () {
+      final AppEvent event = AppEvent.fromMap('event-undone', <String, dynamic>{
+        'registrationClosed': false,
+        'currentSession': 0,
+        'entryStartedAtMs': 0,
+        'entryOpen': false,
+        'hiddenGlobally': false,
+      });
+
+      expect(eventHasStarted(event), isFalse);
+      expect(isDiscoverableEvent(event), isTrue);
+    });
+
+    test('checkin bitse de kayitlar kapaliyken kesfette gorunmez', () {
+      // Otomatik kapanan kayit, kulup ELLE acana kadar kapali kalir.
+      final AppEvent event = AppEvent.fromMap('event-door-closed', <String, dynamic>{
+        'registrationClosed': true,
+        'currentSession': 0,
+        'entryStartedAtMs': DateTime(2026, 9, 1).millisecondsSinceEpoch,
+        'entryOpen': false,
+        'hiddenGlobally': false,
+      });
+
+      expect(eventHasStarted(event), isFalse);
+      expect(isDiscoverableEvent(event), isFalse);
+    });
+
+    test('hic baslamamis ve kayitlari acik etkinlik kesfette gorunur', () {
+      final AppEvent event = AppEvent.fromMap('event-fresh', <String, dynamic>{
+        'registrationClosed': false,
+        'currentSession': 0,
+        'hiddenGlobally': false,
+      });
+
+      expect(eventHasStarted(event), isFalse);
+      expect(isDiscoverableEvent(event), isTrue);
+    });
+  });
+
+  group('kayitli ogrenci icin etkinligin gercekten bitmesi', () {
+    test('kulup kayitlari elle durdurunca etkinlik hala devam eden sayilir', () {
+      final AppEvent event = AppEvent.fromMap('event-3', <String, dynamic>{
+        'registrationClosed': true,
+        'eventEndAtMs': DateTime(2026, 9, 10).millisecondsSinceEpoch,
+      });
+
+      expect(isRegistrationClosed(event), isTrue);
+      expect(
+        isEventOverForAttendee(event, now: DateTime(2026, 9, 1)),
+        isFalse,
+      );
+    });
+
+    test('oturumlu etkinlikte oturumlar bitmeden gecmis sayilmaz', () {
+      final AppEvent event = AppEvent.fromMap('event-4', <String, dynamic>{
+        'sessionCount': 3,
+        'sessionsCompleted': false,
+        'eventEndAtMs': DateTime(2026, 9, 1).millisecondsSinceEpoch,
+      });
+
+      // Takvim gunu gecmis olsa bile kulup oturumlari bitirmediyse aktif.
+      expect(
+        isEventOverForAttendee(event, now: DateTime(2026, 9, 5)),
+        isFalse,
+      );
+    });
+
+    test('oturumlar bitip etkinlik suresi de dolunca gecmis sayilir', () {
+      final AppEvent event = AppEvent.fromMap('event-5', <String, dynamic>{
+        'sessionCount': 3,
+        'sessionsCompleted': true,
+        'eventEndAtMs': DateTime(2026, 9, 1).millisecondsSinceEpoch,
+      });
+
+      expect(
+        isEventOverForAttendee(event, now: DateTime(2026, 9, 5)),
+        isTrue,
+      );
+    });
+
+    test('tek oturumlu etkinlikte olcut yalnizca etkinlik suresidir', () {
+      final AppEvent event = AppEvent.fromMap('event-6', <String, dynamic>{
+        'eventEndAtMs': DateTime(2026, 9, 1).millisecondsSinceEpoch,
+      });
+
+      expect(
+        isEventOverForAttendee(event, now: DateTime(2026, 8, 30)),
+        isFalse,
+      );
+      expect(
+        isEventOverForAttendee(event, now: DateTime(2026, 9, 5)),
+        isTrue,
+      );
+    });
+
+    test('etkinlik silinmisse gecmis sayilir', () {
+      expect(isEventOverForAttendee(null), isTrue);
+    });
+  });
+
   group('sadece bölüme özel etkinlik', () {
     AppEvent departmentOnlyEvent({
       String university = 'İstanbul Üniversitesi',

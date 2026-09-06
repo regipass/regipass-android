@@ -9,6 +9,7 @@ library;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../data/location_data.dart';
 import '../models/announcement.dart';
 import 'firebase_refs.dart';
 
@@ -98,4 +99,67 @@ class AnnouncementRepository {
   }
 
   Future<void> delete(String id) => announcementsCol.doc(id).delete();
+
+  /// Duyuruyu ÜLKEDEKİ TÜM üniversitelere gönderir ("genel duyuru").
+  ///
+  /// Gerçek bir yayın (broadcast) alanı yok: her istemci zaten yalnızca
+  /// kendi üniversitesinin duyurularını dinliyor (bkz.
+  /// `watchForUniversity` ve notification_providers.dart). Bu yüzden
+  /// "herkese gönder", [kCityUniversities]'teki her (şehir, üniversite)
+  /// çifti için ayrı bir `notifications` belgesi yazmak anlamına gelir —
+  /// [send] ile aynı şema, tek farkı hedefin döngüyle kurulması.
+  ///
+  /// Firestore tek batch'te en çok 500 yazma kabul ediyor; üniversite
+  /// sayısı bunun altında kalsa da ileride artabileceği için 450'lik
+  /// parçalara bölünüyor.
+  Future<void> sendBroadcast({
+    required String title,
+    required String body,
+    required String audience,
+    required String senderUid,
+  }) async {
+    final String cleanTitle = title.trim();
+    final String cleanBody = body.trim();
+
+    final String message = <String>[
+      if (cleanTitle.isNotEmpty) cleanTitle,
+      if (cleanBody.isNotEmpty) cleanBody,
+    ].join('\n');
+    final String cleanMessage = message.length > 1000
+        ? message.substring(0, 1000)
+        : message;
+    final String cleanAudience = AnnouncementAudience.isValid(audience)
+        ? audience
+        : AnnouncementAudience.all;
+    final int nowMs = DateTime.now().millisecondsSinceEpoch;
+
+    final List<({String city, String university})> targets =
+        <({String city, String university})>[
+          for (final MapEntry<String, List<String>> entry
+              in kCityUniversities.entries)
+            for (final String university in entry.value)
+              (city: entry.key, university: university),
+        ];
+
+    const int chunkSize = 450;
+    for (int i = 0; i < targets.length; i += chunkSize) {
+      final WriteBatch batch = fbDb.batch();
+      for (final ({String city, String university}) target in targets.skip(
+        i,
+      ).take(chunkSize)) {
+        batch.set(announcementsCol.doc(), <String, dynamic>{
+          'title': cleanTitle,
+          'body': cleanBody,
+          'message': cleanMessage,
+          'audience': cleanAudience,
+          'university': target.university,
+          'city': target.city,
+          'createdAtMs': nowMs,
+          'createdAt': FieldValue.serverTimestamp(),
+          'createdBy': senderUid,
+        });
+      }
+      await batch.commit();
+    }
+  }
 }

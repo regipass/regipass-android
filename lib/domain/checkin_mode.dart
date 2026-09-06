@@ -49,13 +49,16 @@ abstract final class CheckinMode {
 /// bunu ancak öğrenciler şikâyet edince fark eder.
 enum CheckinStage { notStarted, running, finished }
 
-/// Aşamayı iki kalıcı alandan türetir:
+/// Aşamayı iki alandan türetir:
 ///
-///   * `entryStartedAtMs` — kapı **bir kez** açıldığında yazılır, silinmez
+///   * `entryStartedAtMs` — kapı açıldığında yazılır; "bitir" → "yeniden
+///     başlat" döngüsünde silinmez (okunan girişler kayıtlarda durur, yeni
+///     okutulanlar üzerine eklenir). Yalnızca oturumlar en başa (0'a) kadar
+///     geri alınırsa `EventRepository.advanceSession` bu alanı sıfırlar —
+///     aşama o zaman [notStarted]'a döner. Bu damga YALNIZCA aşamayı
+///     anlatır; etkinliğin keşfe/kayda açık olup olmaması `entryOpen` ile
+///     ölçülür (bkz. `domain/event_utils.dart > eventHasStarted`).
 ///   * `entryOpen`        — kapı şu anda açık mı (kulüp açar/kapatır)
-///
-/// Böylece "bitir" sonrası "yeniden başlat" veriyi sıfırlamadan çalışır:
-/// okunan girişler kayıtlarda durur, yeni okutulanlar üzerine eklenir.
 ///
 /// Kapı check-in'i olmayan etkinlikte `null` döner.
 CheckinStage? resolveCheckinStage({

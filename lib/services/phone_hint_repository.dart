@@ -1,11 +1,15 @@
 import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:crypto/crypto.dart';
 
 import '../core/app_log.dart';
 import '../core/constants.dart';
 import 'firebase_refs.dart';
+
+/// `functions/index.js#checkPasswordResetPhone` ile aynı bölge olmalı.
+const String _kPasswordResetFunctionsRegion = 'europe-west1';
 
 class PasswordResetHint {
   const PasswordResetHint({required this.maskedPhone, required this.roles});
@@ -84,6 +88,35 @@ class PhoneHintRepository {
 
   Future<String> read(String email) async =>
       (await readHint(email)).maskedPhone;
+
+  /// Girilen numaranın, [email] hesabına Firebase Auth'ta kayıtlı GERÇEK
+  /// numarayla birebir aynı olup olmadığını sunucuda (Cloud Function) sorar.
+  ///
+  /// `maskedPhone` yalnızca son birkaç haneyi taşıyor; ortadaki haneler her
+  /// zaman `X` olduğundan iki maskeyi karşılaştırmak yalnızca uzunluk + son
+  /// birkaç haneyi doğrular, YANLIŞ bir numara da bu şekilde "eşleşmiş" gibi
+  /// görünüp boşuna gerçek SMS gönderilmesine yol açabilirdi. Tam numarayı ya
+  /// da onun hash'ini bu (herkese açık okunabilen) koleksiyona yazmak da
+  /// çözüm değil: telefon numaraları parola gibi yüksek entropili değil, kaba
+  /// kuvvetle kırılabilirdi. Bu yüzden karşılaştırma sunucuda yapılır ve
+  /// yalnızca evet/hayır döner — gerçek numara istemciye hiç açılmaz.
+  ///
+  /// Sunucu tarafı aynı e-posta için saatlik deneme sayısını sınırlar; limit
+  /// aşılırsa `FirebaseFunctionsException(code: 'resource-exhausted')` fırlar.
+  Future<bool> matchesAccountPhone({
+    required String email,
+    required String phoneE164,
+  }) async {
+    final HttpsCallable callable = FirebaseFunctions.instanceFor(
+      region: _kPasswordResetFunctionsRegion,
+    ).httpsCallable('checkPasswordResetPhone');
+
+    final HttpsCallableResult<dynamic> result = await callable
+        .call(<String, String>{'email': email, 'phoneE164': phoneE164});
+
+    final Object? data = result.data;
+    return data is Map && data['match'] == true;
+  }
 
   /// Hesap silinirken ipucunu da kaldırır.
   ///

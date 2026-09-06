@@ -36,8 +36,8 @@ const double kStudentQrOverhang = _kOverhang - _kQrDrop;
 /// Ortadaki iki sekmeyi QR düğmesinden uzak tutan yatay güvenlik aralığı.
 const double _kQrClearance = _kQrButtonSize + 12;
 
-/// Ortadaki QR düğmesi. Aynı simge açılan eylemlerden birinde de kullanıldığı
-/// için testler düğmeyi simgeyle değil bu anahtarla bulur.
+/// Ortadaki QR düğmesi ve açtığı iki eylem. Simgeler değiştiğinde testlerin
+/// kırılmaması için düğmeler simgeyle değil bu anahtarlarla bulunur.
 const Key qrToggleKey = Key('student.qrToggle');
 const Key qrScanActionKey = Key('student.qrAction.scan');
 const Key qrGenerateActionKey = Key('student.qrAction.generate');
@@ -158,15 +158,22 @@ class _StudentShellState extends ConsumerState<StudentShell> {
                     children: <Widget>[
                       _QrAction(
                         key: qrScanActionKey,
-                        icon: Icons.qr_code_scanner,
+                        icon: Icon(
+                          Icons.qr_code_scanner,
+                          size: 19,
+                          color: context.brandInk,
+                        ),
                         label: context.t('dashboard.drawer.qrCheckin'),
                         onTap: () => _goQr(Routes.studentQrCheckin),
                       ),
                       const SizedBox(width: 12),
                       _QrAction(
                         key: qrGenerateActionKey,
-                        icon: Icons.qr_code_2,
-                        label: context.t('dashboard.drawer.qrGenerate'),
+                        icon: _TicketQrIcon(
+                          height: 20,
+                          color: context.brandInk,
+                        ),
+                        label: context.t('dashboard.qrMenu.myTicket'),
                         onTap: () => _goQr(Routes.studentQrGenerate),
                       ),
                     ],
@@ -450,7 +457,7 @@ class _QrAction extends StatelessWidget {
     super.key,
   });
 
-  final IconData icon;
+  final Widget icon;
   final String label;
   final VoidCallback onTap;
 
@@ -509,7 +516,7 @@ class _QrAction extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: <Widget>[
-                      Icon(icon, size: 19, color: context.brandInk),
+                      icon,
                       const SizedBox(width: 8),
                       Text(
                         label,
@@ -535,6 +542,82 @@ class _QrAction extends StatelessWidget {
       ),
     );
   }
+}
+
+/// "Biletim" eyleminin simgesi: QR gibi küçük karelerden örülmüş bir bilet.
+///
+/// Hazır bir Material simgesi bileti ve QR'ı aynı anda anlatmadığı için desen
+/// elle çizilir. Dış çerçeve bilet gövdesi, yanlardaki oyuklar koçan kesiği,
+/// ortadaki kesikli dikey çizgi perforasyon, iç bloklar ise QR gözleridir.
+class _TicketQrIcon extends StatelessWidget {
+  const _TicketQrIcon({required this.height, required this.color});
+
+  /// Simgenin yüksekliği; genişlik desenin oranından türetilir.
+  final double height;
+  final Color color;
+
+  /// '1' olan her hücre küçük bir kare olarak çizilir.
+  static const List<String> _pattern = <String>[
+    '1111111111111',
+    '1000000010001',
+    '1011010100101',
+    '1011000010001',
+    '0000010100100',
+    '1011000010001',
+    '1011010100101',
+    '1000000010001',
+    '1111111111111',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final double cell = height / _pattern.length;
+
+    return SizedBox(
+      width: cell * _pattern.first.length,
+      height: height,
+      child: CustomPaint(
+        painter: _TicketQrPainter(pattern: _pattern, color: color),
+      ),
+    );
+  }
+}
+
+class _TicketQrPainter extends CustomPainter {
+  const _TicketQrPainter({required this.pattern, required this.color});
+
+  final List<String> pattern;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double cell = size.height / pattern.length;
+
+    // Kareler hücreyi tam doldurmaz; kalan ince boşluk onları QR modülleri
+    // gibi tek tek ayırır.
+    final double side = cell * 0.82;
+    final double inset = (cell - side) / 2;
+    final Radius radius = Radius.circular(side * 0.26);
+    final Paint paint = Paint()..color = color;
+
+    for (int row = 0; row < pattern.length; row++) {
+      final String line = pattern[row];
+      for (int col = 0; col < line.length; col++) {
+        if (line[col] != '1') continue;
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromLTWH(col * cell + inset, row * cell + inset, side, side),
+            radius,
+          ),
+          paint,
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_TicketQrPainter oldDelegate) =>
+      oldDelegate.color != color || oldDelegate.pattern != pattern;
 }
 
 /// Öğrenci ekranlarının ortak üst çubuğu.

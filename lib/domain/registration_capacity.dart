@@ -228,6 +228,14 @@ class ClosedReason {
 
   /// Kulüp kayıtları elle durdurdu.
   static const String manual = 'manual';
+
+  /// Etkinlik başladı (ilk oturum ilerletildi) — kayıtlar kendiliğinden
+  /// durdu.
+  static const String sessionsStarted = 'sessions_started';
+
+  /// Kapı check-in'i açıldı (henüz hiçbir oturum ilerletilmeden) — kayıtlar
+  /// kendiliğinden durdu. Bkz. `EventRepository.setEntryOpen`.
+  static const String checkinStarted = 'checkin_started';
 }
 
 /// Bir etkinliğin kontenjan doluluk durumu — parça sayaçlarından türetilir.
@@ -318,6 +326,53 @@ QuotaGateAction quotaGateAction({
   }
 
   return QuotaGateAction.none;
+}
+
+/// Oturum ilerletme/geri alma bakınca kayıt bayrağına ne yapılmalı.
+enum SessionRegistrationGateAction {
+  /// Dokunma.
+  none,
+
+  /// Etkinlik başlıyor (0 -> 1) → kayıtları durdur.
+  close,
+
+  /// En başa geri alındı (-> 0) → kendiliğinden kapanmışsa geri aç.
+  reopen,
+}
+
+/// Etkinliği "başlat"mak (ilk oturumu ilerletmek) kayıtları kendiliğinden
+/// durdurmalı; bu adımı geri alıp en başa dönmek de — yalnızca BU YÜZDEN
+/// kapalıysa — kendiliğinden geri açmalı.
+///
+/// [quotaGateAction] ile aynı gerekçeyle [closedReason] ayrımı şart: kulübün
+/// ELİYLE ya da kontenjan dolduğu için kapattığı bir etkinliği, oturumu geri
+/// almak açmamalı — yalnızca etkinlik başladığı için kendiliğinden kapanan
+/// etkinlik, en başa dönülünce kendiliğinden açılır.
+///
+/// Reopen ayrımı hem [ClosedReason.sessionsStarted] hem
+/// [ClosedReason.checkinStarted] için geçerlidir: kapı check-in'i, ilk
+/// oturum hiç ilerletilmeden önce açılıp kayıtları kendiliğinden
+/// kapatabilir (bkz. `EventRepository.setEntryOpen`); en başa dönüş bu
+/// durumda da kendiliğinden kapanmış kaydı açar (bkz.
+/// `EventRepository.advanceSession` > kapı sıfırlaması).
+SessionRegistrationGateAction sessionRegistrationGateAction({
+  required int previousSession,
+  required int nextSession,
+  required bool registrationClosed,
+  required String closedReason,
+}) {
+  if (previousSession <= 0 && nextSession >= 1 && !registrationClosed) {
+    return SessionRegistrationGateAction.close;
+  }
+
+  if (nextSession <= 0 &&
+      registrationClosed &&
+      (closedReason == ClosedReason.sessionsStarted ||
+          closedReason == ClosedReason.checkinStarted)) {
+    return SessionRegistrationGateAction.reopen;
+  }
+
+  return SessionRegistrationGateAction.none;
 }
 
 // ── Sonuç ────────────────────────────────────────────────────────────

@@ -6,6 +6,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../app/theme.dart';
 import '../../core/geo.dart';
 import '../../domain/checkin_qr.dart';
+import '../../domain/event_utils.dart';
 import '../../domain/routing.dart';
 import '../../domain/session_qr_window.dart';
 import '../../l10n/app_strings.dart';
@@ -126,6 +127,16 @@ class _StudentQrCheckinScreenState extends ConsumerState<StudentQrCheckinScreen>
     }
   }
 
+  /// Bu etkinliğe hiç kaydı olmayan biri okuttuğunda gösterilecek metin.
+  ///
+  /// Kayıtlar hâlâ açıksa "kayıtlı değilsin" doğru ve eyleme dönüştürülebilir
+  /// bir uyarıdır (öğrenci gidip kaydolabilir). Ama kayıtlar durdurulduysa
+  /// artık kaydolmanın bir yolu yok — bu durumda kafa karıştıran "kayıtlı
+  /// değilsin" yerine etkinliğin süresinin geçtiği söylenir.
+  String _notRegisteredMessage(AppEvent event) => isRegistrationClosed(event)
+      ? context.t('scan.eventClosedNotRegistered')
+      : context.t('scan.notRegistered');
+
   Future<void> _processSession(String eventId, int session, Object? slot) async {
     final String? uid = ref.read(sessionProvider).user?.uid;
     if (uid == null) return;
@@ -170,7 +181,7 @@ class _StudentQrCheckinScreenState extends ConsumerState<StudentQrCheckinScreen>
     if (!mounted) return;
 
     if (registration == null) {
-      _show(false, context.t('scan.notRegistered'));
+      _show(false, _notRegisteredMessage(event));
       return;
     }
 
@@ -270,7 +281,7 @@ class _StudentQrCheckinScreenState extends ConsumerState<StudentQrCheckinScreen>
     final EventRegistration? registration = await repo.fetchRegistration(eventId, uid);
     if (!mounted) return;
     if (registration == null) {
-      _show(false, context.t('scan.notRegistered'));
+      _show(false, _notRegisteredMessage(event));
       return;
     }
     if (registration.isCheckedIn) {

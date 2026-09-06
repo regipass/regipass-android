@@ -303,6 +303,16 @@ class _ClubAccountScreenState extends ConsumerState<ClubAccountScreen> {
         phone: profile.phone,
         email: profile.email,
       );
+
+      // Etkinlik pop-up'larında gösterilen kulüp adı/üniversite/alan da
+      // etkinlik dokümanında kopya duruyor; kulüp bunları değiştirdiğinde
+      // eski etkinliklerin penceresi eski bilgide kalmasın diye tazelenir.
+      await _syncIdentityOnEvents(
+        uid: uid,
+        clubName: clubName,
+        university: _university,
+        clubFields: _clubFields,
+      );
     } catch (_) {
       if (!mounted) return;
       setState(() => _saving = false);
@@ -373,6 +383,30 @@ class _ClubAccountScreenState extends ConsumerState<ClubAccountScreen> {
       await ref
           .read(eventRepositoryProvider)
           .syncClubContact(clubId: uid, phone: phone, email: email);
+    } catch (_) {
+      // Yoksay.
+    }
+  }
+
+  /// Kulübün etkinliklerindeki ad/üniversite/alan kopyasını tazeler.
+  ///
+  /// En iyi çaba: yazılamazsa profil kaydı yine de geçerlidir, etkinlik
+  /// pop-up'ları bir sonraki senkronizasyona kadar eski bilgiyi gösterir.
+  Future<void> _syncIdentityOnEvents({
+    required String uid,
+    required String clubName,
+    required String university,
+    required List<String> clubFields,
+  }) async {
+    try {
+      await ref
+          .read(eventRepositoryProvider)
+          .syncClubIdentity(
+            clubId: uid,
+            clubName: clubName,
+            clubUniversity: university,
+            clubFields: clubFields,
+          );
     } catch (_) {
       // Yoksay.
     }
@@ -466,24 +500,11 @@ class _ClubAccountScreenState extends ConsumerState<ClubAccountScreen> {
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 const SizedBox(height: 6),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    Icon(
-                      Icons.alternate_email,
-                      size: 14,
-                      color: context.inkMuted,
-                    ),
-                    const SizedBox(width: 5),
-                    Flexible(
-                      child: Text(
-                        profile.email,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ),
-                  ],
+                Text(
+                  profile.email,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
             ),

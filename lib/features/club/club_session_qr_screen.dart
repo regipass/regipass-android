@@ -307,7 +307,7 @@ Future<void> openSessionQr(
   if (start != true || !context.mounted) return;
 
   try {
-    await ref.read(eventRepositoryProvider).advanceSession(event.id, 1);
+    await ref.read(eventRepositoryProvider).advanceSession(event, 1);
   } catch (_) {
     if (context.mounted) {
       showTopFeedback(context, context.t('clubEvents.feedback.updateError'));
