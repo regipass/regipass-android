@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme.dart';
 import '../../domain/event_utils.dart';
 import '../../domain/paid_event_consent.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/event.dart';
+import '../../state/providers.dart';
 import 'common_widgets.dart';
 
 /// Etkinlik kartı ve detay penceresinin ortak parçaları.
@@ -49,7 +51,10 @@ String eventPriorityLabel(BuildContext context, int priority) =>
       tone: FeedbackTone.info,
     );
   }
-  return (label: context.t('dashboard.status.open'), tone: FeedbackTone.success);
+  return (
+    label: context.t('dashboard.status.open'),
+    tone: FeedbackTone.success,
+  );
 }
 
 /// Liste kartı.
@@ -168,22 +173,22 @@ class EventMetaRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 3),
-        child: Row(
-          children: <Widget>[
-            Icon(icon, size: 14, color: context.inkMuted),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                text,
-                style: Theme.of(context).textTheme.bodySmall,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
+    padding: const EdgeInsets.only(bottom: 3),
+    child: Row(
+      children: <Widget>[
+        Icon(icon, size: 14, color: context.inkMuted),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            text,
+            style: Theme.of(context).textTheme.bodySmall,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
-      );
+      ],
+    ),
+  );
 }
 
 /// Modal içindeki bölüm başlığı — solunda kısa bir marka çubuğu.
@@ -194,26 +199,26 @@ class EventSectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-        children: <Widget>[
-          Container(
-            width: 3,
-            height: 15,
-            decoration: BoxDecoration(
-              color: BrandColors.red,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            text,
-            style: TextStyle(
-              fontSize: 14.5,
-              fontWeight: FontWeight.w700,
-              color: context.ink,
-            ),
-          ),
-        ],
-      );
+    children: <Widget>[
+      Container(
+        width: 3,
+        height: 15,
+        decoration: BoxDecoration(
+          color: BrandColors.red,
+          borderRadius: BorderRadius.circular(2),
+        ),
+      ),
+      const SizedBox(width: 8),
+      Text(
+        text,
+        style: TextStyle(
+          fontSize: 14.5,
+          fontWeight: FontWeight.w700,
+          color: context.ink,
+        ),
+      ),
+    ],
+  );
 }
 
 /// Etkinliği düzenleyen kulübün kimlik kartı: ad + kısa bilgi baloncukları.
@@ -375,7 +380,8 @@ List<({IconData icon, String label, String value})> eventInfoRows(
       (
         icon: Icons.event_outlined,
         label: context.t('eventModal.eventDate'),
-        value: formatDeadline(event.eventDateAtMs, locale: context.lang) +
+        value:
+            formatDeadline(event.eventDateAtMs, locale: context.lang) +
             (event.timeRangeLabel.isEmpty ? '' : ' · ${event.timeRangeLabel}'),
       ),
     (
@@ -407,10 +413,9 @@ List<({IconData icon, String label, String value})> eventInfoRows(
       (
         icon: Icons.repeat,
         label: context.t('eventModal.sessions'),
-        value: context.t(
-          'eventModal.sessionsValue',
-          <String, Object?>{'count': event.sessionCount},
-        ),
+        value: context.t('eventModal.sessionsValue', <String, Object?>{
+          'count': event.sessionCount,
+        }),
       ),
     (
       icon: Icons.public_outlined,
@@ -481,56 +486,50 @@ class _PaidContactCard extends StatelessWidget {
     final String email = event.clubEmail.trim();
 
     return Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: context.subtleFill,
-            borderRadius: BorderRadius.circular(BrandShape.controlRadius),
-          ),
-          child: Column(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: context.subtleFill,
+        borderRadius: BorderRadius.circular(BrandShape.controlRadius),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Icon(
-                    Icons.info_outline,
-                    size: 16,
+              Icon(Icons.info_outline, size: 16, color: context.brandInk),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  context.t('eventModal.feeContactNote'),
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.45,
+                    fontWeight: FontWeight.w600,
                     color: context.brandInk,
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      context.t('eventModal.feeContactNote'),
-                      style: TextStyle(
-                        fontSize: 13,
-                        height: 1.45,
-                        fontWeight: FontWeight.w600,
-                        color: context.brandInk,
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
-              if (phone.isNotEmpty || email.isNotEmpty) ...<Widget>[
-                const SizedBox(height: 12),
-                if (phone.isNotEmpty)
-                  _ContactRow(
-                    icon: Icons.phone_outlined,
-                    value: phone,
-                    onTap: () =>
-                        _copy(context, phone, 'eventModal.phoneCopied'),
-                  ),
-                if (email.isNotEmpty)
-                  _ContactRow(
-                    icon: Icons.mail_outline,
-                    value: email,
-                    onTap: () =>
-                        _copy(context, email, 'eventModal.emailCopied'),
-                  ),
-              ],
             ],
           ),
+          if (phone.isNotEmpty || email.isNotEmpty) ...<Widget>[
+            const SizedBox(height: 12),
+            if (phone.isNotEmpty)
+              _ContactRow(
+                icon: Icons.phone_outlined,
+                value: phone,
+                onTap: () => _copy(context, phone, 'eventModal.phoneCopied'),
+              ),
+            if (email.isNotEmpty)
+              _ContactRow(
+                icon: Icons.mail_outline,
+                value: email,
+                onTap: () => _copy(context, email, 'eventModal.emailCopied'),
+              ),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -623,14 +622,13 @@ Future<PaidEventConsentAcceptance?> _showPaidEventConsentDialog(
 /// Kulüp, ücretli etkinliği yayımlamadan önce ödeme sorumluluğunu onaylar.
 Future<PaidEventConsentAcceptance?> showPaidEventClubCreationConsentDialog(
   BuildContext context,
-) =>
-    _showPaidEventConsentDialog(
-      context,
-      role: PaidEventConsentRole.club,
-      titleKey: 'paidEventConsent.club.title',
-      consentTextKey: 'paidEventConsent.club.text',
-      confirmKey: 'paidEventConsent.club.confirm',
-    );
+) => _showPaidEventConsentDialog(
+  context,
+  role: PaidEventConsentRole.club,
+  titleKey: 'paidEventConsent.club.title',
+  consentTextKey: 'paidEventConsent.club.text',
+  confirmKey: 'paidEventConsent.club.confirm',
+);
 
 /// Öğrenci, ücretli etkinlik kaydından hemen önce ödeme risklerini onaylar.
 Future<PaidEventConsentAcceptance?>
@@ -649,10 +647,7 @@ showPaidEventStudentRegistrationConsentDialog(BuildContext context) =>
 /// değil: öğrencinin ödemeyi konuşmak üzere kulübe ulaşması gerekiyor.
 /// Detaydaki blok kolayca gözden kaçtığından kayıt anında bir kez daha
 /// önüne çıkarıyoruz. Ücretsiz etkinliklerde hiç açılmaz.
-Future<void> showPaidEventContactDialog(
-  BuildContext context,
-  AppEvent event,
-) {
+Future<void> showPaidEventContactDialog(BuildContext context, AppEvent event) {
   if (!event.isPaid) return Future<void>.value();
 
   return showDialog<void>(
@@ -760,7 +755,7 @@ Future<void> showEventDetailSheet(
   );
 }
 
-class EventDetailSheet extends StatelessWidget {
+class EventDetailSheet extends ConsumerWidget {
   const EventDetailSheet({
     required this.event,
     this.priority,
@@ -775,9 +770,17 @@ class EventDetailSheet extends StatelessWidget {
   final Widget? actionBar;
 
   @override
-  Widget build(BuildContext context) {
-    final ({String label, FeedbackTone tone}) status =
-        eventStatus(context, event);
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Kart/listeden gelen nesne pencerenin ilk karesini gecikmesiz çizer.
+    // Firestore dinleyicisi veri getirince etkinlik ve kulüp kimliği canlı
+    // kopyaya geçer; profil kaydının eski etkinliklere yaptığı senkronizasyon
+    // pencere açıkken de görünür.
+    final AppEvent event =
+        ref.watch(eventByIdProvider(this.event.id)).value ?? this.event;
+    final ({String label, FeedbackTone tone}) status = eventStatus(
+      context,
+      event,
+    );
 
     return DraggableScrollableSheet(
       initialChildSize: 0.88,
@@ -785,142 +788,155 @@ class EventDetailSheet extends StatelessWidget {
       expand: false,
       builder: (BuildContext context, ScrollController scrollController) =>
           Column(
-        children: <Widget>[
-          Expanded(
-            child: ListView(
-              controller: scrollController,
-              padding: EdgeInsets.zero,
-              children: <Widget>[
-                Stack(
+            children: <Widget>[
+              Expanded(
+                child: ListView(
+                  controller: scrollController,
+                  padding: EdgeInsets.zero,
                   children: <Widget>[
-                    ClipRRect(
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(24),
-                      ),
-                      child: EventImage(url: event.displayImageUrl, height: 200),
-                    ),
-                    Positioned(
-                      top: 10,
-                      left: 0,
-                      right: 0,
-                      child: Center(
-                        child: Container(
-                          width: 42,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: BrandColors.white.withValues(alpha: 0.75),
-                            borderRadius: BorderRadius.circular(999),
+                    Stack(
+                      children: <Widget>[
+                        ClipRRect(
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(24),
+                          ),
+                          child: EventImage(
+                            url: event.displayImageUrl,
+                            height: 200,
                           ),
                         ),
-                      ),
-                    ),
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Material(
-                        color: const Color(0x8C000000),
-                        shape: const CircleBorder(),
-                        clipBehavior: Clip.antiAlias,
-                        child: InkWell(
-                          onTap: () => Navigator.of(context).pop(),
-                          child: const Padding(
-                            padding: EdgeInsets.all(7),
-                            child: Icon(
-                              Icons.close,
-                              size: 19,
-                              color: BrandColors.white,
+                        Positioned(
+                          top: 10,
+                          left: 0,
+                          right: 0,
+                          child: Center(
+                            child: Container(
+                              width: 42,
+                              height: 4,
+                              decoration: BoxDecoration(
+                                color: BrandColors.white.withValues(
+                                  alpha: 0.75,
+                                ),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
                             ),
                           ),
                         ),
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: Material(
+                            color: const Color(0x8C000000),
+                            shape: const CircleBorder(),
+                            clipBehavior: Clip.antiAlias,
+                            child: InkWell(
+                              onTap: () => Navigator.of(context).pop(),
+                              child: const Padding(
+                                padding: EdgeInsets.all(7),
+                                child: Icon(
+                                  Icons.close,
+                                  size: 19,
+                                  color: BrandColors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            event.title,
+                            style: Theme.of(context).textTheme.headlineSmall,
+                          ),
+                          const SizedBox(height: 14),
+                          EventClubHeader(event: event),
+                          const SizedBox(height: 14),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: <Widget>[
+                              StatusPill(
+                                label: status.label,
+                                tone: status.tone,
+                              ),
+                              StatusPill(
+                                label: eventScopeLabel(
+                                  context,
+                                  event.targetScope,
+                                ),
+                              ),
+                              if (priority != null)
+                                StatusPill(
+                                  label: eventPriorityLabel(context, priority!),
+                                ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 22),
+                          EventSectionTitle(context.t('eventModal.info')),
+                          const SizedBox(height: 10),
+                          EventInfoTable(rows: eventInfoRows(context, event)),
+
+                          // Ücretli etkinlik: ödeme uygulama dışında yapılıyor,
+                          // öğrenci kulübe ulaşabilmeli.
+                          if (event.isPaid) ...<Widget>[
+                            const SizedBox(height: 22),
+                            EventPaidContactBlock(event: event),
+                          ],
+
+                          const SizedBox(height: 22),
+                          EventSectionTitle(
+                            context.t('eventModal.description'),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            event.description.isNotEmpty
+                                ? event.description
+                                : context.t('dashboard.modal.noDescription'),
+                            style: const TextStyle(height: 1.55),
+                          ),
+
+                          if (event.purpose.isNotEmpty) ...<Widget>[
+                            const SizedBox(height: 22),
+                            EventSectionTitle(context.t('eventModal.purpose')),
+                            const SizedBox(height: 8),
+                            Text(
+                              event.purpose,
+                              style: const TextStyle(height: 1.55),
+                            ),
+                          ],
+
+                          if (extraContent != null) ...<Widget>[
+                            const SizedBox(height: 22),
+                            extraContent!,
+                          ],
+                        ],
                       ),
                     ),
                   ],
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        event.title,
-                        style: Theme.of(context).textTheme.headlineSmall,
-                      ),
-                      const SizedBox(height: 14),
-                      EventClubHeader(event: event),
-                      const SizedBox(height: 14),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: <Widget>[
-                          StatusPill(label: status.label, tone: status.tone),
-                          StatusPill(
-                            label: eventScopeLabel(context, event.targetScope),
-                          ),
-                          if (priority != null)
-                            StatusPill(
-                              label: eventPriorityLabel(context, priority!),
-                            ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 22),
-                      EventSectionTitle(context.t('eventModal.info')),
-                      const SizedBox(height: 10),
-                      EventInfoTable(rows: eventInfoRows(context, event)),
-
-                      // Ücretli etkinlik: ödeme uygulama dışında yapılıyor,
-                      // öğrenci kulübe ulaşabilmeli.
-                      if (event.isPaid) ...<Widget>[
-                        const SizedBox(height: 22),
-                        EventPaidContactBlock(event: event),
-                      ],
-
-                      const SizedBox(height: 22),
-                      EventSectionTitle(context.t('eventModal.description')),
-                      const SizedBox(height: 8),
-                      Text(
-                        event.description.isNotEmpty
-                            ? event.description
-                            : context.t('dashboard.modal.noDescription'),
-                        style: const TextStyle(height: 1.55),
-                      ),
-
-                      if (event.purpose.isNotEmpty) ...<Widget>[
-                        const SizedBox(height: 22),
-                        EventSectionTitle(context.t('eventModal.purpose')),
-                        const SizedBox(height: 8),
-                        Text(
-                          event.purpose,
-                          style: const TextStyle(height: 1.55),
-                        ),
-                      ],
-
-                      if (extraContent != null) ...<Widget>[
-                        const SizedBox(height: 22),
-                        extraContent!,
-                      ],
-                    ],
+              ),
+              if (actionBar != null)
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: context.surface,
+                    border: Border(top: BorderSide(color: context.hairline)),
+                  ),
+                  child: SafeArea(
+                    top: false,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+                      child: actionBar,
+                    ),
                   ),
                 ),
-              ],
-            ),
+            ],
           ),
-          if (actionBar != null)
-            DecoratedBox(
-              decoration: BoxDecoration(
-                color: context.surface,
-                border: Border(top: BorderSide(color: context.hairline)),
-              ),
-              child: SafeArea(
-                top: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-                  child: actionBar,
-                ),
-              ),
-            ),
-        ],
-      ),
     );
   }
 }

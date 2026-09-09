@@ -1,5 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../app/theme.dart';
 import '../../domain/event_utils.dart';
@@ -65,15 +70,96 @@ class _CertificateRow extends ConsumerWidget {
 
   final StudentCertificate certificate;
 
+  /// Belgenin öğrenciye gösterilen adı.
+  ///
+  /// Dosya adları neredeyse her zaman "katilim-belgesi.pdf" gibi tireli
+  /// geliyor; başlıkta tire kelimelerin arasında okumayı zorlaştırdığı için
+  /// boşluğa çevrilir. Dosyanın kendi adı değişmez, yalnızca gösterim.
+  String get _displayName {
+    final String raw = certificate.fileName.isNotEmpty
+        ? certificate.fileName
+        : certificate.eventTitle;
+
+    return raw.replaceAll('-', ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+  }
+
   /// Belgeyi uygulama içinde görüntüler (görsel ve PDF).
   Future<void> _open(BuildContext context) => openMedia(
         context,
         source: certificate.fileUrl,
-        title: certificate.fileName.isNotEmpty
-            ? certificate.fileName
-            : certificate.eventTitle,
+        title: _displayName,
         contentType: certificate.contentType,
       );
+
+  /// Belgeyi indirir: web'de `<a download>` ile doğrudan indiriliyordu,
+  /// mobilde eşdeğeri yok — dosya geçici dizine yazılıp paylaşım sayfası
+  /// açılır (kullanıcı "Dosyalar"a kaydedebilir). Önceden burada yanlışlıkla
+  /// görüntüleyici açılıyordu; "İndir" bir kayıt/dışa aktarma işlemi olmalı.
+  Future<void> _download(BuildContext context, WidgetRef ref) async {
+    final RenderBox? box = context.findRenderObject() as RenderBox?;
+    final Rect? origin =
+        box != null && box.hasSize ? box.localToGlobal(Offset.zero) & box.size : null;
+
+    try {
+      final http.Response response =
+          await http.get(Uri.parse(certificate.fileUrl)).timeout(const Duration(seconds: 30));
+      if (response.statusCode != 200) {
+        throw HttpException('${response.statusCode}');
+      }
+
+      final String name =
+          certificate.fileName.isNotEmpty ? certificate.fileName : '$_displayName.pdf';
+      final Directory directory = await getTemporaryDirectory();
+      final File file = File('${directory.path}/$name');
+      await file.writeAsBytes(response.bodyBytes);
+
+      await SharePlus.instance.share(
+        ShareParams(
+          files: <XFile>[
+            XFile(
+              file.path,
+              mimeType: certificate.contentType.isNotEmpty ? certificate.contentType : null,
+            ),
+          ],
+          sharePositionOrigin: origin,
+        ),
+      );
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.t('studentCertificates.feedback.downloadError')),
+          ),
+        );
+      }
+    }
+  }
+
+  /// Belgenin bağlantısını hızlıca paylaşır (indirmeden) — sohbete/e-postaya
+  /// yapıştırmak gibi hafif kullanımlar için.
+  Future<void> _share(BuildContext context) async {
+    final RenderBox? box = context.findRenderObject() as RenderBox?;
+    final Rect? origin =
+        box != null && box.hasSize ? box.localToGlobal(Offset.zero) & box.size : null;
+
+    try {
+      await SharePlus.instance.share(
+        ShareParams(
+          uri: Uri.tryParse(certificate.fileUrl),
+          subject: _displayName,
+          sharePositionOrigin: origin,
+        ),
+      );
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.t('studentCertificates.feedback.shareError')),
+          ),
+        );
+      }
+    }
+  }
 
   Future<void> _delete(BuildContext context, WidgetRef ref) async {
     final bool? confirmed = await showDialog<bool>(
@@ -131,15 +217,24 @@ class _CertificateRow extends ConsumerWidget {
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),
+        // Belgenin adı da yazılır: kulüp aynı etkinliğe birden fazla belge
+        // yükleyebiliyor (katılım + başarı gibi) ve yalnızca etkinlik adıyla
+        // iki satır birbirinden ayırt edilemiyordu.
         subtitle: Text(
-          '${certificate.clubName.isNotEmpty ? certificate.clubName : '-'} • '
-          '${formatDeadline(certificate.issuedAtMs, locale: context.lang)}',
+          <String>[
+            if (certificate.fileName.isNotEmpty) _displayName,
+            certificate.clubName.isNotEmpty ? certificate.clubName : '-',
+            formatDeadline(certificate.issuedAtMs, locale: context.lang),
+          ].join(' • '),
           style: Theme.of(context).textTheme.bodySmall,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
         ),
         onTap: () => _open(context),
         trailing: PopupMenuButton<String>(
           onSelected: (String value) {
-            if (value == 'download') _open(context);
+            if (value == 'download') _download(context, ref);
+            if (value == 'share') _share(context);
             if (value == 'delete') _delete(context, ref);
           },
           itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
@@ -150,6 +245,16 @@ class _CertificateRow extends ConsumerWidget {
                   const Icon(Icons.download_outlined, size: 18),
                   const SizedBox(width: 10),
                   Text(context.t('studentCertificates.menu.download')),
+                ],
+              ),
+            ),
+            PopupMenuItem<String>(
+              value: 'share',
+              child: Row(
+                children: <Widget>[
+                  const Icon(Icons.ios_share_outlined, size: 18),
+                  const SizedBox(width: 10),
+                  Text(context.t('studentCertificates.menu.share')),
                 ],
               ),
             ),

@@ -16,6 +16,18 @@
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
+        <!-- Saydam çubuğun ardına sistemin kendi kontrast dolgusunu sermesini
+             engeller. Android 10'dan (API 29) itibaren gezinme çubuğunda bu
+             dolgu VARSAYILAN OLARAK AÇIK: rengi saydam bıraksak da sistem
+             çubuğun arkasına koyu bir bant çiziyor, açılış perdesi sürerken
+             alt çubuk siyah görünüyordu. Dart tarafındaki karşılığı
+             `systemNavigationBarContrastEnforced: false` (bkz.
+             lib/app/system_ui.dart -> systemBarsStyle); orası ancak Flutter
+             ilk kareyi çizdikten sonra geçerli olduğu için aynı kararın
+             temada da bulunması gerekiyor. Eski cihazlarda satırlar yok
+             sayılır. -->
+        <item name="android:enforceNavigationBarContrast">false</item>
+        <item name="android:enforceStatusBarContrast">false</item>
         <!-- Muafiyetin gerekçesi aşağıda, NormalTheme'de anlatıldı. Pencere
              bayrağı açılış temasından da okunabildiği için ikisinde de var. -->
         <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
@@ -41,6 +53,18 @@
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
+        <!-- Saydam çubuğun ardına sistemin kendi kontrast dolgusunu sermesini
+             engeller. Android 10'dan (API 29) itibaren gezinme çubuğunda bu
+             dolgu VARSAYILAN OLARAK AÇIK: rengi saydam bıraksak da sistem
+             çubuğun arkasına koyu bir bant çiziyor, açılış perdesi sürerken
+             alt çubuk siyah görünüyordu. Dart tarafındaki karşılığı
+             `systemNavigationBarContrastEnforced: false` (bkz.
+             lib/app/system_ui.dart -> systemBarsStyle); orası ancak Flutter
+             ilk kareyi çizdikten sonra geçerli olduğu için aynı kararın
+             temada da bulunması gerekiyor. Eski cihazlarda satırlar yok
+             sayılır. -->
+        <item name="android:enforceNavigationBarContrast">false</item>
+        <item name="android:enforceStatusBarContrast">false</item>
         <!-- Android 15 (API 35), hedefi 35 olan uygulamalarda edge-to-edge
              yerleşimini ZORUNLU kılar; o haldeyken Flutter'ın edgeToEdge
              dışındaki SystemUiMode değerleri (yani "alt çubuğu gizle")

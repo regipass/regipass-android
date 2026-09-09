@@ -11,6 +11,9 @@
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
+        <!-- Kontrast dolgusunun gerekçesi: values/styles.xml. -->
+        <item name="android:enforceNavigationBarContrast">false</item>
+        <item name="android:enforceStatusBarContrast">false</item>
         <!-- Gerekçe: values/styles.xml. -->
         <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
     </style>
@@ -32,6 +35,9 @@
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
+        <!-- Kontrast dolgusunun gerekçesi: values/styles.xml. -->
+        <item name="android:enforceNavigationBarContrast">false</item>
+        <item name="android:enforceStatusBarContrast">false</item>
         <!-- Gerekçe ve Android 16 istisnası: values/styles.xml. Koyu mod
              niteleyicisi sürüm niteleyicisinden önce geldiği için karanlık
              temanın v36 kopyası ayrıca gerekiyor (values-night-v36). -->

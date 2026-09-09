@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/system_ui.dart';
 import '../../app/theme.dart';
 import '../../core/constants.dart';
 import '../../core/input_guard.dart';
@@ -15,6 +16,7 @@ import '../auth/auth_actions.dart';
 import '../auth/auth_widgets.dart';
 import '../shared/common_widgets.dart';
 import '../shared/glowing_border.dart';
+import 'splash_screen.dart';
 
 /// Uygulamanın giriş ekranı — index.html + login-modal.js karşılığı.
 ///
@@ -136,59 +138,66 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     // Oturum açıkken profil dokümanları yüklenene kadar yönlendirme kararı
     // verilemez; bu arada giriş formunu göstermek yanıltıcı olurdu.
+    //
+    // Beklenen ekran açılış perdesinin KENDİSİ: burası açılışla giriş formu
+    // arasındaki tek karelik bir ara durak ve daha önce koyu bir zemine
+    // (loginBase) yerleştirilmiş bir çark gösteriyordu. Açık temada perde
+    // beyazken bu, arada bir anlık siyah ekrana — dolayısıyla saydam
+    // çubukların da bir anlığına siyaha dönmesine — yol açıyordu. Perde
+    // sürdürüldüğünde zemin kesintisiz kalır; koyu giriş ekranına geçiş
+    // yalnızca bir kez, perde silinirken yaşanır.
     if (session.isSignedIn && session.isLoading) {
-      return const Scaffold(
-        backgroundColor: BrandColors.loginBase,
-        body: LoadingView(),
-      );
+      return const SplashScreen();
     }
 
-    return Scaffold(
-      backgroundColor: BrandColors.loginBase,
-      // Klavye açılınca zemin ve akan katman yerinde kalsın; içerik
-      // AuthFixedBody ile kendini ayarlıyor.
-      resizeToAvoidBottomInset: false,
-      body: Stack(
-        fit: StackFit.expand,
-        children: <Widget>[
-          const AuthBackground(),
-          SafeArea(
-            child: Column(
-              children: <Widget>[
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: <Widget>[
-                      AuthGhostButton(
-                        label: context.t('nav.explore'),
-                        icon: Icons.explore_outlined,
-                        onPressed: _loading
-                            ? null
-                            : () => context.push(Routes.explore),
-                      ),
-                      const LanguageToggleDark(),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: AuthFixedBody(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
+    return DarkScreenSystemBars(
+      child: Scaffold(
+        backgroundColor: BrandColors.loginBase,
+        // Klavye açılınca zemin ve akan katman yerinde kalsın; içerik
+        // AuthFixedBody ile kendini ayarlıyor.
+        resizeToAvoidBottomInset: false,
+        body: Stack(
+          fit: StackFit.expand,
+          children: <Widget>[
+            const AuthBackground(),
+            SafeArea(
+              child: Column(
+                children: <Widget>[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: <Widget>[
-                        const AuthBrandHero(),
-                        const SizedBox(height: 28),
-                        _buildCard(context),
-                        const SizedBox(height: 18),
-                        _RegisterLink(enabled: !_loading),
+                        AuthGhostButton(
+                          label: context.t('nav.explore'),
+                          icon: Icons.explore_outlined,
+                          onPressed: _loading
+                              ? null
+                              : () => context.push(Routes.explore),
+                        ),
+                        const LanguageToggleDark(),
                       ],
                     ),
                   ),
-                ),
-              ],
+                  Expanded(
+                    child: AuthFixedBody(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          const AuthBrandHero(),
+                          const SizedBox(height: 28),
+                          _buildCard(context),
+                          const SizedBox(height: 18),
+                          _RegisterLink(enabled: !_loading),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -322,7 +331,23 @@ class _RegisterLink extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return TextButton(
-      onPressed: enabled ? () => context.push(Routes.register) : null,
+      onPressed: enabled
+          ? () {
+              final String? continuation = GoRouterState.of(
+                context,
+              ).uri.queryParameters[kExternalQrContinueParam];
+              context.push(
+                Uri(
+                  path: Routes.register,
+                  queryParameters: continuation == null
+                      ? const <String, String>{}
+                      : <String, String>{
+                          kExternalQrContinueParam: continuation,
+                        },
+                ).toString(),
+              );
+            }
+          : null,
       style: TextButton.styleFrom(foregroundColor: BrandColors.white),
       child: RichText(
         text: TextSpan(

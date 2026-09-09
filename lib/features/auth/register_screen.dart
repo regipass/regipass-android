@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/system_ui.dart';
 import '../../app/theme.dart';
 import '../../core/constants.dart';
 import '../../core/input_guard.dart';
@@ -300,50 +301,52 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: BrandColors.loginBase,
-      resizeToAvoidBottomInset: false,
-      body: Stack(
-        fit: StackFit.expand,
-        children: <Widget>[
-          const AuthBackground(),
-          SafeArea(
-            child: Column(
-              children: <Widget>[
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: <Widget>[
-                      AuthGhostButton(
-                        label: context.t('common.back'),
-                        icon: Icons.arrow_back,
-                        onPressed: _loading
-                            ? null
-                            : () => context.canPop() ? context.pop() : null,
-                      ),
-                      const LanguageToggleDark(),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: AuthFixedBody(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
+    return DarkScreenSystemBars(
+      child: Scaffold(
+        backgroundColor: BrandColors.loginBase,
+        resizeToAvoidBottomInset: false,
+        body: Stack(
+          fit: StackFit.expand,
+          children: <Widget>[
+            const AuthBackground(),
+            SafeArea(
+              child: Column(
+                children: <Widget>[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: <Widget>[
-                        const AuthBrandHero(compact: true),
-                        const SizedBox(height: 22),
-                        _buildCard(context),
-                        const SizedBox(height: 14),
-                        _SignInLink(enabled: !_loading),
+                        AuthGhostButton(
+                          label: context.t('common.back'),
+                          icon: Icons.arrow_back,
+                          onPressed: _loading
+                              ? null
+                              : () => context.canPop() ? context.pop() : null,
+                        ),
+                        const LanguageToggleDark(),
                       ],
                     ),
                   ),
-                ),
-              ],
+                  Expanded(
+                    child: AuthFixedBody(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          const AuthBrandHero(compact: true),
+                          const SizedBox(height: 22),
+                          _buildCard(context),
+                          const SizedBox(height: 14),
+                          _SignInLink(enabled: !_loading),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

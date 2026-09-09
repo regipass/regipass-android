@@ -55,18 +55,19 @@ class ClubSessionQrScreen extends ConsumerWidget {
         ),
         data: (List<AppEvent> all) {
           // Yalnızca oturumlu ve süresi geçmemiş etkinlikler.
-          final List<AppEvent> sessionEvents = all
-              .where(
-                (AppEvent e) =>
-                    e.isMultiSession &&
-                    !e.hiddenFromClubList &&
-                    !isPastEvent(e),
-              )
-              .toList()
-            ..sort(
-              (AppEvent a, AppEvent b) =>
-                  a.deadlineAtMs.compareTo(b.deadlineAtMs),
-            );
+          final List<AppEvent> sessionEvents =
+              all
+                  .where(
+                    (AppEvent e) =>
+                        e.isMultiSession &&
+                        !e.hiddenFromClubList &&
+                        !isPastEvent(e),
+                  )
+                  .toList()
+                ..sort(
+                  (AppEvent a, AppEvent b) =>
+                      a.deadlineAtMs.compareTo(b.deadlineAtMs),
+                );
 
           if (sessionEvents.isEmpty) {
             return ListView(
@@ -278,7 +279,7 @@ Future<void> openSessionQr(
   unawaited(showEventDetailSheet(context, event: event));
 
   if (event.currentSession >= 1) {
-    await showSessionQrDialog(context, event.id, event.currentSession);
+    await showSessionQrDialog(context, ref, event.id, event.currentSession);
     return;
   }
 
@@ -316,7 +317,7 @@ Future<void> openSessionQr(
   }
 
   if (!context.mounted) return;
-  await showSessionQrDialog(context, event.id, 1);
+  await showSessionQrDialog(context, ref, event.id, 1);
 }
 
 /// Kulübün ekrana bastığı, öğrencilerin kendi telefonlarından okuttuğu
@@ -328,35 +329,69 @@ Future<void> openSessionQr(
 /// (bkz. domain/session_qr_window.dart).
 Future<void> showSessionQrDialog(
   BuildContext context,
+  WidgetRef ref,
   String eventId,
   int session,
-) =>
-    showDialog<void>(
-      context: context,
-      builder: (BuildContext dialogContext) => AlertDialog(
-        title: Text(
-          dialogContext.t('clubEvents.session.qrTitle', <String, Object?>{
-            'session': session,
-          }),
-        ),
-        content: _RotatingSessionQr(eventId: eventId, session: session),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text(dialogContext.t('common.close')),
-          ),
-        ],
+) async {
+  final AppEvent? event = await _publishQr(
+    context,
+    ref,
+    eventId,
+    session: session,
+  );
+  if (event == null || !context.mounted) return;
+  await showDialog<void>(
+    context: context,
+    builder: (BuildContext dialogContext) => AlertDialog(
+      title: Text(
+        dialogContext.t('clubEvents.session.qrTitle', <String, Object?>{
+          'session': session,
+        }),
       ),
-    );
+      content: _RotatingSessionQr(event: event, session: session),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(),
+          child: Text(dialogContext.t('common.close')),
+        ),
+      ],
+    ),
+  );
+}
+
+Future<AppEvent?> _publishQr(
+  BuildContext context,
+  WidgetRef ref,
+  String eventId, {
+  int? session,
+}) async {
+  try {
+    return await ref
+        .read(eventRepositoryProvider)
+        .publishSharedQr(eventId, session: session);
+  } catch (error) {
+    if (context.mounted) {
+      showTopFeedback(
+        context,
+        context.t(
+          error is StateError
+              ? error.message
+              : 'clubEvents.feedback.updateError',
+        ),
+      );
+    }
+    return null;
+  }
+}
 
 /// Yenilemeyi dilim **sınırına** hizalar: ilk bekleme, içinde bulunulan 20
 /// saniyelik dilimin bitişine kadardır. Böylece ekrandaki kod ile öğrencinin
 /// cihazındaki dilim hesabı aynı anda döner ve tolerans penceresi boşa
 /// harcanmaz (club-events.js#scheduleSessionQrRotation ile aynı).
 class _RotatingSessionQr extends StatefulWidget {
-  const _RotatingSessionQr({required this.eventId, required this.session});
+  const _RotatingSessionQr({required this.event, required this.session});
 
-  final String eventId;
+  final AppEvent event;
   final int session;
 
   @override
@@ -388,20 +423,17 @@ class _RotatingSessionQrState extends State<_RotatingSessionQr> {
 
   void _scheduleRotation() {
     _rotation?.cancel();
-    _rotation = Timer(
-      Duration(milliseconds: msUntilNextSessionQrSlot()),
-      () {
-        if (!mounted) return;
-        setState(() => _slot = currentSessionQrSlot());
-        // Sınırdan sonrası tam pencere aralıklıdır.
-        _rotation = Timer.periodic(
-          const Duration(milliseconds: kSessionQrWindowMs),
-          (_) {
-            if (mounted) setState(() => _slot = currentSessionQrSlot());
-          },
-        );
-      },
-    );
+    _rotation = Timer(Duration(milliseconds: msUntilNextSessionQrSlot()), () {
+      if (!mounted) return;
+      setState(() => _slot = currentSessionQrSlot());
+      // Sınırdan sonrası tam pencere aralıklıdır.
+      _rotation = Timer.periodic(
+        const Duration(milliseconds: kSessionQrWindowMs),
+        (_) {
+          if (mounted) setState(() => _slot = currentSessionQrSlot());
+        },
+      );
+    });
   }
 
   @override
@@ -415,9 +447,12 @@ class _RotatingSessionQrState extends State<_RotatingSessionQr> {
   Widget build(BuildContext context) {
     final String token = createCheckinQrToken(
       buildSessionCheckinPayload(
-        eventId: widget.eventId,
+        eventId: widget.event.id,
         session: widget.session,
         slot: _slot,
+        locationLat: widget.event.locationLat,
+        locationLng: widget.event.locationLng,
+        locationRadius: widget.event.effectiveRadius,
       ),
     );
 
@@ -446,9 +481,20 @@ class _RotatingSessionQrState extends State<_RotatingSessionQr> {
 /// Oturum QR'ından farklı olarak **yenilenmez**: kapı kodunun sınırı tazelik
 /// değil, kulübün kapıyı açık tutmasıdır (`events.entryOpen`). Görevli girişi
 /// bitirdiğinde ekran görüntüsü de dahil hiçbir kod işe yaramaz.
-Future<void> showDoorCheckinQrDialog(BuildContext context, String eventId) {
+Future<void> showDoorCheckinQrDialog(
+  BuildContext context,
+  WidgetRef ref,
+  String eventId,
+) async {
+  final AppEvent? event = await _publishQr(context, ref, eventId);
+  if (event == null || !context.mounted) return;
   final String token = createCheckinQrToken(
-    buildEventEntryPayload(eventId: eventId),
+    buildEventEntryPayload(
+      eventId: eventId,
+      locationLat: event.locationLat,
+      locationLng: event.locationLng,
+      locationRadius: event.effectiveRadius,
+    ),
   );
 
   return showDialog<void>(
@@ -491,16 +537,18 @@ class _QrImage extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(8),
         child: Image.network(
-          buildCheckinQrImageUrl(data, size: 320),
-          width: 240,
-          height: 240,
+          buildCheckinQrImageUrl(data, size: 600),
+          width: 280,
+          height: 280,
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.none,
           // Yenilenen kodda eski görsel bir an bile kalmasın diye anahtar
           // içeriğe bağlı: aynı kutu yeni veriyle yeniden çizilir.
           key: ValueKey<String>(data),
           gaplessPlayback: true,
           errorBuilder: (_, _, _) => SizedBox(
-            width: 240,
-            height: 240,
+            width: 280,
+            height: 280,
             child: Center(
               child: Text(
                 context.t('clubEvents.session.qrError'),

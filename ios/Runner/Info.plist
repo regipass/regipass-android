@@ -24,6 +24,10 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<!-- Flutter'ın yerleşik deep-link yöneticisi GoRouter'a gelen Universal
+	     Link yolunu iletir. app_links gibi ayrı bir eklenti kullanılmıyor. -->
+	<key>FlutterDeepLinkingEnabled</key>
+	<true/>
 	<!-- ── Geri dönüş adresi (OAuth callback) ────────────────────────────
 	     Aşağıdaki şema, iOS OAuth istemci kimliğinin ters çevrilmiş
 	     hâlidir (GoogleService-Info.plist'teki REVERSED_CLIENT_ID).

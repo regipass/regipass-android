@@ -8,7 +8,7 @@
 /// Kulübün ekrana bastığı kodların (kapı girişi ve oturum yoklaması) içeriği
 /// ham token değil şu adrestir:
 ///
-///     https://eventapp-604a5.web.app/qr.html?t=EVAPPQR1:...
+///     https://regipass.com/qr.html?t=EVAPPQR1:...
 ///
 /// Sebebi: öğrenci telefonunun **kendi kamera uygulaması** ham metni okuyunca
 /// yapacak bir şey bulamaz, yalnızca düz yazı gösterir. Adres olduğunda ise
@@ -29,7 +29,7 @@ const String kQrEntryPath = 'qr.html';
 const String kQrTokenParam = 't';
 
 /// Mobilde `window.location` yoktur; adres her zaman yayındaki siteye kurulur.
-const String kQrPublicBaseUrl = 'https://eventapp-604a5.web.app/';
+const String kQrPublicBaseUrl = 'https://regipass.com/';
 
 String _toBase64Url(String text) => base64Url
     .encode(utf8.encode(text))
@@ -62,18 +62,20 @@ String? extractCheckinQrToken(String? rawValue) {
   if (uri == null || !uri.hasScheme) return null;
 
   // Web `t`yi kullanıyor; `token` eski adreslerde kalmış olabilir.
-  final String? fromUrl = uri.queryParameters[kQrTokenParam] ??
-      uri.queryParameters['token'];
+  final String? fromUrl =
+      uri.queryParameters[kQrTokenParam] ?? uri.queryParameters['token'];
 
-  return fromUrl != null && fromUrl.startsWith(kCheckinQrPrefix) ? fromUrl : null;
+  return fromUrl != null && fromUrl.startsWith(kCheckinQrPrefix)
+      ? fromUrl
+      : null;
 }
 
 /// Telefon kamerasının açabileceği adres. Kulübün ekrana bastığı QR'a yazılan
 /// içerik budur.
-String buildCheckinQrUrl(String token) =>
-    Uri.parse(kQrPublicBaseUrl).resolve(kQrEntryPath).replace(
-      queryParameters: <String, String>{kQrTokenParam: token},
-    ).toString();
+String buildCheckinQrUrl(String token) => Uri.parse(kQrPublicBaseUrl)
+    .resolve(kQrEntryPath)
+    .replace(queryParameters: <String, String>{kQrTokenParam: token})
+    .toString();
 
 /// Token'ı çözer. Ham token da adres biçimi de kabul edilir; Regipass kodu
 /// değilse veya bozuksa `null` döner.
@@ -82,7 +84,9 @@ Map<String, dynamic>? parseCheckinQrToken(String? rawValue) {
   if (token == null) return null;
 
   try {
-    final String json = _fromBase64Url(token.substring(kCheckinQrPrefix.length));
+    final String json = _fromBase64Url(
+      token.substring(kCheckinQrPrefix.length),
+    );
     final Object? decoded = jsonDecode(json);
     return decoded is Map<String, dynamic> ? decoded : null;
   } catch (_) {
@@ -94,8 +98,12 @@ Map<String, dynamic>? parseCheckinQrToken(String? rawValue) {
 /// iki platformda birebir aynı olsun.
 String buildCheckinQrImageUrl(String data, {int size = 280}) {
   final int sanitized = size.clamp(180, 600);
+  // The four-module white quiet zone must survive resizing and saving the
+  // image. QRServer otherwise supplies no quiet zone, just a one-pixel margin.
+  // Only rendering changes: the encoded URL/token remains byte-for-byte intact.
   return 'https://api.qrserver.com/v1/create-qr-code/'
-      '?size=${sanitized}x$sanitized&data=${Uri.encodeComponent(data)}';
+      '?size=${sanitized}x$sanitized&qzone=4&margin=0'
+      '&data=${Uri.encodeComponent(data)}';
 }
 
 /// Öğrencinin kapıda görevliye **gösterdiği** statik bilet
@@ -109,41 +117,67 @@ Map<String, dynamic> buildStudentCheckinPayload({
   required String registrationId,
   required String eventId,
   required String studentId,
-}) =>
-    <String, dynamic>{
-      'v': 1,
-      'type': 'event-checkin',
-      'registrationId': registrationId,
-      'eventId': eventId,
-      'studentId': studentId,
-    };
+}) => <String, dynamic>{
+  'v': 1,
+  'type': 'event-checkin',
+  'registrationId': registrationId,
+  'eventId': eventId,
+  'studentId': studentId,
+};
 
 /// Kulübün ekrana bastığı, öğrencilerin okuttuğu paylaşılan oturum QR yükü.
 /// (club-events.js#paintSessionQr)
 ///
 /// [slot] üretim anının 20 saniyelik dilimidir; okuyan taraf buna bakarak eski
 /// bir ekran görüntüsünü reddeder (bkz. `session_qr_window.dart`).
+///
+/// Konum alanları isteğe bağlıdır. Konumsuz etkinlikte alanlar hiç yazılmaz;
+/// token türü, sürümü, oturum dilimi ve onu URL'ye saran algoritma aynen
+/// kalır. Konumlu QR'ların yükü ise değişmeden korunur.
 Map<String, dynamic> buildSessionCheckinPayload({
   required String eventId,
   required int session,
   required int slot,
-}) =>
-    <String, dynamic>{
-      'v': 1,
-      'type': 'session-checkin',
-      'eventId': eventId,
-      'session': session,
-      'slot': slot,
-    };
+  double? locationLat,
+  double? locationLng,
+  int? locationRadius,
+}) => <String, dynamic>{
+  'v': 1,
+  'type': 'session-checkin',
+  'eventId': eventId,
+  'session': session,
+  'slot': slot,
+  ...?_qrLocationPayload(locationLat, locationLng, locationRadius),
+};
 
 /// Kapıda gösterilen ortak giriş QR'ı. Öğrenci kendi telefonuyla okutur;
 /// kimlik QR'ın içinde değil, oturumdaki kayıt belgesinden alınır.
 ///
 /// Dilim taşımaz: kapı kodunun sınırı tazelik değil, kulübün kapıyı açık
 /// tutmasıdır (`events.entryOpen`).
-Map<String, dynamic> buildEventEntryPayload({required String eventId}) =>
-    <String, dynamic>{
-      'v': 1,
-      'type': 'event-entry',
-      'eventId': eventId,
-    };
+Map<String, dynamic> buildEventEntryPayload({
+  required String eventId,
+  double? locationLat,
+  double? locationLng,
+  int? locationRadius,
+}) => <String, dynamic>{
+  'v': 1,
+  'type': 'event-entry',
+  'eventId': eventId,
+  ...?_qrLocationPayload(locationLat, locationLng, locationRadius),
+};
+
+/// Konum tamamen yoksa alanları hiç ekleme. Böylece konumsuz QR'lar eski
+/// payload/URL biçimini korur; konumlu QR'ların alan sırası da değişmez.
+Map<String, dynamic>? _qrLocationPayload(
+  double? locationLat,
+  double? locationLng,
+  int? locationRadius,
+) {
+  if (locationLat == null || locationLng == null) return null;
+  return <String, dynamic>{
+    'locationLat': locationLat,
+    'locationLng': locationLng,
+    'locationRadius': ?locationRadius,
+  };
+}

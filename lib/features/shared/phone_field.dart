@@ -202,6 +202,7 @@ class PhoneField extends StatefulWidget {
     this.enabled = true,
     this.errorText,
     this.onChanged,
+    this.onSubmitted,
     this.focusNode,
     super.key,
   });
@@ -230,6 +231,12 @@ class PhoneField extends StatefulWidget {
   /// Kullanıcı numarayı değiştirdiğinde tetiklenir; çağıran taraf bunu
   /// [errorText] ile gösterdiği hatayı temizlemek için kullanır.
   final VoidCallback? onChanged;
+
+  /// Klavyenin "bitti" tuşuna basıldığında — klavye kapatıldıktan sonra —
+  /// çağrılır. Formun gönder düğmesi klavyenin altında kaldığında kullanıcının
+  /// tek çıkış yolu bu tuş oluyor; veren ekran burada doğrudan gönderimi
+  /// başlatabilir.
+  final ValueChanged<String>? onSubmitted;
 
   @override
   State<PhoneField> createState() => _PhoneFieldState();
@@ -396,8 +403,15 @@ class _PhoneFieldState extends State<PhoneField> {
               // Numara klavyesinin "bitti" tuşu: başka alana atlamak yerine
               // klavyeyi kapatır — telefon formun son yazılan alanı ve rakam
               // klavyesi açık kaldığında altındaki seçim alanlarını örtüyordu.
+              //
+              // [PhoneField.onSubmitted] verilmişse klavye kapandıktan sonra
+              // ayrıca o da çağrılır: küçük ekranlarda formun düğmesi klavyenin
+              // altında kalabiliyor, "bitti" tuşu o durumda tek çıkış yolu.
               textInputAction: TextInputAction.done,
-              onSubmitted: (_) => _focus.unfocus(),
+              onSubmitted: (String value) {
+                _focus.unfocus();
+                widget.onSubmitted?.call(value);
+              },
               onChanged: (_) {
                 setState(() {});
                 widget.onChanged?.call();

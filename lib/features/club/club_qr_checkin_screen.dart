@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../app/theme.dart';
 import '../../domain/checkin_qr.dart';
 import '../../domain/event_utils.dart';
+import '../../domain/routing.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/event.dart';
 import '../../state/providers.dart';
@@ -33,6 +37,7 @@ class _ClubQrCheckinScreenState extends ConsumerState<ClubQrCheckinScreen> {
   );
 
   bool _busy = false;
+  bool _leavingForEvent = false;
 
   /// Aynı QR telefon çekilirken tekrar okunabiliyor; kısa süre içinde gelen
   /// aynı kod hata gibi gösterilmeden yok sayılır.
@@ -100,8 +105,9 @@ class _ClubQrCheckinScreenState extends ConsumerState<ClubQrCheckinScreen> {
     final String? clubId = ref.read(sessionProvider).user?.uid;
     if (clubId == null) return;
 
-    final AppEvent? event =
-        await ref.read(eventRepositoryProvider).fetchEvent(eventId);
+    final AppEvent? event = await ref
+        .read(eventRepositoryProvider)
+        .fetchEvent(eventId);
     if (!mounted) return;
 
     if (event == null) {
@@ -165,10 +171,9 @@ class _ClubQrCheckinScreenState extends ConsumerState<ClubQrCheckinScreen> {
       // Bilet okuma yalnızca KAPI DAMGASI yazar; oturum yoklaması saymaz.
       // "Check-in + Yoklama" modunda gün içindeki yoklamalar ayrı bir adımdır
       // ve öğrencinin salondaki oturum QR'ını okutmasıyla işler.
-      await ref.read(eventRepositoryProvider).markCheckInByClub(
-            registration: registration,
-            clubId: clubId,
-          );
+      await ref
+          .read(eventRepositoryProvider)
+          .markCheckInByClub(registration: registration, clubId: clubId);
     } catch (error) {
       if (!mounted) return;
       _show(
@@ -187,6 +192,27 @@ class _ClubQrCheckinScreenState extends ConsumerState<ClubQrCheckinScreen> {
         'name': registration.displayName,
       }),
     );
+    _returnToEvent(event);
+  }
+
+  /// Başarılı girişte QR ekranını açık bırakmak, görevliyi yeniden aynı
+  /// öğrenciyi okutmaya davet ediyordu. Kamerayı hemen durdurup ilgili
+  /// etkinliğin penceresi açık olan "Etkinliklerim" ekranına dönüyoruz.
+  void _returnToEvent(AppEvent event) {
+    if (_leavingForEvent) return;
+    _leavingForEvent = true;
+
+    // Aynı karede yeniden tetiklenebilecek kamera algılamasını kes.
+    unawaited(_controller.stop());
+
+    // Başarı kartı fark edilecek kadar görünür; ardından QR ekranı kapanır.
+    Future<void>.delayed(const Duration(milliseconds: 900), () {
+      if (!mounted) return;
+      context.go(
+        '${Routes.clubEvents}'
+        '?openEventId=${Uri.encodeComponent(event.id)}',
+      );
+    });
   }
 
   @override
@@ -205,14 +231,14 @@ class _ClubQrCheckinScreenState extends ConsumerState<ClubQrCheckinScreen> {
             onDetect: _onDetect,
             errorBuilder:
                 (BuildContext context, MobileScannerException error) => Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: FeedbackBanner(
-                  message: context.t('scan.permissionDenied'),
-                  tone: FeedbackTone.error,
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: FeedbackBanner(
+                      message: context.t('scan.permissionDenied'),
+                      tone: FeedbackTone.error,
+                    ),
+                  ),
                 ),
-              ),
-            ),
           ),
 
           Center(
@@ -263,8 +289,9 @@ class _ScanResultCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color color =
-        result.success ? BrandColors.success : BrandColors.danger;
+    final Color color = result.success
+        ? BrandColors.success
+        : BrandColors.danger;
 
     return Container(
       padding: const EdgeInsets.all(16),

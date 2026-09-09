@@ -116,6 +116,30 @@ SystemUiOverlayStyle systemBarsStyle({required Brightness brightness}) {
   );
 }
 
+/// Zemini uygulama temasından bağımsız KOYU olan ekranların çubuk stili.
+///
+/// Giriş öncesi ekranlar (giriş, kayıt, şifre sıfırlama, Keşfet) açık temada da
+/// gece görünümünde kalıyor. Çubuk simgeleri ise uygulamanın temasını izliyor
+/// ([systemBarsStyle]); açık temada o ekranların üstüne koyu simge çiziliyor ve
+/// simgeler koyu zeminde kaybolduğu için çubuk şeridi düz siyah bir bant gibi
+/// okunuyordu. Bu sarmalayıcı yalnızca simgeleri açık renge sabitler —
+/// çubukların zemini yine saydam, altındaki ekran görünmeye devam eder.
+///
+/// `AnnotatedRegion` bilerek: kural yalnızca bu ekranlar ağaçtayken geçerlidir,
+/// ekrandan çıkıldığında uygulama genelindeki stil (bkz. lib/app/app.dart)
+/// kendiliğinden geri döner.
+class DarkScreenSystemBars extends StatelessWidget {
+  const DarkScreenSystemBars({required this.child, super.key});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => AnnotatedRegion<SystemUiOverlayStyle>(
+    value: systemBarsStyle(brightness: Brightness.dark),
+    child: child,
+  );
+}
+
 /// Buzlu camın bulanıklık yarıçapı.
 const double _kFrostBlur = 18;
 

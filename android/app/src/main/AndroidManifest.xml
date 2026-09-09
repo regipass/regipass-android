@@ -58,6 +58,30 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- Dış kamera QR'ı HTTPS adresini açar. Android doğrulamayı
+                 `/.well-known/assetlinks.json` üzerinden yapar; doğrulama
+                 başarısızsa güvenli yedek davranış webde açılmaktır. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:scheme="https"
+                    android:host="eventapp-604a5.web.app"
+                    android:pathPrefix="/qr.html"/>
+            </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:scheme="https"
+                    android:host="regipass.com"
+                    android:pathPrefix="/qr.html"/>
+            </intent-filter>
+            <meta-data
+                android:name="flutter_deeplinking_enabled"
+                android:value="true" />
         </activity>
         <!-- Google Maps anahtarı. Değer build.gradle.kts tarafından
              android/local.properties içindeki MAPS_API_KEY'den doldurulur;

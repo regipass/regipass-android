@@ -2,6 +2,14 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- Dış QR'ın HTTPS yolu uygulama kuruluysa Safari yerine Regipass'i
+	     açar. Web kökünde ayrıca apple-app-site-association yayınlanmalıdır. -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:eventapp-604a5.web.app</string>
+		<string>applinks:regipass.com</string>
+	</array>
+
 	<!-- ── Push Notifications ────────────────────────────────────────────
 	     Uygulama FCM kullanmıyor; bu yetenek TELEFON DOĞRULAMASI için
 	     gerekli. Firebase, SMS göndermeden önce isteğin gerçek cihazdan

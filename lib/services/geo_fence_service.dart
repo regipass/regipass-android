@@ -4,16 +4,8 @@
 /// olup olmadığını kontrol eder. Evden, arkadaşının gönderdiği ekran
 /// görüntüsünü okutan öğrenci bu adımda reddedilir.
 ///
-/// ## Kapı check-in'inde kullanılmaz
-///
-/// Kapıda iki yön de fizikseldir: ya QR'ı görevli okutur (öğrencinin bileti),
-/// ya da öğrenci görevlinin ekrandaki kodunu okutur. Her iki durumda da öğrenci
-/// zaten kapıda durmaktadır; konum sormak gereksiz bir izin isteği ve her
-/// öğrenci için saniyeler süren bir gecikmedir. Kapıdaki sınır konum değil,
-/// kulübün kapıyı açık tutmasıdır (`events.entryOpen`).
-///
-/// Bu kontrol de istemcidedir ve tek başına bir güvenlik sınırı değildir
-/// (bkz. `session_qr_window.dart`). Gerçek sınırlar `firestore.rules` içinde.
+/// Öğrencinin okuttuğu kapı ve oturum QR'larında aynı kontrol uygulanır.
+/// Bu cihaz kontrolü istemcidedir; sunucuda GPS doğrulaması sağlamaz.
 library;
 
 import 'package:geolocator/geolocator.dart';
@@ -24,11 +16,11 @@ import '../models/event.dart';
 /// Doğrulamanın nasıl sonuçlandığı. Metinler burada üretilmez; çağıran ekran
 /// kendi sözlüğünden çevirir (web'de sabit Türkçe cümleler gömülüydü).
 enum GeoFenceOutcome {
-  /// Etkinliğin tanımlı konumu yok — adım tamamen atlandı, izin bile istenmedi.
-  skipped,
-
   /// Cihaz etkinlik alanının içinde.
   inside,
+
+  /// Etkinlikte koordinat tanımlı değil; bu nedenle cihazdan konum istenmedi.
+  skipped,
 
   /// Konum alındı ama yarıçapın dışında.
   tooFar,
@@ -81,12 +73,22 @@ class GeoFenceService {
 
   /// Etkinliğin konumu ile cihazın konumunu karşılaştırır.
   Future<GeoFenceResult> verify(AppEvent event) async {
-    if (!event.hasLocationCheck) {
+    // Konumu olmayan etkinlikte izin istemek hem gereksiz hem de QR akışını
+    // engeller. Bu durumda check-in, QR'ın diğer canlılık/kayıt kurallarıyla
+    // devam eder. Eksik veya bozuk koordinatlar ise bu istisna değildir.
+    if (event.hasNoLocationCheck) {
       return const GeoFenceResult(GeoFenceOutcome.skipped);
+    }
+    if (!event.hasLocationCheck) {
+      return const GeoFenceResult(GeoFenceOutcome.unavailable);
     }
 
     final Position? position = await currentPosition();
-    if (position == null) {
+    if (position == null ||
+        !position.latitude.isFinite ||
+        !position.longitude.isFinite ||
+        position.latitude.abs() > 90 ||
+        position.longitude.abs() > 180) {
       return const GeoFenceResult(GeoFenceOutcome.unavailable);
     }
 

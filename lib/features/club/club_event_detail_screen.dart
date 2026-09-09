@@ -1,9 +1,9 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
@@ -18,6 +18,7 @@ import '../../domain/paid_event_consent.dart';
 import '../../domain/routing.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/event.dart';
+import '../../services/event_repository.dart';
 import '../../services/firebase_refs.dart';
 import '../../state/providers.dart';
 import '../shared/common_widgets.dart';
@@ -262,8 +263,13 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
             .read(eventRepositoryProvider)
             .setRegistrationsClosed(event.id, !reopening);
         _setFeedback(successMessage, FeedbackTone.success);
-      } catch (_) {
-        _setFeedback(errorMessage, FeedbackTone.error);
+      } catch (error) {
+        if (error is StateError && mounted) {
+          await _notice(context.t('clubEvents.registrations.title'),
+              context.t(error.message));
+        } else {
+          _setFeedback(errorMessage, FeedbackTone.error);
+        }
       }
     });
   }
@@ -444,7 +450,7 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
   }
 
   Future<void> _showSessionQr(String eventId, int session) =>
-      showSessionQrDialog(context, eventId, session);
+      showSessionQrDialog(context, ref, eventId, session);
 
   /// Kapıyı açar/kapatır. Kapı açıkken öğrenciler kapıdaki ortak QR'ı kendi
   /// telefonlarından okutup girişlerini onaylar; kapalıyken o QR hiçbir işe
@@ -713,14 +719,6 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
     if (mounted && _tone == FeedbackTone.success) _link.clear();
   }
 
-  /// Panodaki metni adres kutusuna yazar.
-  Future<void> _pasteLink() async {
-    final ClipboardData? data = await Clipboard.getData(Clipboard.kTextPlain);
-    final String text = (data?.text ?? '').trim();
-    if (text.isEmpty || !mounted) return;
-    setState(() => _link.text = text);
-  }
-
   /// Yapıştırılan kaynağın uzantısını çözer.
   ///
   /// Sırayla: dosya adındaki uzantı, sunucunun bildirdiği içerik türü, son
@@ -824,6 +822,9 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
           bytes: bytes,
           extension: extension,
           contentType: contentType,
+          // `event` yükleme öncesinin kopyası: listesi boşsa yeni belge
+          // etkinliğin tek belgesidir, eski kayıt da ancak ondan gelebilir.
+          replacesLegacyRecord: event.certificateDocuments.isEmpty,
         );
       } catch (error) {
         if (!mounted) return;
@@ -845,6 +846,7 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
     required Uint8List bytes,
     required String extension,
     required String contentType,
+    required bool replacesLegacyRecord,
     bool auto = false,
   }) async {
     final List<EventRegistration> registrations =
@@ -857,29 +859,107 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
     int sent = 0;
     int failed = 0;
 
+    // Öğrenci kopyasının adı belgeye göre ayrışır. Eskiden yalnızca öğrenci
+    // kimliğiydi: kulüp ikinci bir belge yüklediğinde aynı nesnenin üstüne
+    // yazılıyor, birinci belgenin öğrencideki adresi de geçersiz kalıyordu.
+    final String documentKey = document.key;
+
+    // Öğrenciye giden ad da belgenin kendi adı: aynı etkinlikten iki belge
+    // aldığında ikisi de "etkinlik adı.pdf" olsaydı listede ayırt edilemezdi.
+    final String documentName = document.name.contains('.')
+        ? document.name
+        : '${event.title}.$extension';
+
+    // PDF şablonunda isim yazılacak alanı bulup her öğrenciye BASILMIŞ bir
+    // kopya çıkarır (web ile birebir aynı motor, bkz. functions/
+    // certificateEngine.js). Sunucu çağrısı bir bütün olarak başarısız
+    // olursa (ağ, yetki, fonksiyon kapalı) döngü ham baytları kendisi yükler
+    // — dağıtım hiçbir zaman bu adım yüzünden durmaz.
+    final Map<String, PersonalizedCertificate> personalizedByStudent =
+        <String, PersonalizedCertificate>{};
+    if (extension == 'pdf' && eligible.isNotEmpty) {
+      const int chunkSize = 200; // functions/index.js#MAX_STUDENTS_PER_CALL: 300
+      for (int i = 0; i < eligible.length; i += chunkSize) {
+        final List<EventRegistration> chunk = eligible.sublist(
+          i,
+          (i + chunkSize > eligible.length) ? eligible.length : i + chunkSize,
+        );
+        try {
+          final List<PersonalizedCertificate> results = await ref
+              .read(eventRepositoryProvider)
+              .personalizeCertificates(
+                clubId: clubId,
+                eventId: event.id,
+                documentKey: documentKey,
+                templateBytes: bytes,
+                students: chunk
+                    .map(
+                      (EventRegistration reg) => (
+                        studentId: reg.studentId,
+                        fullName: reg.studentName,
+                      ),
+                    )
+                    .toList(),
+              );
+          for (final PersonalizedCertificate result in results) {
+            personalizedByStudent[result.studentId] = result;
+          }
+        } catch (error) {
+          AppLog.warn('certificate.personalize.failed', <String, Object?>{
+            'eventId': event.id,
+            'error': error.toString(),
+          });
+          break; // Bir parça başarısız olduysa kalan parçaları da deneme.
+        }
+      }
+    }
+
     for (final EventRegistration reg in eligible) {
       try {
-        final String filePath =
-            'certificates/$clubId/${event.id}/${reg.studentId}.$extension';
-        final Reference storageRef = fbStorage.ref(filePath);
+        final PersonalizedCertificate? personalizedDoc =
+            personalizedByStudent[reg.studentId];
 
-        await storageRef.putData(
-          bytes,
-          SettableMetadata(contentType: contentType),
-        );
+        final String filePath = personalizedDoc?.filePath ??
+            'certificates/$clubId/${event.id}/'
+                '${reg.studentId}-$documentKey.$extension';
+
+        final String fileUrl;
+        if (personalizedDoc != null) {
+          fileUrl = personalizedDoc.fileUrl;
+        } else {
+          final Reference storageRef = fbStorage.ref(filePath);
+          await storageRef.putData(
+            bytes,
+            SettableMetadata(contentType: contentType),
+          );
+          fileUrl = await storageRef.getDownloadURL();
+        }
 
         await ref.read(eventRepositoryProvider).issueCertificate(
               eventId: event.id,
               studentId: reg.studentId,
+              documentKey: documentKey,
               eventTitle: event.title,
               clubId: clubId,
               clubName: event.clubName,
-              fileUrl: await storageRef.getDownloadURL(),
+              fileUrl: fileUrl,
               filePath: filePath,
-              fileName: '${event.title}.$extension',
+              fileName: documentName,
               contentType: contentType,
-              personalized: false,
+              personalized: personalizedDoc?.personalized ?? false,
             );
+
+        // Belge anahtarından önceki kayıt (`{eventId}_{studentId}`) yalnızca
+        // etkinliğin TEK belgesi dağıtılırken siliniyor: o durumda eski kayıt
+        // ancak bu belgeden gelmiş olabilir, silinmezse öğrenci aynı belgeyi
+        // iki satır olarak görürdü. Birden fazla belge varsa eski kaydın hangi
+        // belgeye ait olduğu bilinemez, dokunulmaz.
+        if (replacesLegacyRecord) {
+          await ref.read(eventRepositoryProvider).deleteLegacyCertificate(
+                eventId: event.id,
+                studentId: reg.studentId,
+              );
+        }
 
         sent += 1;
       } catch (_) {
@@ -988,6 +1068,7 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
           contentType: document.contentType.isNotEmpty
               ? document.contentType
               : _contentTypeFor(extension),
+          replacesLegacyRecord: event.certificateDocuments.length == 1,
           auto: auto,
         );
       } catch (error) {
@@ -1034,9 +1115,13 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
   /// dağıtımı tetikleyecek hiçbir hareketi yoktu.
   ///
   /// Ekran açık kaldığı sürece en fazla bir kez ve yalnızca gerçekten eksik
-  /// varsa çalışır: son belge ya hiç dağıtılmamıştır ya da dağıtımdan bu yana
-  /// yeni hak sahibi eklenmiştir. Kayıtlar henüz yüklenmediyse (hak sahibi
-  /// sayısı 0) hiçbir şey yapılmaz, bir sonraki kareye bakılır.
+  /// varsa çalışır: belge ya hiç dağıtılmamıştır ya da dağıtımdan bu yana yeni
+  /// hak sahibi eklenmiştir. Kayıtlar henüz yüklenmediyse (hak sahibi sayısı 0)
+  /// hiçbir şey yapılmaz, bir sonraki kareye bakılır.
+  ///
+  /// Arşivdeki BÜTÜN eksik belgeler sırayla gönderilir; eskiden yalnızca
+  /// sonuncusuna bakılıyordu ve kulüp iki belge yüklediğinde önceki belge —
+  /// hiç dağıtılmamış olsa bile — kimseye ulaşmıyordu.
   void _scheduleAutoDistribute(
     AppEvent event,
     List<EventRegistration> registrations,
@@ -1045,13 +1130,20 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
     if (!canDistributeCertificates(event)) return;
     if (event.certificateDocuments.isEmpty) return;
 
-    final EventDocument latest = event.certificateDocuments.last;
     final int eligible = certificateEligible(event, registrations).length;
-    if (eligible == 0 || eligible <= latest.distributedCount) return;
+    if (eligible == 0) return;
+
+    final List<EventDocument> pending = event.certificateDocuments
+        .where((EventDocument doc) => doc.distributedCount < eligible)
+        .toList();
+    if (pending.isEmpty) return;
 
     _autoDistributed = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _redistribute(event, latest, auto: true);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      for (final EventDocument document in pending) {
+        if (!mounted) return;
+        await _redistribute(event, document, auto: true);
+      }
     });
   }
 
@@ -1261,13 +1353,12 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
             onShowSessionQr: () =>
                 _showSessionQr(event.id, event.currentSession),
             onToggleDoorCheckin: () => _toggleDoorCheckin(event),
-            onShowDoorQr: () => showDoorCheckinQrDialog(context, event.id),
+            onShowDoorQr: () => showDoorCheckinQrDialog(context, ref, event.id),
             onScanDoorCheckin: () => _openDoorScanner(event),
             onAllowSessionWithoutCheckin: (bool allow) =>
                 _setAllowSessionWithoutCheckin(event, allow),
             onDistribute: () => _pickCertificate(event),
             onDistributeLink: () => _distributeFromLink(event),
-            onPasteLink: _pasteLink,
             onOpenDocument: _openDocument,
             onRedistributeDocument: (EventDocument document) =>
                 _redistribute(event, document),
@@ -1300,7 +1391,6 @@ class _Body extends ConsumerWidget {
     required this.onAllowSessionWithoutCheckin,
     required this.onDistribute,
     required this.onDistributeLink,
-    required this.onPasteLink,
     required this.onOpenDocument,
     required this.onRedistributeDocument,
     required this.onDeleteDocument,
@@ -1327,7 +1417,6 @@ class _Body extends ConsumerWidget {
   final ValueChanged<bool> onAllowSessionWithoutCheckin;
   final VoidCallback onDistribute;
   final VoidCallback onDistributeLink;
-  final VoidCallback onPasteLink;
   final ValueChanged<EventDocument> onOpenDocument;
   final ValueChanged<EventDocument> onRedistributeDocument;
   final ValueChanged<EventDocument> onDeleteDocument;
@@ -1393,6 +1482,32 @@ class _Body extends ConsumerWidget {
           danger: !event.registrationClosed,
         ),
 
+        // ── Kapı check-in'i ────────────────────────────────────────
+        // Ölçüt oturum sayısı değil MODDUR: "Check-in + Yoklama" modunda
+        // etkinlik çok oturumlu olduğu hâlde kapıda bir check-in adımı vardır.
+        // Eski kayıtlarda mod oturum sayısından türetilir, davranış değişmez.
+        //
+        // Öncelikli yol kamerayla okutmaktır: görevli öğrencinin biletini
+        // tarar. QR ekranı (öğrencinin kendi telefonundan kapıdaki ortak kodu
+        // okutması) isteyen kulüpler için burada "Göster" düğmesiyle elle
+        // açılan, ikinci planda bir seçenek olarak durur — otomatik açılmaz.
+        if (event.hasDoorCheckin) ...<Widget>[
+          const SizedBox(height: 22),
+          EventSectionTitle(context.t('clubEvents.entry.title')),
+          const SizedBox(height: 10),
+          _CheckinStageBar(
+            event: event,
+            busy: busy || past,
+            attended: list
+                .where((EventRegistration r) => r.isCheckedIn)
+                .length,
+            total: list.length,
+            onToggle: onToggleDoorCheckin,
+            onShowQr: onShowDoorQr,
+            onScan: onScanDoorCheckin,
+          ),
+        ],
+
         // ── Oturumlar ──────────────────────────────────────────────
         if (event.isMultiSession) ...<Widget>[
           const SizedBox(height: 22),
@@ -1421,32 +1536,6 @@ class _Body extends ConsumerWidget {
               value: event.allowSessionWithoutCheckin,
               onChanged: busy ? null : onAllowSessionWithoutCheckin,
             ),
-        ],
-
-        // ── Kapı check-in'i ────────────────────────────────────────
-        // Ölçüt oturum sayısı değil MODDUR: "Check-in + Yoklama" modunda
-        // etkinlik çok oturumlu olduğu hâlde kapıda bir check-in adımı vardır.
-        // Eski kayıtlarda mod oturum sayısından türetilir, davranış değişmez.
-        //
-        // Öncelikli yol kamerayla okutmaktır: görevli öğrencinin biletini
-        // tarar. QR ekranı (öğrencinin kendi telefonundan kapıdaki ortak kodu
-        // okutması) isteyen kulüpler için burada "Göster" düğmesiyle elle
-        // açılan, ikinci planda bir seçenek olarak durur — otomatik açılmaz.
-        if (event.hasDoorCheckin) ...<Widget>[
-          const SizedBox(height: 22),
-          EventSectionTitle(context.t('clubEvents.entry.title')),
-          const SizedBox(height: 10),
-          _CheckinStageBar(
-            event: event,
-            busy: busy || past,
-            attended: list
-                .where((EventRegistration r) => r.isCheckedIn)
-                .length,
-            total: list.length,
-            onToggle: onToggleDoorCheckin,
-            onShowQr: onShowDoorQr,
-            onScan: onScanDoorCheckin,
-          ),
         ],
 
         // ── Belge ──────────────────────────────────────────────────
@@ -1496,7 +1585,6 @@ class _Body extends ConsumerWidget {
           _CertificateLinkField(
             controller: linkController,
             enabled: !busy,
-            onPaste: onPasteLink,
             onSubmit: onDistributeLink,
           ),
         ],
@@ -1520,15 +1608,10 @@ class _Body extends ConsumerWidget {
               StatusPill(label: '${event.certificateDocuments.length}'),
             ],
           ),
-          const SizedBox(height: 4),
-          // Öğrenci tarafında etkinlik başına tek belge kaydı tutuluyor:
-          // buradaki liste kulübün arşivi, öğrencinin elindeki ise en son
-          // dağıtılan belge. Kulüp iki belge yükleyip "ikisi de gitti"
-          // sanmasın diye açıkça yazıyor.
-          Text(
-            context.t('clubEvents.certificate.uploadedHint'),
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
+          // Buradaki açıklama metni kaldırıldı: "öğrencide yalnızca son belge
+          // durur" uyarısıydı ve artık doğru değil — her belge öğrenciye ayrı
+          // bir kayıt olarak gidiyor (bkz. `EventDocument.key`). Kartların
+          // kendi "kaç kişiye gitti" satırı zaten aynı işi yapıyor.
           const SizedBox(height: 10),
           for (final EventDocument document in event.certificateDocuments)
             Padding(
@@ -2327,59 +2410,64 @@ class _ActionCard extends StatelessWidget {
   }
 }
 
-/// Belge adresi/yolu kutusu: "yapıştır" + "yükle ve dağıt".
+/// Belge adresi/yolu kutusu — gönderme tuşu kutunun kendi içinde.
 ///
 /// Dosya seçici bazı cihazlarda (özellikle bulut sağlayıcılarında) belgeyi hiç
 /// döndürmüyor. Kulüp belgeyi zaten bir yerden kopyalamış oluyor; buraya
 /// yapıştırmak aynı yükleme yolunu ikinci bir kapıdan açar.
+///
+/// Kutunun altındaki açıklama, ayrı "yapıştır" tuşu ve tam genişlikte "yükle
+/// ve dağıt" düğmesi kaldırıldı: üçü birden bölümü, asıl düğme olan "Belge
+/// Yükle ve Dağıt" kartından daha kalabalık gösteriyordu. Yapıştırma zaten
+/// kutuya uzun basınca çıkan sistem menüsünde var; gönderme tuşu da yalnızca
+/// yazılacak bir şey olduğunda görünür.
 class _CertificateLinkField extends StatelessWidget {
   const _CertificateLinkField({
     required this.controller,
     required this.enabled,
-    required this.onPaste,
     required this.onSubmit,
   });
 
   final TextEditingController controller;
   final bool enabled;
-  final VoidCallback onPaste;
   final VoidCallback onSubmit;
 
   @override
   Widget build(BuildContext context) {
-    // Kutu boşken gönderme düğmesi kapalı kalsın diye metin dinleniyor.
+    // Kutu boşken gönderme tuşu hiç çizilmesin diye metin dinleniyor.
     return ListenableBuilder(
       listenable: controller,
       builder: (BuildContext context, _) {
         final bool hasText = controller.text.trim().isNotEmpty;
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            TextField(
-              controller: controller,
-              enabled: enabled,
-              keyboardType: TextInputType.url,
-              inputFormatters: guardedInput(InputLimits.url),
-              decoration: InputDecoration(
-                labelText: context.t('clubEvents.certificate.linkLabel'),
-                helperText: context.t('clubEvents.certificate.linkHint'),
-                helperMaxLines: 3,
-                suffixIcon: IconButton(
-                  tooltip: context.t('clubEvents.certificate.paste'),
-                  onPressed: enabled ? onPaste : null,
-                  icon: const Icon(Icons.content_paste, size: 19),
-                ),
-              ),
+        return TextField(
+          controller: controller,
+          enabled: enabled,
+          keyboardType: TextInputType.url,
+          textInputAction: TextInputAction.send,
+          onSubmitted: (_) {
+            if (enabled && hasText) onSubmit();
+          },
+          inputFormatters: guardedInput(InputLimits.url),
+          decoration: InputDecoration(
+            labelText: context.t('clubEvents.certificate.linkLabel'),
+            // Boşken `null`: tuş yer kaplamadan tamamen kaybolur.
+            suffixIcon: hasText
+                ? Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: _DocumentCircleButton(
+                      icon: Icons.arrow_upward_rounded,
+                      color: BrandColors.red,
+                      tooltip: context.t('clubEvents.certificate.linkAction'),
+                      onTap: enabled ? onSubmit : null,
+                    ),
+                  )
+                : null,
+            suffixIconConstraints: const BoxConstraints(
+              minWidth: 40,
+              minHeight: 40,
             ),
-            const SizedBox(height: 10),
-            OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(minimumSize: const Size(0, 42)),
-              onPressed: enabled && hasText ? onSubmit : null,
-              icon: const Icon(Icons.cloud_upload_outlined, size: 18),
-              label: Text(context.t('clubEvents.certificate.linkAction')),
-            ),
-          ],
+          ),
         );
       },
     );

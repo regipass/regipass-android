@@ -5,11 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/system_ui.dart';
 import '../../app/theme.dart';
 import '../../domain/event_utils.dart';
 import '../../domain/routing.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/event.dart';
+import '../../state/providers.dart';
 import '../shared/common_widgets.dart';
 import '../auth/auth_widgets.dart' show LanguageToggleDark;
 import 'explore_providers.dart';
@@ -22,7 +24,18 @@ import 'explore_providers.dart';
 /// Alt gezinme çubuğu yok, yalnızca üst çubuk: solda "Giriş Yap",
 /// sağda dil değiştirici.
 class ExploreScreen extends ConsumerStatefulWidget {
-  const ExploreScreen({super.key});
+  const ExploreScreen({
+    this.initialEventId = '',
+    this.externalQrUri,
+    super.key,
+  });
+
+  /// Dış QR'dan gelindiyse liste beklenmeden bu etkinliğin penceresi açılır.
+  final String initialEventId;
+
+  /// Giriş/kayıt akışının tamamlanınca aynı QR niyetine geri dönebilmesi için
+  /// özgün güvenli URI. Sadece router tarafından ayrıştırılmış QR rotasıdır.
+  final Uri? externalQrUri;
 
   @override
   ConsumerState<ExploreScreen> createState() => _ExploreScreenState();
@@ -33,6 +46,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   /// asılı kalıp dikkat dağıtmasın diye.
   bool _sheetOpen = false;
   Timer? _expiryTimer;
+  String? _autoOpenedEventId;
 
   @override
   void initState() {
@@ -90,85 +104,124 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   /// Detay penceresini açar ve kapanana kadar şeridi gizli tutar.
   Future<void> _openDetail(AppEvent event) async {
     setState(() => _sheetOpen = true);
-    await showEventDetailSheet(context, event);
+    await showEventDetailSheet(
+      context,
+      event,
+      onSignIn: widget.externalQrUri == null
+          ? null
+          : () {
+              final String destination = Uri(
+                path: Routes.landing,
+                queryParameters: <String, String>{
+                  kExternalQrContinueParam: widget.externalQrUri.toString(),
+                },
+              ).toString();
+              GoRouter.of(context).go(destination);
+            },
+    );
     if (mounted) setState(() => _sheetOpen = false);
+  }
+
+  void _openInitialEvent(AppEvent? event) {
+    if (event == null || widget.initialEventId.isEmpty) return;
+    if (_autoOpenedEventId == event.id) return;
+    _autoOpenedEventId = event.id;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _openDetail(event);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final AsyncValue<ExploreResult> result = ref.watch(exploreEventsProvider);
+    final AppEvent? initialEvent = widget.initialEventId.isEmpty
+        ? null
+        : ref.watch(eventByIdProvider(widget.initialEventId)).value;
 
-    return Scaffold(
-      backgroundColor: BrandColors.loginBase,
-      appBar: AppBar(
-        backgroundColor: BrandColors.loginSurface,
-        foregroundColor: BrandColors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        automaticallyImplyLeading: false,
-        titleSpacing: 12,
-        title: Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            onPressed: _exit,
-            style: TextButton.styleFrom(
-              // Keşfet'te vurgu kırmızıya alındı; koyu zeminde okunaklı
-              // kalması için marka kırmızısının açık tonu kullanılıyor.
-              foregroundColor: BrandColors.redOnDark,
-              backgroundColor: const Color(0x14FFFFFF),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(BrandShape.pillRadius),
+    _openInitialEvent(initialEvent);
+
+    return DarkScreenSystemBars(
+      child: Scaffold(
+        backgroundColor: BrandColors.loginBase,
+        appBar: AppBar(
+          backgroundColor: BrandColors.loginSurface,
+          foregroundColor: BrandColors.white,
+          // AppBar durum çubuğunun stilini kendi başına bildiriyor; temadan
+          // gelen değer bırakılsaydı açık temada koyu simge çizilir ve
+          // simgeler bu koyu başlığın üstünde kaybolurdu. Sarmalayıcının
+          // (DarkScreenSystemBars) alt çubuk için verdiği karar burada üst
+          // çubuk için de tekrarlanıyor.
+          systemOverlayStyle: systemBarsStyle(brightness: Brightness.dark),
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          automaticallyImplyLeading: false,
+          titleSpacing: 12,
+          title: Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: _exit,
+              style: TextButton.styleFrom(
+                // Keşfet'te vurgu kırmızıya alındı; koyu zeminde okunaklı
+                // kalması için marka kırmızısının açık tonu kullanılıyor.
+                foregroundColor: BrandColors.redOnDark,
+                backgroundColor: const Color(0x14FFFFFF),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(BrandShape.pillRadius),
+                ),
               ),
-            ),
-            icon: const Icon(Icons.login, size: 18),
-            label: Text(
-              context.t('auth.emailLogin'),
-              style: const TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w600,
+              icon: const Icon(Icons.login, size: 18),
+              label: Text(
+                context.t('auth.emailLogin'),
+                style: const TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
+          actions: const <Widget>[
+            LanguageToggleDark(
+              accent: BrandColors.redOnDark,
+              animatedGlobe: true,
+            ),
+            SizedBox(width: 12),
+          ],
         ),
-        actions: const <Widget>[
-          LanguageToggleDark(
-            accent: BrandColors.redOnDark,
-            animatedGlobe: true,
-          ),
-          SizedBox(width: 12),
-        ],
-      ),
-      body: Stack(
-        children: <Widget>[
-          result.when(
-            loading: () => const LoadingView(),
-            error: (Object error, StackTrace _) =>
-                _ExploreMessage(text: context.t('explore.loadError')),
-            data: (ExploreResult data) => switch (data) {
-              ExplorePermissionDenied() => _ExploreMessage(
-                text: context.t('explore.permissionDenied'),
-              ),
-              ExploreFailed() => _ExploreMessage(
-                text: context.t('explore.loadError'),
-              ),
-              ExploreEvents(events: final List<AppEvent> events) =>
-                events.isEmpty
-                    ? _ExploreMessage(text: context.t('explore.empty'))
-                    : _ExploreList(events: events, onOpenDetail: _openDetail),
-            },
-          ),
-
-          // Sol kenarda, dikey ortada duran çıkış şeridi.
-          Positioned(
-            left: 0,
-            top: 0,
-            bottom: 0,
-            child: Center(
-              child: _ExitTab(visible: !_sheetOpen, onTap: _exit),
+        body: Stack(
+          children: <Widget>[
+            result.when(
+              loading: () => const LoadingView(),
+              error: (Object error, StackTrace _) =>
+                  _ExploreMessage(text: context.t('explore.loadError')),
+              data: (ExploreResult data) => switch (data) {
+                ExplorePermissionDenied() => _ExploreMessage(
+                  text: context.t('explore.permissionDenied'),
+                ),
+                ExploreFailed() => _ExploreMessage(
+                  text: context.t('explore.loadError'),
+                ),
+                ExploreEvents(events: final List<AppEvent> events) =>
+                  events.isEmpty
+                      ? _ExploreMessage(text: context.t('explore.empty'))
+                      : _ExploreList(events: events, onOpenDetail: _openDetail),
+              },
             ),
-          ),
-        ],
+
+            // Sol kenarda, dikey ortada duran çıkış şeridi.
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: _ExitTab(visible: !_sheetOpen, onTap: _exit),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -485,7 +538,11 @@ class _Meta extends StatelessWidget {
 ///
 /// Pencere kapanınca tamamlanır; çağıran taraf bunu bekleyip sol çıkış
 /// şeridini geri getirir.
-Future<void> showEventDetailSheet(BuildContext context, AppEvent event) {
+Future<void> showEventDetailSheet(
+  BuildContext context,
+  AppEvent event, {
+  VoidCallback? onSignIn,
+}) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -493,102 +550,121 @@ Future<void> showEventDetailSheet(BuildContext context, AppEvent event) {
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
-    builder: (BuildContext sheetContext) => DraggableScrollableSheet(
-      initialChildSize: 0.8,
-      maxChildSize: 0.95,
-      expand: false,
-      builder: (BuildContext context, ScrollController controller) => Column(
-        children: <Widget>[
-          Expanded(
-            child: ListView(
-              controller: controller,
-              padding: EdgeInsets.zero,
-              children: <Widget>[
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(24),
-                  ),
-                  child: EventImage(url: event.displayImageUrl, height: 190),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        event.title,
-                        style: const TextStyle(
-                          color: BrandColors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
-                        ),
+    builder: (BuildContext sheetContext) => Consumer(
+      builder: (BuildContext context, WidgetRef ref, Widget? _) {
+        // Misafir vitrini listeyi tek sefer okur. Pencere ise etkinlik
+        // dokümanını canlı izler; kulüp ad/alan/üniversite senkronizasyonu ve
+        // etkinlik düzenlemeleri pencere açıkken de anında görünür.
+        final AppEvent currentEvent =
+            ref.watch(eventByIdProvider(event.id)).value ?? event;
+
+        return DraggableScrollableSheet(
+          initialChildSize: 0.8,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (BuildContext context, ScrollController controller) => Column(
+            children: <Widget>[
+              Expanded(
+                child: ListView(
+                  controller: controller,
+                  padding: EdgeInsets.zero,
+                  children: <Widget>[
+                    ClipRRect(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(24),
                       ),
-                      const SizedBox(height: 14),
-                      _ExploreClubHeader(event: event),
-                      const SizedBox(height: 12),
-                      _Meta(
-                        icon: Icons.calendar_today_outlined,
-                        text: formatDeadline(
-                          event.deadlineAtMs,
-                          locale: context.lang,
-                        ),
+                      child: EventImage(
+                        url: currentEvent.displayImageUrl,
+                        height: 190,
                       ),
-                      _Meta(
-                        icon: Icons.payments_outlined,
-                        text: event.feeInfo.isNotEmpty ? event.feeInfo : '-',
-                      ),
-                      if (event.locationName.isNotEmpty)
-                        _Meta(
-                          icon: Icons.place_outlined,
-                          text: event.locationName,
-                        ),
-                      const SizedBox(height: 18),
-                      Text(
-                        event.description.isNotEmpty
-                            ? event.description
-                            : context.t('dashboard.modal.noDescription'),
-                        style: const TextStyle(
-                          color: BrandColors.white,
-                          height: 1.55,
-                          fontSize: 14.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-              child: SizedBox(
-                height: 50,
-                child: FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: BrandColors.red,
-                    foregroundColor: BrandColors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
                     ),
-                  ),
-                  onPressed: () {
-                    // Önce pencereyi kapat, sonra giriş ekranına dön.
-                    // `pop` yerine `go`: pencere de bir rota olduğu için
-                    // arka arkaya iki pop hangi katmanı kapatacağı belirsiz
-                    // olurdu.
-                    Navigator.of(sheetContext).pop();
-                    GoRouter.of(context).go(Routes.landing);
-                  },
-                  icon: const Icon(Icons.login, size: 20),
-                  label: Text(context.t('explore.signInToJoin')),
+                    Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            currentEvent.title,
+                            style: const TextStyle(
+                              color: BrandColors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          _ExploreClubHeader(event: currentEvent),
+                          const SizedBox(height: 12),
+                          _Meta(
+                            icon: Icons.calendar_today_outlined,
+                            text: formatDeadline(
+                              currentEvent.deadlineAtMs,
+                              locale: context.lang,
+                            ),
+                          ),
+                          _Meta(
+                            icon: Icons.payments_outlined,
+                            text: currentEvent.feeInfo.isNotEmpty
+                                ? currentEvent.feeInfo
+                                : '-',
+                          ),
+                          if (currentEvent.locationName.isNotEmpty)
+                            _Meta(
+                              icon: Icons.place_outlined,
+                              text: currentEvent.locationName,
+                            ),
+                          const SizedBox(height: 18),
+                          Text(
+                            currentEvent.description.isNotEmpty
+                                ? currentEvent.description
+                                : context.t('dashboard.modal.noDescription'),
+                            style: const TextStyle(
+                              color: BrandColors.white,
+                              height: 1.55,
+                              fontSize: 14.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
+              SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                  child: SizedBox(
+                    height: 50,
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: BrandColors.red,
+                        foregroundColor: BrandColors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      onPressed: () {
+                        // Önce pencereyi kapat, sonra giriş ekranına dön.
+                        // `pop` yerine `go`: pencere de bir rota olduğu için
+                        // arka arkaya iki pop hangi katmanı kapatacağı belirsiz
+                        // olurdu.
+                        Navigator.of(sheetContext).pop();
+                        if (onSignIn != null) {
+                          onSignIn();
+                        } else {
+                          GoRouter.of(context).go(Routes.landing);
+                        }
+                      },
+                      icon: const Icon(Icons.login, size: 20),
+                      label: Text(context.t('explore.signInToJoin')),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     ),
   );
 }

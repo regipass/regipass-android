@@ -313,26 +313,34 @@ class _RegipassAppState extends ConsumerState<RegipassApp>
         // NotificationSync görünmez: yalnızca bildirim izni, etkinlik
         // alarmları ve gelen duyurular için ağaçta canlı bir dinleyici
         // gerekiyor (bkz. features/notifications/notification_sync.dart).
-        builder: (BuildContext context, Widget? child) => AutoHideNavigationBar(
-          // Alttaki sistem çubuğu, KENDİSİNE 3 saniye dokunulmazsa gizlenir;
-          // şeridine dokunulduğunda geri gelir (bkz. lib/app/system_ui.dart).
-          // Dinleyici yönlendiricinin üstünde: hangi ekran/pop-up açık olursa
-          // olsun aynı kural işler.
-          child: NotificationSync(
-            child: OfflineBanner(
-              // Sistem çubuklarının şeridi her şeyin üstünde buğulanır; açılan
-              // sayfa ya da pencere ne olursa olsun çubukların altı aynı görünür
-              // (bkz. lib/app/system_ui.dart).
-              child: SystemBarsFrost(
-                enabled: frosted,
-                child: _StartupGate(
-                  showSplash: !_startupResolved,
-                  // İkisi de yönlendiricinin (dolayısıyla açılan her pencerenin)
-                  // üstünde: boşluğa dokununca klavye kapanır, çok satırlı bir
-                  // alan yazılırken klavyenin üstünde "Bitti" çubuğu belirir.
-                  child: KeyboardDoneBar(
-                    child: DismissKeyboardOnTap(
-                      child: child ?? const SizedBox.shrink(),
+        builder: (BuildContext context, Widget? child) => AnnotatedRegion<SystemUiOverlayStyle>(
+          // Uygulama genelinin çubuk stili. Aynı stil [_syncSystemChrome]
+          // ile de bildiriliyor: oradaki çağrı ilk kare çizilmeden önce ve
+          // tema değiştiğinde geçerli. Buradaki katman kalıcı zemini kurar —
+          // kendi stilini dayatan bir ekran ([DarkScreenSystemBars]) ya da
+          // bir AppBar ağaçtan çıktığında çubuklar bu stile geri döner.
+          value: systemBarsStyle(brightness: resolved),
+          child: AutoHideNavigationBar(
+            // Alttaki sistem çubuğu, KENDİSİNE 3 saniye dokunulmazsa gizlenir;
+            // şeridine dokunulduğunda geri gelir (bkz. lib/app/system_ui.dart).
+            // Dinleyici yönlendiricinin üstünde: hangi ekran/pop-up açık olursa
+            // olsun aynı kural işler.
+            child: NotificationSync(
+              child: OfflineBanner(
+                // Sistem çubuklarının şeridi her şeyin üstünde buğulanır; açılan
+                // sayfa ya da pencere ne olursa olsun çubukların altı aynı görünür
+                // (bkz. lib/app/system_ui.dart).
+                child: SystemBarsFrost(
+                  enabled: frosted,
+                  child: _StartupGate(
+                    showSplash: !_startupResolved,
+                    // İkisi de yönlendiricinin (dolayısıyla açılan her pencerenin)
+                    // üstünde: boşluğa dokununca klavye kapanır, çok satırlı bir
+                    // alan yazılırken klavyenin üstünde "Bitti" çubuğu belirir.
+                    child: KeyboardDoneBar(
+                      child: DismissKeyboardOnTap(
+                        child: child ?? const SizedBox.shrink(),
+                      ),
                     ),
                   ),
                 ),

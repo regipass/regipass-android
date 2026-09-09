@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/constants.dart';
 import '../domain/routing.dart';
+import '../models/event.dart';
 import '../models/profiles.dart';
 import '../services/account_cleanup_repository.dart';
 import '../services/admin_repository.dart';
@@ -21,6 +22,7 @@ import '../services/notification_read_store.dart';
 import '../services/notification_service.dart';
 import '../services/phone_directory_repository.dart';
 import '../services/phone_hint_repository.dart';
+import '../services/password_reset_auth_session.dart';
 import '../services/profile_repository.dart';
 import '../services/registration_service.dart';
 import '../services/role_session_store.dart';
@@ -38,11 +40,32 @@ final Provider<RoleSessionStore> roleSessionStoreProvider =
 final Provider<AuthRepository> authRepositoryProvider =
     Provider<AuthRepository>((Ref ref) => const AuthRepository());
 
+final Provider<PasswordResetAuthSession Function()>
+passwordResetSessionFactoryProvider =
+    Provider<PasswordResetAuthSession Function()>(
+      (Ref ref) => PasswordResetAuthSession.new,
+    );
+
 final Provider<ProfileRepository> profileRepositoryProvider =
     Provider<ProfileRepository>((Ref ref) => const ProfileRepository());
 
 final Provider<EventRepository> eventRepositoryProvider =
     Provider<EventRepository>((Ref ref) => const EventRepository());
+
+/// Kimliği verilen etkinliğin canlı Firestore kopyası.
+///
+/// Liste ekranlarının bir kısmı maliyeti sınırlamak için etkinlikleri tek
+/// seferlik okuyor. Detay penceresi bu sağlayıcıyı izlediğinde pencere açıkken
+/// etkinlik ya da etkinliğe kopyalanan kulüp bilgileri değişirse eski liste
+/// nesnesine takılı kalmadan kendiliğinden yenilenir.
+// ignore: always_specify_types
+final eventByIdProvider = StreamProvider.family<AppEvent?, String>((
+  Ref ref,
+  String eventId,
+) {
+  if (eventId.isEmpty) return Stream<AppEvent?>.value(null);
+  return ref.watch(eventRepositoryProvider).watchEvent(eventId);
+});
 
 /// Kontenjanı koruyan kayıt akışı. Eşzamanlılık politikası
 /// `lib/domain/registration_capacity.dart` içinde, Firebase'e dokunmadan

@@ -6,6 +6,7 @@
 library;
 
 import '../core/constants.dart';
+import 'checkin_qr.dart';
 import '../models/profiles.dart';
 
 /// Uygulama rotaları. Karşılık gelen web sayfası yorum satırında belirtildi.
@@ -20,6 +21,12 @@ class Routes {
   /// Misafir vitrini: giriş yapmadan etkinliklere göz atma.
   /// Web'de karşılığı yoktu; index.html'deki tanıtım bölümlerinin yerini alır.
   static const String explore = '/explore';
+
+  /// Telefonun kendi kamerasının açtığı HTTPS QR adresinin uygulama içi
+  /// karşılığı. Web tarafı bu yolu (`/qr.html?t=...`) uygulama yokken kendi
+  /// QR giriş sayfasında işler; uygulama varsa Android App Link / iOS
+  /// Universal Link doğrudan bu rotaya gelir.
+  static const String qrEntry = '/qr.html';
 
   /// Şifremi unuttum. Girişten önce açılır ama SMS doğrulaması sırasında
   /// kullanıcı Auth'a giriş yapmış olur — bu yüzden router'da hem oturumsuz
@@ -72,6 +79,99 @@ class Routes {
   /// "banned" gerçek bir rota değil; çağıran taraf oturumu kapatıp
   /// kullanıcıyı uyarmalıdır (web ile aynı desen).
   static const String banned = '__banned__';
+}
+
+/// QR rotasını oturum açma ve onboarding boyunca kaybetmemek için kullanılan
+/// sorgu parametresi. Yalnızca doğrulanmış bir [CheckinQrDeepLink] saklanır;
+/// istemcinin rastgele bir iç rotaya yönlendirme yaptırmasına izin verilmez.
+const String kExternalQrContinueParam = 'continue';
+
+/// Telefon kamerasından gelen dış QR isteğinin doğrulanmış, küçük modeli.
+///
+/// Eski `EVAPPQR1` yükü ve mevcut uygulama-içi tarama aynen korunur. Bu model
+/// yalnızca HTTPS sarmalayıcısından gelen kapı/oturum QR'larına yol verir;
+/// görevlinin okuduğu kişisel `event-checkin` bileti hiçbir zaman dış rotaya
+/// dönüşmez.
+class CheckinQrDeepLink {
+  const CheckinQrDeepLink._({
+    required this.token,
+    required this.eventId,
+    required this.type,
+  });
+
+  final String token;
+  final String eventId;
+  final String type;
+
+  /// `/qr.html?t=EVAPPQR1:...` biçimindeki bir URI'yi çözer.
+  static CheckinQrDeepLink? parse(Uri uri) {
+    if (uri.path != Routes.qrEntry) return null;
+
+    final String? token =
+        uri.queryParameters[kQrTokenParam] ?? uri.queryParameters['token'];
+    final Map<String, dynamic>? payload = parseCheckinQrToken(token);
+    if (payload == null) return null;
+
+    final String type = '${payload['type'] ?? ''}';
+    final String eventId = '${payload['eventId'] ?? ''}'.trim();
+    if (eventId.isEmpty ||
+        (type != 'event-entry' && type != 'session-checkin')) {
+      return null;
+    }
+
+    // Oturum QR'ı için mevcut tarayıcıdaki zorunlu alanı burada da koru.
+    final int? session = payload['session'] is int
+        ? payload['session'] as int
+        : int.tryParse('${payload['session'] ?? ''}');
+    if (type == 'session-checkin' && session == null) return null;
+
+    return CheckinQrDeepLink._(token: token!, eventId: eventId, type: type);
+  }
+
+  /// Oturumu tamamlaması gereken kullanıcı için uygulama içi hedef.
+  ///
+  /// `qr` ham URL değil mevcut token'dır; tarama ekranı ikisini de zaten
+  /// destekler ve token'ı tekrar kamera önüne tutmayı gerektirmez.
+  String studentDestination() => Uri(
+    path: Routes.studentHome,
+    queryParameters: <String, String>{'openEventId': eventId, 'qr': token},
+  ).toString();
+
+  String clubDestination() => Uri(
+    path: Routes.clubEventDetail,
+    queryParameters: <String, String>{'eventId': eventId},
+  ).toString();
+}
+
+/// Doğrudan QR rotası ya da onboarding'e taşınmış `continue` değeri içinden
+/// güvenli QR hedefini döndürür.
+CheckinQrDeepLink? externalQrLinkForUri(Uri uri) {
+  final CheckinQrDeepLink? direct = CheckinQrDeepLink.parse(uri);
+  if (direct != null) return direct;
+
+  final String? raw = uri.queryParameters[kExternalQrContinueParam];
+  if (raw == null || raw.isEmpty) return null;
+  return CheckinQrDeepLink.parse(Uri.tryParse(raw) ?? Uri());
+}
+
+/// Router'ın geçici onboarding hedeflerine mevcut QR isteğini güvenli biçimde
+/// ekler. Geçersiz/değiştirilmiş istekler bilinçli olarak taşınmaz.
+String routeWithExternalQrContinuation(String target, Uri currentUri) {
+  final CheckinQrDeepLink? link = externalQrLinkForUri(currentUri);
+  if (link == null) return target;
+
+  final Uri targetUri = Uri.parse(target);
+  return targetUri
+      .replace(
+        queryParameters: <String, String>{
+          ...targetUri.queryParameters,
+          kExternalQrContinueParam: Uri(
+            path: Routes.qrEntry,
+            queryParameters: <String, String>{kQrTokenParam: link.token},
+          ).toString(),
+        },
+      )
+      .toString();
 }
 
 /// Onaylanmış kulüp durumuna göre hedef rota.

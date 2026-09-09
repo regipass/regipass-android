@@ -28,19 +28,30 @@ import 'student_shell.dart';
 /// katılım çubuğu güncellenmiş, okutma düğmesi bir sonraki oturuma kadar
 /// pasifleşmiş olarak görünür. Böylece "okuttum da ne oldu?" sorusu kalmaz.
 class StudentQrCheckinScreen extends ConsumerStatefulWidget {
-  const StudentQrCheckinScreen({this.expectedEventId, super.key});
+  const StudentQrCheckinScreen({
+    this.expectedEventId,
+    this.initialQrValue,
+    super.key,
+  });
 
   /// Etkinlik penceresindeki "QR Okut" düğmesinden gelindiyse o etkinliğin
   /// kimliği. Dolu olduğunda başka bir etkinliğin QR'ı kabul edilmez —
   /// öğrenci yanlış salondaki koda okutup "neden sayılmadı" demesin.
   final String? expectedEventId;
 
+  /// Telefonun kendi kamerasının açtığı dış bağlantıdan gelen token. Doluysa
+  /// tarayıcı arayüzü açılır ama işlem kamera algısı beklemeden otomatik
+  /// çalışır; fiziksel konum ve mevcut Firestore güvenlik kontrolleri aynen
+  /// uygulanır.
+  final String? initialQrValue;
+
   @override
   ConsumerState<StudentQrCheckinScreen> createState() =>
       _StudentQrCheckinScreenState();
 }
 
-class _StudentQrCheckinScreenState extends ConsumerState<StudentQrCheckinScreen> {
+class _StudentQrCheckinScreenState
+    extends ConsumerState<StudentQrCheckinScreen> {
   final MobileScannerController _controller = MobileScannerController(
     formats: <BarcodeFormat>[BarcodeFormat.qrCode],
     detectionSpeed: DetectionSpeed.noDuplicates,
@@ -55,6 +66,16 @@ class _StudentQrCheckinScreenState extends ConsumerState<StudentQrCheckinScreen>
   static const int _dedupeWindowMs = 10000;
 
   _ScanResult? _result;
+
+  @override
+  void initState() {
+    super.initState();
+    final String? initial = widget.initialQrValue;
+    if (initial == null || initial.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _processRawValue(initial);
+    });
+  }
 
   @override
   void dispose() {
@@ -73,10 +94,13 @@ class _StudentQrCheckinScreenState extends ConsumerState<StudentQrCheckinScreen>
   }
 
   Future<void> _onDetect(BarcodeCapture capture) async {
-    if (_busy) return;
-
     final String? raw = capture.barcodes.firstOrNull?.rawValue;
     if (raw == null) return;
+    await _processRawValue(raw);
+  }
+
+  Future<void> _processRawValue(String raw) async {
+    if (_busy) return;
 
     final Map<String, dynamic>? payload = parseCheckinQrToken(raw);
 
@@ -107,9 +131,11 @@ class _StudentQrCheckinScreenState extends ConsumerState<StudentQrCheckinScreen>
       return;
     }
 
-    final String dedupeKey = '${eventId}_${type == 'session-checkin' ? session : 'door'}';
+    final String dedupeKey =
+        '${eventId}_${type == 'session-checkin' ? session : 'door'}';
     final int now = DateTime.now().millisecondsSinceEpoch;
-    if (dedupeKey == _lastProcessedKey && now - _lastProcessedAtMs < _dedupeWindowMs) {
+    if (dedupeKey == _lastProcessedKey &&
+        now - _lastProcessedAtMs < _dedupeWindowMs) {
       return;
     }
     _lastProcessedKey = dedupeKey;
@@ -122,6 +148,8 @@ class _StudentQrCheckinScreenState extends ConsumerState<StudentQrCheckinScreen>
       } else {
         await _processSession(eventId, session!, payload['slot']);
       }
+    } catch (_) {
+      if (mounted) _show(false, context.t('scan.checkinSaveFailed'));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -137,7 +165,11 @@ class _StudentQrCheckinScreenState extends ConsumerState<StudentQrCheckinScreen>
       ? context.t('scan.eventClosedNotRegistered')
       : context.t('scan.notRegistered');
 
-  Future<void> _processSession(String eventId, int session, Object? slot) async {
+  Future<void> _processSession(
+    String eventId,
+    int session,
+    Object? slot,
+  ) async {
     final String? uid = ref.read(sessionProvider).user?.uid;
     if (uid == null) return;
 
@@ -177,7 +209,10 @@ class _StudentQrCheckinScreenState extends ConsumerState<StudentQrCheckinScreen>
       return;
     }
 
-    final EventRegistration? registration = await repo.fetchRegistration(eventId, uid);
+    final EventRegistration? registration = await repo.fetchRegistration(
+      eventId,
+      uid,
+    );
     if (!mounted) return;
 
     if (registration == null) {
@@ -202,25 +237,7 @@ class _StudentQrCheckinScreenState extends ConsumerState<StudentQrCheckinScreen>
       return;
     }
 
-    // Öğrenci ekrandaki QR'ı KENDİ telefonuyla okuttuğu için salonda olup
-    // olmadığını yalnızca konum söyleyebilir. Etkinliğin tanımlı bir konumu
-    // yoksa bu adım atlanır — izin bile istenmez (geo-fence.js ile aynı).
-    if (event.hasLocationCheck) {
-      final GeoFenceResult fence = await const GeoFenceService().verify(event);
-      if (!mounted) return;
-      if (!fence.ok) {
-        _show(
-          false,
-          fence.outcome == GeoFenceOutcome.tooFar
-              ? context.t('scan.tooFar', <String, Object?>{
-                  'distance': formatDistance(fence.distanceM!),
-                  'radius': event.effectiveRadius,
-                })
-              : context.t('scan.locationRequired'),
-        );
-        return;
-      }
-    }
+    if (!await _verifyLocation(event)) return;
 
     try {
       await repo.markOwnSessionCheckIn(
@@ -278,32 +295,27 @@ class _StudentQrCheckinScreenState extends ConsumerState<StudentQrCheckinScreen>
       return;
     }
 
-    final EventRegistration? registration = await repo.fetchRegistration(eventId, uid);
+    final EventRegistration? registration = await repo.fetchRegistration(
+      eventId,
+      uid,
+    );
     if (!mounted) return;
     if (registration == null) {
       _show(false, _notRegisteredMessage(event));
       return;
     }
     if (registration.isCheckedIn) {
-      _show(false, context.t('clubScan.alreadyCheckedIn', <String, Object?>{
-        'name': registration.displayName,
-      }));
+      _show(
+        false,
+        context.t('clubScan.alreadyCheckedIn', <String, Object?>{
+          'name': registration.displayName,
+        }),
+      );
       return;
     }
 
-    // KAPIDA KONUM SORULMAZ. Check-in fiziksel olarak kapıda yapılan bir
-    // işlemdir: öğrenci ya görevlinin okuttuğu bilettedir ya da görevlinin
-    // açtığı kapı QR'ının önündedir. Konum izni istemek hem gereksiz bir adım
-    // hem de her öğrenci için saniyeler süren bir gecikmedir.
-    //
-    // Buradaki sınır konumun yerine KULÜBÜN KAPIYI AÇIK TUTMASIDIR
-    // (yukarıdaki `entryOpen` kontrolü): görevli girişi bitirince QR'ın ekran
-    // görüntüsü de dahil hiçbir kod işe yaramaz. Aynı koşul
-    // firestore.rules > studentCanMarkOwnEventCheckIn içinde de duruyor.
-    //
-    // Konum YALNIZCA salondaki oturum yoklamasında çalışır
-    // (bkz. [_processSession]) — orada QR'ı öğrenci kendi telefonuyla okuttuğu
-    // için gerçekten içeride olup olmadığı başka türlü anlaşılamaz.
+    if (!await _verifyLocation(event)) return;
+
     try {
       await repo.markOwnDoorCheckin(eventId: eventId, studentId: uid);
     } catch (error) {
@@ -319,9 +331,29 @@ class _StudentQrCheckinScreenState extends ConsumerState<StudentQrCheckinScreen>
     if (!mounted) return;
     _show(
       true,
-      context.t(event.isMultiSession ? 'scan.doorSuccess' : 'scan.doorOnlySuccess'),
+      context.t(
+        event.isMultiSession ? 'scan.doorSuccess' : 'scan.doorOnlySuccess',
+      ),
     );
     _returnToAppointment(registration.id);
+  }
+
+  /// QR içeriği değiştirilebilir; karşılaştırmanın merkezi sunucudaki
+  /// etkinlik konumudur. Her taramada cihazdan güncel konum alınır.
+  Future<bool> _verifyLocation(AppEvent event) async {
+    final GeoFenceResult fence = await const GeoFenceService().verify(event);
+    if (!mounted) return false;
+    if (fence.ok) return true;
+    _show(
+      false,
+      fence.outcome == GeoFenceOutcome.tooFar
+          ? context.t('scan.tooFar', <String, Object?>{
+              'distance': formatDistance(fence.distanceM!),
+              'radius': event.effectiveRadius,
+            })
+          : context.t('scan.locationRequired'),
+    );
+    return false;
   }
 
   /// Onaydan sonra etkinlik penceresine dönüş.
@@ -355,15 +387,16 @@ class _StudentQrCheckinScreenState extends ConsumerState<StudentQrCheckinScreen>
           MobileScanner(
             controller: _controller,
             onDetect: _onDetect,
-            errorBuilder: (BuildContext context, MobileScannerException error) => Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: FeedbackBanner(
-                  message: context.t('scan.permissionDenied'),
-                  tone: FeedbackTone.error,
+            errorBuilder:
+                (BuildContext context, MobileScannerException error) => Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: FeedbackBanner(
+                      message: context.t('scan.permissionDenied'),
+                      tone: FeedbackTone.error,
+                    ),
+                  ),
                 ),
-              ),
-            ),
           ),
 
           // Hedef çerçevesi
@@ -417,7 +450,9 @@ class _ScanResultCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color color = result.success ? BrandColors.success : BrandColors.danger;
+    final Color color = result.success
+        ? BrandColors.success
+        : BrandColors.danger;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -446,7 +481,10 @@ class _ScanResultCard extends StatelessWidget {
                   style: TextStyle(fontWeight: FontWeight.w700, color: color),
                 ),
                 const SizedBox(height: 2),
-                Text(result.detail, style: Theme.of(context).textTheme.bodySmall),
+                Text(
+                  result.detail,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
               ],
             ),
           ),
@@ -463,30 +501,31 @@ class EventRepositoryAccess {
   final WidgetRef _ref;
 
   Future<AppEvent?> fetchEvent(String eventId) =>
-      _ref.read(eventRepositoryProvider).fetchEvent(eventId);
+      _ref.read(eventRepositoryProvider).fetchEventFromServer(eventId);
 
-  Future<EventRegistration?> fetchRegistration(String eventId, String studentId) =>
-      _ref.read(eventRepositoryProvider).fetchRegistration(eventId, studentId);
+  Future<EventRegistration?> fetchRegistration(
+    String eventId,
+    String studentId,
+  ) => _ref.read(eventRepositoryProvider).fetchRegistration(eventId, studentId);
 
   Future<void> markOwnSessionCheckIn({
     required String eventId,
     required String studentId,
     required EventRegistration registration,
     required int currentSession,
-  }) =>
-      _ref.read(eventRepositoryProvider).markOwnSessionCheckIn(
-            eventId: eventId,
-            studentId: studentId,
-            registration: registration,
-            currentSession: currentSession,
-          );
+  }) => _ref
+      .read(eventRepositoryProvider)
+      .markOwnSessionCheckIn(
+        eventId: eventId,
+        studentId: studentId,
+        registration: registration,
+        currentSession: currentSession,
+      );
 
   Future<void> markOwnDoorCheckin({
     required String eventId,
     required String studentId,
-  }) =>
-      _ref.read(eventRepositoryProvider).markOwnDoorCheckin(
-            eventId: eventId,
-            studentId: studentId,
-          );
+  }) => _ref
+      .read(eventRepositoryProvider)
+      .markOwnDoorCheckin(eventId: eventId, studentId: studentId);
 }

@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../core/constants.dart';
@@ -76,6 +77,15 @@ class PhoneDirectoryRepository {
   bool _isUsableKey(String key) => _e164.hasMatch(key);
 
   /// SMS gönderilmeden önceki sahiplik sorgusu.
+  ///
+  /// Firestore dizini hızlı bir ön sonuç verir; ardından Cloud Function,
+  /// Firebase Auth'taki gerçek telefon bağını kontrol eder. Bu ikinci adım
+  /// özellikle `phone_owners` dizini eklenmeden önce oluşturulmuş hesaplar
+  /// için gereklidir: o hesapların numarası Firestore'da boş görünse bile
+  /// Firebase Auth'ta başka bir hesaba bağlı olabilir.
+  ///
+  /// Function geçici olarak erişilemezse mevcut dizin sonucu korunur. Telefon
+  /// bağlama çağrısı yine Firebase Auth tarafından kesin olarak doğrulanır.
   Future<PhoneOwnership> lookup({
     required String phoneE164,
     required String uid,
@@ -83,8 +93,53 @@ class PhoneDirectoryRepository {
     final String key = phoneE164.trim();
     if (!_isUsableKey(key)) return PhoneOwnership.unknown;
 
+    final PhoneOwnership directory = await _lookupDirectory(
+      phoneE164: key,
+      uid: uid,
+    );
+
+    // Başka bir kullanıcının hâlâ geçerli SMS rezervasyonu varsa onu koru.
+    // Auth'ta kayıt olmaması, o kullanıcının aynı anda kod istemediği
+    // anlamına gelmez.
+    if (directory == PhoneOwnership.pendingByOther) return directory;
+
     try {
-      final Snap snap = await _doc(key).get();
+      final HttpsCallableResult<Object?> result = await fbFunctions
+          .httpsCallable(
+            'checkPhoneOwnership',
+            options: HttpsCallableOptions(timeout: const Duration(seconds: 8)),
+          )
+          .call(<String, String>{'phoneE164': key});
+      final Object? raw = result.data is Map
+          ? (result.data as Map)['ownership']
+          : null;
+      return switch (raw) {
+        'free' => PhoneOwnership.free,
+        'mine' => PhoneOwnership.mine,
+        'taken' => PhoneOwnership.takenByOther,
+        _ => directory,
+      };
+    } catch (_) {
+      return directory;
+    }
+  }
+
+  /// Yalnızca Firestore'daki sahiplik dizinini sunucudan okur. Ayrı tutulur
+  /// ki [lookup] hem bayat dizin kayıtlarını Auth sonucu ile düzeltebilsin
+  /// hem de bağlantı sorununun güvenli geri dönüşünü koruyabilsin.
+  Future<PhoneOwnership> _lookupDirectory({
+    required String phoneE164,
+    required String uid,
+  }) async {
+    final String key = phoneE164.trim();
+    if (!_isUsableKey(key)) return PhoneOwnership.unknown;
+
+    try {
+      // Varsayılan okuma önbellekten dönebilir. Telefon değişikliğinde eski
+      // "boş" sonucu kullanıp SMS göndermemek için gerçek sunucu cevabı şart.
+      final Snap snap = await _doc(
+        key,
+      ).get(const GetOptions(source: Source.server));
       if (!snap.exists) return PhoneOwnership.free;
 
       final Map<String, dynamic> data = snap.data() ?? <String, dynamic>{};

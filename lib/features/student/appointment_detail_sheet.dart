@@ -22,19 +22,18 @@ Future<void> showAppointmentSheet(
   BuildContext context, {
   required String registrationId,
   bool autoGenerateQr = false,
-}) =>
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: context.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (_) => AppointmentDetailSheet(
-        registrationId: registrationId,
-        autoGenerateQr: autoGenerateQr,
-      ),
-    );
+}) => showModalBottomSheet<void>(
+  context: context,
+  isScrollControlled: true,
+  backgroundColor: context.surface,
+  shape: const RoundedRectangleBorder(
+    borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+  ),
+  builder: (_) => AppointmentDetailSheet(
+    registrationId: registrationId,
+    autoGenerateQr: autoGenerateQr,
+  ),
+);
 
 class AppointmentDetailSheet extends ConsumerStatefulWidget {
   const AppointmentDetailSheet({
@@ -51,7 +50,8 @@ class AppointmentDetailSheet extends ConsumerStatefulWidget {
       _AppointmentDetailSheetState();
 }
 
-class _AppointmentDetailSheetState extends ConsumerState<AppointmentDetailSheet> {
+class _AppointmentDetailSheetState
+    extends ConsumerState<AppointmentDetailSheet> {
   bool _qrVisible = false;
   bool _qrLoading = false;
   String? _qrImageUrl;
@@ -127,7 +127,8 @@ class _AppointmentDetailSheetState extends ConsumerState<AppointmentDetailSheet>
   @override
   Widget build(BuildContext context) {
     final List<RegistrationWithEvent> items =
-        ref.watch(appointmentsProvider).value ?? const <RegistrationWithEvent>[];
+        ref.watch(appointmentsProvider).value ??
+        const <RegistrationWithEvent>[];
 
     RegistrationWithEvent? match;
     for (final RegistrationWithEvent candidate in items) {
@@ -150,7 +151,8 @@ class _AppointmentDetailSheetState extends ConsumerState<AppointmentDetailSheet>
     final int attendance = item.registration.sessionsAttended;
     final bool checkedIn = item.registration.isCheckedIn;
     if (_lastSeenAttendance != null &&
-        (attendance > _lastSeenAttendance! || (checkedIn && !item.canGenerateQr)) &&
+        (attendance > _lastSeenAttendance! ||
+            (checkedIn && !item.canGenerateQr)) &&
         _qrVisible) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) setState(() => _qrVisible = false);
@@ -169,7 +171,9 @@ class _AppointmentDetailSheetState extends ConsumerState<AppointmentDetailSheet>
             padding: EdgeInsets.zero,
             children: <Widget>[
               ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(24),
+                ),
                 child: EventImage(url: item.imageUrl, height: 180),
               ),
               Padding(
@@ -177,35 +181,50 @@ class _AppointmentDetailSheetState extends ConsumerState<AppointmentDetailSheet>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text(item.title, style: Theme.of(context).textTheme.headlineSmall),
+                    Text(
+                      item.title,
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
                     const SizedBox(height: 10),
                     StatusPill(
                       label: item.isClosed
                           ? context.t('dashboard.status.expired')
                           : context.t('dashboard.status.registered'),
-                      tone: item.isClosed ? FeedbackTone.error : FeedbackTone.success,
+                      tone: item.isClosed
+                          ? FeedbackTone.error
+                          : FeedbackTone.success,
                     ),
                     const SizedBox(height: 16),
 
                     Text(
-                      context.t('studentAppointments.card.club',
-                          <String, Object?>{'clubName': item.clubName}),
+                      context.t(
+                        'studentAppointments.card.club',
+                        <String, Object?>{'clubName': item.clubName},
+                      ),
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                     Text(
-                      context.t('studentAppointments.card.deadline', <String, Object?>{
-                        'deadline':
-                            formatDeadline(item.deadlineAtMs, locale: context.lang),
-                      }),
+                      context.t(
+                        'studentAppointments.card.deadline',
+                        <String, Object?>{
+                          'deadline': formatDeadline(
+                            item.deadlineAtMs,
+                            locale: context.lang,
+                          ),
+                        },
+                      ),
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                     Text(
-                      context.t('studentAppointments.card.registeredAt',
-                          <String, Object?>{
-                            'registeredAt': formatDateTime(
-                                item.registration.registeredAtMs,
-                                locale: context.lang),
-                          }),
+                      context.t(
+                        'studentAppointments.card.registeredAt',
+                        <String, Object?>{
+                          'registeredAt': formatDateTime(
+                            item.registration.registeredAtMs,
+                            locale: context.lang,
+                          ),
+                        },
+                      ),
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
 
@@ -224,8 +243,11 @@ class _AppointmentDetailSheetState extends ConsumerState<AppointmentDetailSheet>
                         const SizedBox(height: 12),
                         Row(
                           children: <Widget>[
-                            Icon(Icons.place_outlined,
-                                size: 16, color: context.inkMuted),
+                            Icon(
+                              Icons.place_outlined,
+                              size: 16,
+                              color: context.inkMuted,
+                            ),
                             const SizedBox(width: 6),
                             Expanded(child: Text(item.event!.locationName)),
                           ],
@@ -243,9 +265,9 @@ class _AppointmentDetailSheetState extends ConsumerState<AppointmentDetailSheet>
                     ],
 
                     const SizedBox(height: 24),
-                    // Oturumlu etkinlik: okutma düğmesi HER ZAMAN görünür,
-                    // yalnızca sırası gelmediğinde pasiftir (altında sebebi
-                    // yazar). Tek oturumlu: eskisi gibi QR üretilir.
+                    // Oturumlu etkinlik: okutma düğmesi kulüp QR'ı açana
+                    // kadar gizlidir, açılınca belirir. Tek oturumlu: eskisi
+                    // gibi QR üretilir.
                     // Kapı check-in'i olan etkinlikte İKİ yol da açıktır ve
                     // ikisi de aynı damgayı yazar; hangisinin kullanılacağını
                     // kulüp kapıda seçer:
@@ -254,11 +276,18 @@ class _AppointmentDetailSheetState extends ConsumerState<AppointmentDetailSheet>
                     // Web de ikisini birlikte sunuyor (qr-entry.js +
                     // student-ticket.js); iki platform aynı veriyi okuduğu için
                     // mobilde birini kapatmak, o kapıda takılan öğrenci demekti.
-                    if (item.canShowTicket) ...<Widget>[
+                    if ((item.event?.hasActiveDoorQr ?? false) &&
+                        !item.registration.isCheckedIn)
                       _DoorScanAction(
-                        open: item.event!.entryOpen,
+                        open: true,
+                        onScan: () => _openSessionScanner(item),
+                      )
+                    else if (item.event?.isMultiSession ?? false)
+                      _SessionScanAction(
+                        item: item,
                         onScan: () => _openSessionScanner(item),
                       ),
+                    if (item.canShowTicket) ...<Widget>[
                       const SizedBox(height: 10),
                       OutlinedButton.icon(
                         onPressed: _qrLoading ? null : _generateQr,
@@ -267,14 +296,7 @@ class _AppointmentDetailSheetState extends ConsumerState<AppointmentDetailSheet>
                           context.t('studentAppointments.modal.showTicket'),
                         ),
                       ),
-                    ]
-                    // Kapı girişi olmayan ("Sadece Yoklama") etkinlikte tek yol
-                    // salondaki oturum QR'ını okutmaktır.
-                    else if (item.isMultiSession)
-                      _SessionScanAction(
-                        item: item,
-                        onScan: () => _openSessionScanner(item),
-                      ),
+                    ],
                     const SizedBox(height: 20),
                   ],
                 ),
@@ -298,7 +320,9 @@ class _AppointmentDetailSheetState extends ConsumerState<AppointmentDetailSheet>
                             width: 64,
                             height: 64,
                             child: CircularProgressIndicator(
-                                color: BrandColors.white, strokeWidth: 3),
+                              color: BrandColors.white,
+                              strokeWidth: 3,
+                            ),
                           ),
                           const SizedBox(height: 20),
                           Text(
@@ -347,9 +371,9 @@ class _AppointmentDetailSheetState extends ConsumerState<AppointmentDetailSheet>
 
 /// Oturumlu etkinliğin "QR Okut" düğmesi ve durum açıklaması.
 ///
-/// Düğme gizlenmez: kulüp yeni oturumu açtığı anda (canlı etkinlik
-/// dinleyicisi sayesinde) kendiliğinden aktifleşir. Gizlenen bir düğme,
-/// öğrenciye "bu etkinlikte QR yok" izlenimi veriyordu.
+/// Kulüp ilk oturumu başlatana kadar okutulacak bir QR yoktur; düğme bu
+/// süre boyunca gizlidir ve kulüp oturumu açtığı anda (canlı etkinlik
+/// dinleyicisi sayesinde) kendiliğinden belirir.
 class _SessionScanAction extends StatelessWidget {
   const _SessionScanAction({required this.item, required this.onScan});
 
@@ -359,23 +383,36 @@ class _SessionScanAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final SessionScanState state = item.sessionScanState;
+
+    if (!(item.event?.hasActiveSessionQr ?? false)) {
+      return const SizedBox.shrink();
+    }
+
+    if (state == SessionScanState.notStarted ||
+        state == SessionScanState.unavailable) {
+      return const SizedBox.shrink();
+    }
+
     final bool ready = state == SessionScanState.ready;
 
     final String note = switch (state) {
       SessionScanState.ready => context.t(
-          'studentAppointments.modal.scanReady',
-          <String, Object?>{'current': item.currentSession},
-        ),
-      SessionScanState.notStarted =>
-        context.t('studentAppointments.modal.scanNotStarted'),
+        'studentAppointments.modal.scanReady',
+        <String, Object?>{'current': item.currentSession},
+      ),
+      SessionScanState.notStarted => context.t(
+        'studentAppointments.modal.scanNotStarted',
+      ),
       SessionScanState.alreadyScanned => context.t(
-          'studentAppointments.modal.scanAlreadyDone',
-          <String, Object?>{'current': item.currentSession},
-        ),
-      SessionScanState.completed =>
-        context.t('studentAppointments.modal.scanCompleted'),
-      SessionScanState.unavailable =>
-        context.t('studentAppointments.modal.scanUnavailable'),
+        'studentAppointments.modal.scanAlreadyDone',
+        <String, Object?>{'current': item.currentSession},
+      ),
+      SessionScanState.completed => context.t(
+        'studentAppointments.modal.scanCompleted',
+      ),
+      SessionScanState.unavailable => context.t(
+        'studentAppointments.modal.scanUnavailable',
+      ),
     };
 
     return Column(
@@ -402,7 +439,7 @@ class _SessionScanAction extends StatelessWidget {
 }
 
 /// Kapı QR'ı hem yalnızca Check-in hem de Check-in + Yoklama modunun ortak
-/// ilk adımıdır. Kapı kapalıyken öğrenciye düğmenin neden pasif olduğu görünür.
+/// ilk adımıdır. Kulüp kapı QR'ını açana kadar düğme gizlidir.
 class _DoorScanAction extends StatelessWidget {
   const _DoorScanAction({required this.open, required this.onScan});
 
@@ -410,24 +447,26 @@ class _DoorScanAction extends StatelessWidget {
   final VoidCallback onScan;
 
   @override
-  Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          FilledButton.icon(
-            onPressed: open ? onScan : null,
-            icon: const Icon(Icons.qr_code_scanner),
-            label: Text(context.t('clubEvents.entry.open')),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            open
-                ? context.t('clubEvents.entry.subtitle')
-                : context.t('scan.doorClosed'),
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, color: open ? context.brandInk : context.inkMuted),
-          ),
-        ],
-      );
+  Widget build(BuildContext context) {
+    if (!open) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        FilledButton.icon(
+          onPressed: onScan,
+          icon: const Icon(Icons.qr_code_scanner),
+          label: Text(context.t('studentAppointments.modal.scanQr')),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          context.t('clubEvents.entry.subtitle'),
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 12, color: context.brandInk),
+        ),
+      ],
+    );
+  }
 }
 
 /// student-appointments.js#renderSessionProgress karşılığı.
@@ -448,16 +487,24 @@ class _SessionProgress extends StatelessWidget {
       if (threshold != null) {
         note = percent >= threshold
             ? context.t('studentAppointments.modal.certificateEarned')
-            : context.t('studentAppointments.modal.certificateNeeded',
-                <String, Object?>{'percent': threshold});
+            : context.t(
+                'studentAppointments.modal.certificateNeeded',
+                <String, Object?>{'percent': threshold},
+              );
       }
 
       return _ProgressBox(
         title: context.t('studentAppointments.modal.sessionProgressTitle'),
         percent: percent / 100,
         color: BrandColors.info,
-        text: context.t('studentAppointments.modal.sessionProgressText',
-                <String, Object?>{'attended': attended, 'total': item.sessionCount}) +
+        text:
+            context.t(
+              'studentAppointments.modal.sessionProgressText',
+              <String, Object?>{
+                'attended': attended,
+                'total': item.sessionCount,
+              },
+            ) +
             note,
       );
     }

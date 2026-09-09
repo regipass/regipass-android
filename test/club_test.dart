@@ -15,6 +15,7 @@ import 'package:regipass/features/club/location_picker_screen.dart';
 import 'package:regipass/l10n/app_strings.dart';
 import 'package:regipass/models/event.dart';
 import 'package:regipass/models/profiles.dart';
+import 'package:regipass/services/firebase_refs.dart';
 import 'package:regipass/state/providers.dart';
 
 /// Kulüp tarafının davranış testleri.
@@ -25,13 +26,19 @@ import 'package:regipass/state/providers.dart';
 AppEvent event({
   String id = 'e1',
   int deadlineDaysFromNow = 7,
+  int? eventDateDaysFromNow,
+  DateTime? referenceNow,
   bool registrationClosed = false,
+  bool entryOpen = false,
+  int entryStartedAtMs = 0,
+  int currentSession = 0,
+  bool sessionsCompleted = false,
   bool hiddenFromClubList = false,
   List<String> clubFields = const <String>[],
   String clubField = '',
   String targetScope = 'public',
 }) {
-  final DateTime deadline = DateTime.now().add(
+  final DateTime deadline = (referenceNow ?? DateTime.now()).add(
     Duration(days: deadlineDaysFromNow),
   );
 
@@ -45,7 +52,15 @@ AppEvent event({
       59,
       59,
     ).millisecondsSinceEpoch,
+    if (eventDateDaysFromNow != null)
+      'eventDateAtMs': DateTime(deadline.year, deadline.month, deadline.day)
+          .add(Duration(days: eventDateDaysFromNow - deadlineDaysFromNow))
+          .millisecondsSinceEpoch,
     'registrationClosed': registrationClosed,
+    'entryOpen': entryOpen,
+    'entryStartedAtMs': entryStartedAtMs,
+    'currentSession': currentSession,
+    'sessionsCompleted': sessionsCompleted,
     'hiddenFromClubList': hiddenFromClubList,
     'clubFields': clubFields,
     'clubField': clubField,
@@ -117,17 +132,24 @@ void main() {
   });
 
   group('kulüp etkinlik grupları', () {
-    test('aktif / beklemede / geçmiş ayrımı', () {
+    test('aktif / gelecek / geçmiş ayrımı webdeki etkinlik günü kuralıyla', () {
+      final DateTime now = DateTime(2026, 9, 8, 12);
       final List<AppEvent> events = <AppEvent>[
-        event(id: 'aktif'),
-        event(id: 'beklemede', registrationClosed: true),
-        event(id: 'gecmis', deadlineDaysFromNow: -3),
+        event(id: 'aktif', eventDateDaysFromNow: 0, referenceNow: now),
+        // Kayıtların kapanması tek başına etkinliği aktife taşımaz.
+        event(
+          id: 'gelecek',
+          eventDateDaysFromNow: 2,
+          referenceNow: now,
+          registrationClosed: true,
+        ),
+        event(id: 'gecmis', eventDateDaysFromNow: -1, referenceNow: now),
       ];
 
-      final ClubEventGroups groups = groupClubEvents(events);
+      final ClubEventGroups groups = groupClubEvents(events, now: now);
 
       expect(groups.active.map((AppEvent e) => e.id), <String>['aktif']);
-      expect(groups.pending.map((AppEvent e) => e.id), <String>['beklemede']);
+      expect(groups.upcoming.map((AppEvent e) => e.id), <String>['gelecek']);
       expect(groups.past.map((AppEvent e) => e.id), <String>['gecmis']);
     });
 
@@ -139,15 +161,29 @@ void main() {
       expect(groups.isEmpty, isTrue);
     });
 
-    test('süresi geçmiş etkinlik kapalı olsa da geçmişte kalır', () {
-      // Süre kontrolü önce gelir; "beklemede" yalnızca süresi geçmemişler.
-      final ClubEventGroups groups = groupClubEvents(<AppEvent>[
-        event(id: 'x', deadlineDaysFromNow: -1, registrationClosed: true),
-      ]);
+    test(
+      'yoklama başlatılan gelecek etkinlik aktife, tamamlanan etkinlik geçmişe gider',
+      () {
+        final DateTime now = DateTime(2026, 9, 8, 12);
+        final ClubEventGroups groups = groupClubEvents(<AppEvent>[
+          event(
+            id: 'basladi',
+            eventDateDaysFromNow: 3,
+            referenceNow: now,
+            entryStartedAtMs: now.millisecondsSinceEpoch,
+          ),
+          event(
+            id: 'tamamlandi',
+            eventDateDaysFromNow: 3,
+            referenceNow: now,
+            sessionsCompleted: true,
+          ),
+        ], now: now);
 
-      expect(groups.past.length, 1);
-      expect(groups.pending, isEmpty);
-    });
+        expect(groups.active.map((AppEvent e) => e.id), <String>['basladi']);
+        expect(groups.past.map((AppEvent e) => e.id), <String>['tamamlandi']);
+      },
+    );
   });
 
   group('belge hakkı', () {
@@ -228,6 +264,56 @@ void main() {
     });
   });
 
+  // Aynı etkinliğe yüklenen ikinci belge, birincinin öğrencideki kaydını ve
+  // dosyasını eziyordu: kimlik yalnızca etkinlik+öğrenciydi. Anahtar artık
+  // belgeye bağlı.
+  group('belge anahtarı', () {
+    EventDocument doc({
+      String url = 'https://x/a.pdf',
+      String path = '',
+      int uploadedAtMs = 0,
+    }) => EventDocument(
+      url: url,
+      name: 'a.pdf',
+      path: path,
+      contentType: 'application/pdf',
+      uploadedAtMs: uploadedAtMs,
+    );
+
+    test('aynı etkinliğin iki belgesi ayrı anahtar alır', () {
+      expect(
+        doc(uploadedAtMs: 1700000000000).key,
+        isNot(doc(uploadedAtMs: 1700000000001).key),
+      );
+    });
+
+    test('aynı belge her okunduğunda aynı anahtarı verir', () {
+      expect(doc(uploadedAtMs: 1700000000000).key, '1700000000000');
+    });
+
+    test('zaman damgası yoksa yol, o da yoksa adres ayırt eder', () {
+      expect(doc(path: 'certificates/c/e/_belge-42.pdf').key, 'belge42pdf');
+      expect(doc(url: 'https://x/a.pdf').key, isNotEmpty);
+      expect(doc(url: 'https://x/a.pdf').key, doc(url: 'https://x/a.pdf').key);
+      expect(
+        doc(url: 'https://x/a.pdf').key,
+        isNot(doc(url: 'https://x/b.pdf').key),
+      );
+    });
+
+    test('kimlik belgeye göre ayrışır, aynı belgede sabit kalır', () {
+      expect(certificateIdFor('e1', 's1', '1'), 'e1_s1_1');
+      expect(
+        certificateIdFor('e1', 's1', '1'),
+        certificateIdFor('e1', 's1', '1'),
+      );
+      expect(
+        certificateIdFor('e1', 's1', '1'),
+        isNot(certificateIdFor('e1', 's1', '2')),
+      );
+    });
+  });
+
   group('belge dağıtım kapısı', () {
     AppEvent withDate({
       required int sessionCount,
@@ -255,6 +341,22 @@ void main() {
         ),
         isTrue,
       );
+    });
+
+    test('tek oturumlu: son başvurusu geçince belge kartı açılır', () {
+      final DateTime deadline = DateTime.now().subtract(
+        const Duration(hours: 2),
+      );
+      final DateTime eventEnd = DateTime.now().add(const Duration(hours: 2));
+
+      final AppEvent e = AppEvent.fromMap('e', <String, dynamic>{
+        'sessionCount': 1,
+        'deadlineAtMs': deadline.millisecondsSinceEpoch,
+        'eventEndAtMs': eventEnd.millisecondsSinceEpoch,
+      });
+
+      expect(isPastEvent(e), isTrue);
+      expect(canDistributeCertificates(e), isTrue);
     });
 
     test('oturumlu: kapıyı takvim değil, oturumların bitmesi açar', () {

@@ -1,46 +1,9 @@
-/// Kontenjanı koruyan, çekişmeye dayanıklı etkinlik kaydı.
-///
-/// ── Neden gerekti ────────────────────────────────────────────────────
-///
-/// `EventRepository.registerToEvent` kaydı doğrudan `set()` ile yazıyordu.
-/// Kontenjan hiçbir yerde — ne istemcide ne `firestore.rules` içinde —
-/// kontrol edilmiyordu. Yük testi (`tool/loadtest/01-baseline.mjs`)
-/// kontenjanı 100 olan bir etkinliğe 2000 kişinin **tek hata almadan**
-/// kaydolabildiğini gösterdi: uygulama çökmüyor, sessizce yanlış çalışıyor.
-///
-/// ── Algoritma ────────────────────────────────────────────────────────
-///
-/// Kontenjanı korumak, kaydı sayaçla birlikte atomik yazmayı gerektirir.
-/// Sayaç tek dokümanda tutulursa o doküman bütün etkinliğin darboğazı olur
-/// (Firestore'da tek dokümana sürdürülebilir yazma: saniyede ~1). Yük
-/// testinde tek sayaçlı kurulum 50 eşzamanlı istekte %38, 100'de %99 hata
-/// verdi.
-///
-/// Bu yüzden kontenjan **parçalara** bölünür:
-///
-///     events/{eventId}/quota_shards/{0..S-1}   →  { count, capacity }
-///
-/// Kapasitelerin toplamı tam olarak kontenjandır, dolayısıyla ne aşım ne
-/// eksik olur. Öğrenci kimliğinden türeyen bir parçadan başlar; parça
-/// doluysa sıradakine yürür. Bütün parçalar doluysa kontenjan gerçekten
-/// bitmiştir.
-///
-/// Parça sayısı tavanı belirler; **kalan yük zamana yayılır**. Çarpışan
-/// istek üstel büyüyen ve rastgeleleştirilmiş (tam jitter) bir bekleyişten
-/// sonra yeniden dener. Merkezî bir kuyruk kuramayız — 500 öğrencinin 500
-/// ayrı telefonu var, hiçbiri diğerini beklemiyor — ama yeniden deneme
-/// dağıtık bir kuyruk kurar. "Bölük bölük" olan budur: her turda parça
-/// sayısı kadar kayıt geçer, gerisi bir sonraki turu bekler.
-///
-/// Ölçülen davranış: bir turda **parça sayısı kadar** kayıt geçiyor (500
-/// kişi aynı anda, 16 parça, yeniden deneme kapalı → tam 16 kayıt). Emilen
-/// patlama bu yüzden kabaca `parça sayısı × etkin tur sayısı`; büyük
-/// patlama beklenen etkinlikte artırılacak kollar `quotaShardCount` ve
-/// [kRegistrationMaxRounds]. Modelin turlarla doğrusal büyüdüğü emulator'de
-/// doğrulanamadı — bkz. `docs/kayit-kapasitesi.md` §1.5.
-///
-/// Politikanın tamamı `lib/domain/registration_capacity.dart` içinde ve
-/// Firebase'e dokunmadan test edilebilir.
+/// Kontenjanı koruyan, yoğun kayıt isteklerini zamana yayan kayıt akışı.
+/// İlk denemeler rastgele bir bekleme penceresine yayılır. Sayaç ile kayıt
+/// aynı transaction'da yazılır; doğrulanmış sayaç yarışları yeniden denenir.
+/// Bu bir sunucu/FIFO kuyruğu değildir; bekleyiş her istemcide yürütülür.
+/// Mevcut sayaç parçası planı ve eski kayıt şeması korunur.
+/// Yerel ölçümler: docs/qr-kayit-sirasi-2026-09-09.md.
 library;
 
 import 'dart:math';
@@ -49,6 +12,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../core/app_log.dart';
 import '../domain/paid_event_consent.dart';
+import '../domain/event_utils.dart';
 import '../domain/registration_capacity.dart';
 import '../models/event.dart';
 import '../models/profiles.dart';
@@ -182,6 +146,30 @@ class RegistrationService {
     final int shards = event.quotaShardCount;
     final int start = startShardFor(studentId, shards);
 
+    final Duration admission = registrationAdmissionDelay(
+      quota: event.quota,
+      shards: shards,
+      random: random,
+    );
+    if (admission > Duration.zero) {
+      onWaiting?.call(0);
+      await Future<void>.delayed(admission);
+    }
+    // İlk bekleyişte etkinlik kapanmış veya son başvuru süresi dolmuş olabilir.
+    final RegistrationOutcome? gate = await _registrationGate(
+      event.id,
+      profile,
+    );
+    if (gate != null) {
+      return RegistrationResult(
+        outcome: gate,
+        rounds: 0,
+        contentions: 0,
+        shardsScanned: 0,
+        elapsed: watch.elapsed,
+      );
+    }
+
     int contentions = 0;
     int shardsScanned = 0;
 
@@ -233,8 +221,9 @@ class RegistrationService {
           );
           return result;
         } on FirebaseException catch (error) {
-          // Ağ yok: yeniden denemenin faydası yok, kullanıcıya söyle.
-          if (error.code == 'unavailable') {
+          // Geçici erişim kesintilerini de dene; son turda erişim sonucunu koru.
+          if (error.code == 'unavailable' &&
+              round == kRegistrationMaxRounds - 1) {
             AppLog.warn('registration.unavailable', <String, Object?>{
               'eventId': event.id,
               'studentId': studentId,
@@ -257,13 +246,17 @@ class RegistrationService {
               'code': error.code,
             });
             return RegistrationResult(
-              outcome: RegistrationOutcome.closed,
+              outcome:
+                  await _registrationGate(event.id, profile) ??
+                  RegistrationOutcome.notEligible,
               rounds: round,
               contentions: contentions,
               shardsScanned: shardsScanned,
               elapsed: watch.elapsed,
             );
           }
+
+          if (!isRegistrationRetryable(error.code)) rethrow;
 
           // ABORTED / DEADLINE_EXCEEDED: başkası aynı parçayı kaptı.
           //
@@ -366,6 +359,25 @@ class RegistrationService {
     return result;
   }
 
+  Future<RegistrationOutcome?> _registrationGate(
+    String eventId,
+    StudentProfile? profile,
+  ) async {
+    final AppEvent? live = AppEvent.fromDoc(
+      await eventDoc(eventId).get(const GetOptions(source: Source.server)),
+    );
+    if (live == null) return RegistrationOutcome.notFound;
+    if (live.hiddenGlobally || !canStudentSeeEvent(live, profile)) {
+      return RegistrationOutcome.notEligible;
+    }
+    if (isRegistrationClosed(live)) {
+      return live.registrationClosedReason == ClosedReason.quotaFull
+          ? RegistrationOutcome.quotaFull
+          : RegistrationOutcome.closed;
+    }
+    return null;
+  }
+
   /// Bütün parçaların sayaçları kapasitelerine ulaştı mı?
   ///
   /// Tek seferlik, transaction'sız bir okuma: kontenjan dolduktan sonra
@@ -404,53 +416,79 @@ class RegistrationService {
     required String eventFallbackTitle,
     required String clubFallbackName,
     required PaidEventConsentAcceptance? paidEventConsent,
-  }) => fbDb.runTransaction<_ClaimResult>(
-    (Transaction tx) async {
-      final Doc shardRef = quotaShardDoc(event.id, shard);
-      final Doc regRef = registrationDoc(event.id, studentId);
+  }) async {
+    final Doc shardRef = quotaShardDoc(event.id, shard);
+    int? attemptedCount;
+    try {
+      return await fbDb.runTransaction<_ClaimResult>(
+        (Transaction tx) async {
+          final Doc regRef = registrationDoc(event.id, studentId);
 
-      // Firestore transaction'ında bütün okumalar yazımlardan önce olmalı.
-      final DocumentSnapshot<Map<String, dynamic>> shardSnap =
-          await tx.get(shardRef);
-      final DocumentSnapshot<Map<String, dynamic>> regSnap =
-          await tx.get(regRef);
+          // Firestore transaction'ında bütün okumalar yazımlardan önce olmalı.
+          final DocumentSnapshot<Map<String, dynamic>> shardSnap = await tx.get(
+            shardRef,
+          );
+          final DocumentSnapshot<Map<String, dynamic>> regSnap = await tx.get(
+            regRef,
+          );
 
-      // Öğrenci zaten kayıtlı: sayacı İKİNCİ kez artırmak kontenjanı yerdi.
-      // (Ağ kesilip kullanıcı tekrar bastığında bu yol işler.)
-      if (regSnap.exists) return _ClaimResult.alreadyRegistered;
+          // Öğrenci zaten kayıtlı: sayacı İKİNCİ kez artırmak kontenjanı yerdi.
+          // (Ağ kesilip kullanıcı tekrar bastığında bu yol işler.)
+          if (regSnap.exists) return _ClaimResult.alreadyRegistered;
 
-      // Parça yok: kulüp etkinliği oluştururken kurmamış olabilir. Burada
-      // kurmak güvenlik açığı olurdu (istemci kapasiteyi kendisi belirlerdi
-      // — firestore.rules de zaten izin vermez), bu yüzden dolu sayılır.
-      if (!shardSnap.exists) return _ClaimResult.shardFull;
+          // Parça yok: kulüp etkinliği oluştururken kurmamış olabilir. Burada
+          // kurmak güvenlik açığı olurdu (istemci kapasiteyi kendisi belirlerdi
+          // — firestore.rules de zaten izin vermez), bu yüzden dolu sayılır.
+          if (!shardSnap.exists) return _ClaimResult.shardFull;
 
-      final Map<String, dynamic> data = shardSnap.data()!;
-      final int count = asInt(data['count']) ?? 0;
-      final int capacity = asInt(data['capacity']) ?? 0;
+          final Map<String, dynamic> data = shardSnap.data()!;
+          final int count = asInt(data['count']) ?? 0;
+          final int capacity = asInt(data['capacity']) ?? 0;
 
-      if (count >= capacity) return _ClaimResult.shardFull;
+          if (count >= capacity) return _ClaimResult.shardFull;
+          attemptedCount = count;
 
-      tx.set(
-        regRef,
-        _registrationPayload(
-          event: event,
-          studentId: studentId,
-          studentEmail: studentEmail,
-          profile: profile,
-          displayName: displayName,
-          eventFallbackTitle: eventFallbackTitle,
-          clubFallbackName: clubFallbackName,
-          paidEventConsent: paidEventConsent,
-          shard: shard,
-        ),
+          tx.set(
+            regRef,
+            _registrationPayload(
+              event: event,
+              studentId: studentId,
+              studentEmail: studentEmail,
+              profile: profile,
+              displayName: displayName,
+              eventFallbackTitle: eventFallbackTitle,
+              clubFallbackName: clubFallbackName,
+              paidEventConsent: paidEventConsent,
+              shard: shard,
+            ),
+          );
+          tx.update(shardRef, <String, dynamic>{'count': count + 1});
+          return _ClaimResult.claimed;
+        },
+        // Yeniden denemeyi BİZ yönetiyoruz: SDK'nın kendi denemesi jitter'sız
+        // ve parçalar arası yürüyüşten habersiz.
+        maxAttempts: 1,
       );
-      tx.update(shardRef, <String, dynamic>{'count': count + 1});
-      return _ClaimResult.claimed;
-    },
-    // Yeniden denemeyi BİZ yönetiyoruz: SDK'nın kendi denemesi jitter'sız
-    // ve parçalar arası yürüyüşten habersiz.
-    maxAttempts: 1,
-  );
+    } on FirebaseException catch (error) {
+      if (error.code == 'permission-denied' && attemptedCount != null) {
+        final DocumentSnapshot<Map<String, dynamic>> latest = await shardRef
+            .get(const GetOptions(source: Source.server));
+        if (quotaChangedAfterDeniedWrite(
+          code: error.code,
+          attemptedCount: attemptedCount,
+          currentCount: asInt(latest.data()?['count']),
+        )) {
+          throw FirebaseException(
+            plugin: 'cloud_firestore',
+            code: 'aborted',
+            message:
+                'Quota changed during registration; retry with fresh state.',
+          );
+        }
+      }
+      rethrow;
+    }
+  }
 
   /// Parçasız (eski / kontenjansız) etkinlik için düz yazım.
   Future<void> _writeRegistration({
@@ -539,7 +577,9 @@ class RegistrationService {
     final Doc regRef = registrationDoc(eventId, studentId);
 
     await fbDb.runTransaction((Transaction tx) async {
-      final DocumentSnapshot<Map<String, dynamic>> regSnap = await tx.get(regRef);
+      final DocumentSnapshot<Map<String, dynamic>> regSnap = await tx.get(
+        regRef,
+      );
       if (!regSnap.exists) return;
 
       final int? shard = asInt(regSnap.data()?['quotaShard']);
@@ -551,8 +591,9 @@ class RegistrationService {
       }
 
       final Doc shardRef = quotaShardDoc(eventId, shard);
-      final DocumentSnapshot<Map<String, dynamic>> shardSnap =
-          await tx.get(shardRef);
+      final DocumentSnapshot<Map<String, dynamic>> shardSnap = await tx.get(
+        shardRef,
+      );
 
       tx.delete(regRef);
 

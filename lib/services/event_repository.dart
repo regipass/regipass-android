@@ -1,7 +1,12 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 
 import '../core/app_log.dart';
 import '../domain/paid_event_consent.dart';
+import '../domain/event_utils.dart';
 import '../domain/registration_capacity.dart';
 import '../models/event.dart';
 import '../models/profiles.dart';
@@ -46,6 +51,44 @@ class EventRepository {
 
   Stream<AppEvent?> watchEvent(String eventId) =>
       eventDoc(eventId).snapshots().map(AppEvent.fromDoc);
+
+  Stream<List<AppEvent>> watchAllEvents() => eventsCol.snapshots().map(
+    (QSnap snap) => snap.docs
+        .map(
+          (QueryDocumentSnapshot<Map<String, dynamic>> doc) =>
+              AppEvent.fromMap(doc.id, doc.data()),
+        )
+        .toList(),
+  );
+
+  /// QR, canlı giriş aşaması doğrulandıktan sonra yayınlanır.
+  ///
+  /// Etkinliğin konumu isteğe bağlıdır: koordinat yoksa öğrenci tarafında
+  /// konum denetimi atlanır. Böylece konumsuz etkinliklerde de kapı ve oturum
+  /// QR'ları, konumlu etkinliklerdeki aynı yayın/geçerlilik kurallarıyla
+  /// çalışır.
+  Future<AppEvent> publishSharedQr(String eventId, {int? session}) =>
+      fbDb.runTransaction((Transaction tx) async {
+        final Doc doc = eventDoc(eventId);
+        final AppEvent? event = AppEvent.fromDoc(await tx.get(doc));
+        if (event == null) throw StateError('scan.eventNotFound');
+        if (session == null) {
+          if (!event.hasDoorCheckin || !event.entryOpen) {
+            throw StateError('scan.doorClosed');
+          }
+        } else if (!event.isMultiSession ||
+            event.sessionsCompleted ||
+            session < 1 ||
+            session != event.currentSession) {
+          throw StateError('scan.qrExpired');
+        }
+        tx.update(doc, <String, dynamic>{
+          if (session == null) 'doorQrPublished': true,
+          'sessionQrPublished': ?session,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+        return event;
+      });
 
   Future<AppEvent?> fetchEvent(String eventId) async =>
       AppEvent.fromDoc(await eventDoc(eventId).get());
@@ -212,13 +255,12 @@ class EventRepository {
   Future<void> markCheckInByClub({
     required EventRegistration registration,
     required String clubId,
-  }) =>
-      registrationsCol.doc(registration.id).update(<String, dynamic>{
-        'checkedInAtMs': DateTime.now().millisecondsSinceEpoch,
-        'checkedInAt': FieldValue.serverTimestamp(),
-        'checkedInByClubId': clubId,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+  }) => registrationsCol.doc(registration.id).update(<String, dynamic>{
+    'checkedInAtMs': DateTime.now().millisecondsSinceEpoch,
+    'checkedInAt': FieldValue.serverTimestamp(),
+    'checkedInByClubId': clubId,
+    'updatedAt': FieldValue.serverTimestamp(),
+  });
 
   /// Öğrencinin, kulübün ekrana bastığı oturum QR'ını okutmasıyla giriş
   /// (student-qr-checkin.js). `checkedInByClubId` bu yoldan YAZILMAZ —
@@ -288,18 +330,25 @@ class EventRepository {
     int alreadyStartedAtMs = 0,
     bool registrationClosed = false,
   }) {
-    final bool firstOpen = open && alreadyStartedAtMs <= 0;
-    return eventDoc(eventId).update(<String, dynamic>{
-      'entryOpen': open,
-      if (firstOpen) 'entryStartedAtMs': DateTime.now().millisecondsSinceEpoch,
-      'entryOpenUpdatedAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-      if (open && !registrationClosed) ...<String, dynamic>{
-        'registrationClosed': true,
-        'registrationClosedAt': FieldValue.serverTimestamp(),
-        'registrationClosedReason': ClosedReason.checkinStarted,
-        'registrationReopenedAt': null,
-      },
+    return fbDb.runTransaction((Transaction tx) async {
+      final Doc doc = eventDoc(eventId);
+      final AppEvent? live = AppEvent.fromDoc(await tx.get(doc));
+      if (live == null) throw StateError('scan.eventNotFound');
+      final bool firstOpen = open && live.entryStartedAtMs <= 0;
+      tx.update(doc, <String, dynamic>{
+        'entryOpen': open,
+        'doorQrPublished': false,
+        if (firstOpen)
+          'entryStartedAtMs': DateTime.now().millisecondsSinceEpoch,
+        'entryOpenUpdatedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        if (open && !live.registrationClosed) ...<String, dynamic>{
+          'registrationClosed': true,
+          'registrationClosedAt': FieldValue.serverTimestamp(),
+          'registrationClosedReason': ClosedReason.checkinStarted,
+          'registrationReopenedAt': null,
+        },
+      });
     });
   }
 
@@ -328,39 +377,54 @@ class EventRepository {
   /// Keşfe dönüşün ölçütü bu damga DEĞİL, `entryOpen` + `currentSession`
   /// (bkz. [eventHasStarted]): kapıyı "Bitir" ile kapatmak da etkinliği
   /// yürümüyor sayar, kulüp o noktada kayıtları elle yeniden açabilir.
-  Future<void> advanceSession(AppEvent event, int nextSession) {
-    final Map<String, dynamic> data = <String, dynamic>{
-      'currentSession': nextSession,
-      'updatedAt': FieldValue.serverTimestamp(),
-    };
+  Future<void> advanceSession(AppEvent event, int nextSession) =>
+      fbDb.runTransaction((Transaction tx) async {
+        final Doc doc = eventDoc(event.id);
+        final AppEvent? live = AppEvent.fromDoc(await tx.get(doc));
+        if (live == null ||
+            live.currentSession != event.currentSession ||
+            nextSession < 0 ||
+            nextSession > live.sessionCount ||
+            (nextSession > live.currentSession &&
+                live.doorCheckinBlocksSessions)) {
+          throw StateError('clubEvents.feedback.updateError');
+        }
+        final Map<String, dynamic> data = <String, dynamic>{
+          'currentSession': nextSession,
+          'sessionQrPublished': 0,
+          'updatedAt': FieldValue.serverTimestamp(),
+        };
 
-    if (nextSession <= 0) {
-      data['entryOpen'] = false;
-      data['entryStartedAtMs'] = 0;
-    }
+        if (nextSession <= 0) {
+          data['entryOpen'] = false;
+          data['entryStartedAtMs'] = 0;
+          data['doorQrPublished'] = false;
+          data['sessionsCompleted'] = false;
+          data['sessionsCompletedAt'] = null;
+        }
 
-    switch (sessionRegistrationGateAction(
-      previousSession: event.currentSession,
-      nextSession: nextSession,
-      registrationClosed: event.registrationClosed,
-      closedReason: event.registrationClosedReason,
-    )) {
-      case SessionRegistrationGateAction.close:
-        data['registrationClosed'] = true;
-        data['registrationClosedAt'] = FieldValue.serverTimestamp();
-        data['registrationClosedReason'] = ClosedReason.sessionsStarted;
-        data['registrationReopenedAt'] = null;
-      case SessionRegistrationGateAction.reopen:
-        data['registrationClosed'] = false;
-        data['registrationClosedAt'] = null;
-        data['registrationClosedReason'] = null;
-        data['registrationReopenedAt'] = FieldValue.serverTimestamp();
-      case SessionRegistrationGateAction.none:
-        break;
-    }
+        switch (sessionRegistrationGateAction(
+          previousSession: live.currentSession,
+          nextSession: nextSession,
+          registrationClosed: live.registrationClosed,
+          closedReason: live.registrationClosedReason,
+        )) {
+          case SessionRegistrationGateAction.close:
+            data['registrationClosed'] = true;
+            data['registrationClosedAt'] = FieldValue.serverTimestamp();
+            data['registrationClosedReason'] = ClosedReason.sessionsStarted;
+            data['registrationReopenedAt'] = null;
+          case SessionRegistrationGateAction.reopen:
+            data['registrationClosed'] = false;
+            data['registrationClosedAt'] = null;
+            data['registrationClosedReason'] = null;
+            data['registrationReopenedAt'] = FieldValue.serverTimestamp();
+          case SessionRegistrationGateAction.none:
+            break;
+        }
 
-    return eventDoc(event.id).update(data);
-  }
+        tx.update(doc, data);
+      });
 
   /// Kulüp "Oturumu Geri Al"a bastığında (js/pages/club-events.js#revertSessionBtn
   /// ile aynı gerekçe), o oturuma kendi QR'ıyla girmiş öğrencilerin
@@ -417,6 +481,7 @@ class EventRepository {
   Future<void> finishSessions(String eventId) =>
       eventDoc(eventId).update(<String, dynamic>{
         'sessionsCompleted': true,
+        'sessionQrPublished': 0,
         'sessionsCompletedAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
@@ -442,12 +507,22 @@ class EventRepository {
   /// Sebep `manual` yazılır: kontenjan takibi (bkz. [syncRegistrationStateWithQuota])
   /// yalnızca kendi kapattığı etkinliği geri açar, kulübün kararını bozmaz.
   Future<void> setRegistrationsClosed(String eventId, bool closed) =>
-      eventDoc(eventId).update(<String, dynamic>{
-        'registrationClosed': closed,
-        'registrationClosedAt': closed ? FieldValue.serverTimestamp() : null,
-        'registrationReopenedAt': closed ? null : FieldValue.serverTimestamp(),
-        'registrationClosedReason': closed ? ClosedReason.manual : null,
-        'updatedAt': FieldValue.serverTimestamp(),
+      fbDb.runTransaction((Transaction tx) async {
+        final Doc doc = eventDoc(eventId);
+        final AppEvent? event = AppEvent.fromDoc(await tx.get(doc));
+        if (event == null) throw StateError('scan.eventNotFound');
+        if (!closed && eventHasStarted(event)) {
+          throw StateError('clubEvents.registrations.blockedRunning');
+        }
+        tx.update(doc, <String, dynamic>{
+          'registrationClosed': closed,
+          'registrationClosedAt': closed ? FieldValue.serverTimestamp() : null,
+          'registrationReopenedAt': closed
+              ? null
+              : FieldValue.serverTimestamp(),
+          'registrationClosedReason': closed ? ClosedReason.manual : null,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
       });
 
   // ── Kontenjan doluluğu ──────────────────────────────────────────────
@@ -517,7 +592,7 @@ class EventRepository {
 
     // Yer açıldı (iptal ya da kontenjan artışı) → geri aç.
     // Kulüp ELLE kapattıysa `quotaGateAction` bunu döndürmez.
-    if (action == QuotaGateAction.resume) {
+    if (action == QuotaGateAction.resume && !eventHasStarted(event)) {
       await eventDoc(event.id).update(<String, dynamic>{
         'registrationClosed': false,
         'registrationClosedAt': null,
@@ -570,14 +645,94 @@ class EventRepository {
   Future<void> deleteCertificate(String certificateId) =>
       certificatesCol.doc(certificateId).delete();
 
+  /// Belge anahtarı gelmeden önce yazılmış (`{eventId}_{studentId}`) kaydı
+  /// temizler — çağıran taraf aynı belgeyi yeni kimlikle yeniden yazdıysa.
+  ///
+  /// Yoksa hiçbir şey yapmaz: kural `resource.data` okuduğu için olmayan
+  /// dokümanın silinmesi izin hatası verir, o yüzden hata yutulur. Temizlik
+  /// "en iyi çaba"dır; başarısız olsa da dağıtım geçerlidir.
+  Future<void> deleteLegacyCertificate({
+    required String eventId,
+    required String studentId,
+  }) async {
+    try {
+      await certificatesCol.doc('${eventId}_$studentId').delete();
+    } catch (_) {
+      // Kayıt zaten yok ya da silinemedi; öğrencide en fazla eski bir kopya
+      // kalır.
+    }
+  }
+
+  /// PDF şablonunda isim yazılacak alanı bulup her öğrencinin adını basar
+  /// (functions/certificateEngine.js — web istemcisindeki
+  /// certificate-engine.js'in birebir Node portu, aynı fonksiyon her iki
+  /// istemci için de tek doğruluk kaynağıdır).
+  ///
+  /// PDF olmayan belgeler (görsel) için çağrılmamalı; şablonda isim alanı hiç
+  /// bulunamazsa (`personalized: false`) belge olduğu gibi döner. Bu çağrının
+  /// kendisi başarısız olursa (ağ, yetki, fonksiyon kapalı) çağıran taraf
+  /// (`club_event_detail_screen.dart#_distribute`) ham baytları kendisi
+  /// yükler — dağıtım hiçbir zaman bu adım yüzünden durmaz.
+  ///
+  /// [students] tek çağrıda en fazla 300 kayıt taşıyabilir (fonksiyon
+  /// tarafındaki sınırla aynı); daha büyük listeler çağıran tarafta
+  /// parçalanmalıdır.
+  Future<List<PersonalizedCertificate>> personalizeCertificates({
+    required String clubId,
+    required String eventId,
+    required String documentKey,
+    required Uint8List templateBytes,
+    required List<({String studentId, String fullName})> students,
+  }) async {
+    final HttpsCallable callable = fbFunctions.httpsCallable(
+      'personalizeCertificates',
+      options: HttpsCallableOptions(timeout: const Duration(seconds: 120)),
+    );
+
+    final HttpsCallableResult<Object?> result = await callable.call(
+      <String, dynamic>{
+        'clubId': clubId,
+        'eventId': eventId,
+        'documentKey': documentKey,
+        'templateBase64': base64Encode(templateBytes),
+        'students': students
+            .map(
+              (({String studentId, String fullName}) s) => <String, String>{
+                'studentId': s.studentId,
+                'fullName': s.fullName,
+              },
+            )
+            .toList(),
+      },
+    );
+
+    final List<dynamic> rawResults =
+        (result.data as Map<Object?, Object?>)['results'] as List<dynamic>;
+
+    return rawResults
+        .map(
+          (dynamic item) => PersonalizedCertificate.fromMap(
+            Map<Object?, Object?>.from(item as Map<Object?, Object?>),
+          ),
+        )
+        .toList();
+  }
+
   /// Bir öğrenciye belge kaydı yazar.
   ///
-  /// Doküman kimliği deterministiktir (`{eventId}_{studentId}`): aynı öğrenciye
-  /// ikinci kez dağıtım yapılırsa kopya oluşmaz, mevcut kayıt güncellenir
+  /// Doküman kimliği deterministiktir (`{eventId}_{studentId}_{documentKey}`):
+  /// AYNI belge ikinci kez dağıtılırsa kopya oluşmaz, mevcut kayıt güncellenir
   /// (club-events.js#distributeCertificates ile aynı desen).
+  ///
+  /// [documentKey] kimliğe 2026-09'da eklendi. Öncesinde kimlik yalnızca
+  /// etkinlik+öğrenciydi ve aynı etkinliğe yüklenen ikinci belge birincinin
+  /// kaydını eziyordu: öğrencide etkinlik başına yalnızca EN SON belge
+  /// duruyordu, öğrenci o kaydı silince de kulüp aynı belgeyi elle yeniden
+  /// dağıtmadıkça yerine hiçbir şey gelmiyordu.
   Future<void> issueCertificate({
     required String eventId,
     required String studentId,
+    required String documentKey,
     required String eventTitle,
     required String clubId,
     required String clubName,
@@ -586,9 +741,10 @@ class EventRepository {
     required String fileName,
     required String contentType,
     required bool personalized,
-  }) => certificatesCol.doc('${eventId}_$studentId').set(<String, dynamic>{
+  }) => certificateDoc(eventId, studentId, documentKey).set(<String, dynamic>{
     'studentId': studentId,
     'eventId': eventId,
+    'documentKey': documentKey,
     'eventTitle': eventTitle,
     'clubId': clubId,
     'clubName': clubName,
@@ -726,43 +882,43 @@ class EventRepository {
 
     final WriteBatch batch = fbDb.batch();
     batch.set(ref, <String, dynamic>{
-          ...draft.toMap(),
-          'clubId': clubId,
-          'clubName': (club?.clubName ?? '').isNotEmpty
-              ? club!.clubName
-              : clubFallbackName,
-          'clubUniversity': club?.university ?? '',
-          // Logo etkinliğin içine kopyalanır: öğrenci `club_profiles`
-          // dokümanlarını okuyamıyor, kulüp kimliği yalnızca buradan gelir.
-          'clubLogoUrl': club?.logoUrl ?? '',
-          // İletişim bilgileri de kopyalanır: ücretli etkinliklerde öğrenci
-          // ücreti kulüple konuşarak ödüyor ve `club_profiles` dokümanını
-          // okuma yetkisi yok.
-          'clubPhone': club?.phone ?? '',
-          'clubEmail': club?.email ?? '',
-          'clubField': club?.clubField ?? '',
-          'clubFields': club?.clubFields ?? const <String>[],
-          'registrationClosed': false,
-          'hiddenFromClubList': false,
-          'hiddenGlobally': false,
-          'currentSession': 0,
-          'sessionsCompleted': false,
-          'entryOpen': false,
-          'allowSessionWithoutCheckin': false,
-          'quotaShardCount': shards,
-          // Ücretli etkinliğin onay logu ETKİNLİK BELGESİNDE durur: kulübün
-          // kabul ettiği metnin kendisi ve saniyeye kadar inen damgası.
-          // Şema web ile ortak (club-create-event.js#saveEvent); ücretsiz
-          // etkinliğe hiçbir alan yazılmaz.
-          if (draft.feeType == 'paid' && paidEventConsent != null)
-            kPaidConsentLogField: <String, dynamic>{
-              ...paidEventConsent.toLogMap(),
-              // Sunucu damgası istemcinin saatine güvenmeyen ikinci kayıt.
-              'approvedAt': FieldValue.serverTimestamp(),
-            },
-          'createdAt': FieldValue.serverTimestamp(),
-          'createdAtMs': DateTime.now().millisecondsSinceEpoch,
-        });
+      ...draft.toMap(),
+      'clubId': clubId,
+      'clubName': (club?.clubName ?? '').isNotEmpty
+          ? club!.clubName
+          : clubFallbackName,
+      'clubUniversity': club?.university ?? '',
+      // Logo etkinliğin içine kopyalanır: öğrenci `club_profiles`
+      // dokümanlarını okuyamıyor, kulüp kimliği yalnızca buradan gelir.
+      'clubLogoUrl': club?.logoUrl ?? '',
+      // İletişim bilgileri de kopyalanır: ücretli etkinliklerde öğrenci
+      // ücreti kulüple konuşarak ödüyor ve `club_profiles` dokümanını
+      // okuma yetkisi yok.
+      'clubPhone': club?.phone ?? '',
+      'clubEmail': club?.email ?? '',
+      'clubField': club?.clubField ?? '',
+      'clubFields': club?.clubFields ?? const <String>[],
+      'registrationClosed': false,
+      'hiddenFromClubList': false,
+      'hiddenGlobally': false,
+      'currentSession': 0,
+      'sessionsCompleted': false,
+      'entryOpen': false,
+      'allowSessionWithoutCheckin': false,
+      'quotaShardCount': shards,
+      // Ücretli etkinliğin onay logu ETKİNLİK BELGESİNDE durur: kulübün
+      // kabul ettiği metnin kendisi ve saniyeye kadar inen damgası.
+      // Şema web ile ortak (club-create-event.js#saveEvent); ücretsiz
+      // etkinliğe hiçbir alan yazılmaz.
+      if (draft.feeType == 'paid' && paidEventConsent != null)
+        kPaidConsentLogField: <String, dynamic>{
+          ...paidEventConsent.toLogMap(),
+          // Sunucu damgası istemcinin saatine güvenmeyen ikinci kayıt.
+          'approvedAt': FieldValue.serverTimestamp(),
+        },
+      'createdAt': FieldValue.serverTimestamp(),
+      'createdAtMs': DateTime.now().millisecondsSinceEpoch,
+    });
 
     for (int shard = 0; shard < shards; shard++) {
       batch.set(quotaShardDoc(ref.id, shard), <String, dynamic>{
@@ -1085,9 +1241,13 @@ class EventDraft {
     'targetScope': targetScope,
     // Tekil alanlar web istemcisi (ve eski okuyucular) için korunur; çoklu
     // seçimin tamamı dizilerde durur.
-    'targetUniversity': targetUniversities.isEmpty ? '' : targetUniversities.first,
+    'targetUniversity': targetUniversities.isEmpty
+        ? ''
+        : targetUniversities.first,
     'targetUniversities': targetUniversities,
-    'targetDepartment': targetDepartments.isEmpty ? '' : targetDepartments.first,
+    'targetDepartment': targetDepartments.isEmpty
+        ? ''
+        : targetDepartments.first,
     'targetDepartments': targetDepartments,
     'targetSector': targetSector,
     'imageUrl': imageUrl,
@@ -1109,4 +1269,28 @@ class EventDraft {
     'locationRadius': locationName.isEmpty ? null : locationRadius,
     'updatedAt': FieldValue.serverTimestamp(),
   };
+}
+
+/// `personalizeCertificates` Cloud Function'ının tek bir öğrenci için
+/// döndürdüğü sonuç: isim zaten basılmış belgenin Storage konumu.
+class PersonalizedCertificate {
+  const PersonalizedCertificate({
+    required this.studentId,
+    required this.filePath,
+    required this.fileUrl,
+    required this.personalized,
+  });
+
+  factory PersonalizedCertificate.fromMap(Map<Object?, Object?> map) =>
+      PersonalizedCertificate(
+        studentId: map['studentId'] as String? ?? '',
+        filePath: map['filePath'] as String? ?? '',
+        fileUrl: map['fileUrl'] as String? ?? '',
+        personalized: map['personalized'] as bool? ?? false,
+      );
+
+  final String studentId;
+  final String filePath;
+  final String fileUrl;
+  final bool personalized;
 }

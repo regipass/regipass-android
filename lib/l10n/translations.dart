@@ -487,6 +487,7 @@ const Map<String, String> kTranslationsTr = <String, String>{
   'studentCertificates.empty':
       'Henüz belgen bulunmuyor. Katıldığın etkinliklerden kazandığın belgeler burada görünür.',
   'studentCertificates.menu.download': 'İndir',
+  'studentCertificates.menu.share': 'Paylaş',
   'studentCertificates.menu.delete': 'Sil',
   'studentCertificates.deleteConfirm':
       'Bu belgeyi silmek istedigine emin misin?',
@@ -495,6 +496,10 @@ const Map<String, String> kTranslationsTr = <String, String>{
       'Belge silinemedi. Lütfen tekrar dene.',
   'studentCertificates.feedback.loadError':
       'Belgeler yüklenemedi. Lütfen tekrar dene.',
+  'studentCertificates.feedback.downloadError':
+      'Belge indirilemedi. Lütfen tekrar dene.',
+  'studentCertificates.feedback.shareError':
+      'Belge paylaşılamadı. Lütfen tekrar dene.',
   'clubDashboard.welcomeDefault': 'Merhaba Kulüp',
   'clubDashboard.welcomeWithName': 'Merhaba {{name}}',
   'clubDashboard.menuAria': 'Kulüp menüsü',
@@ -1183,6 +1188,7 @@ const Map<String, String> kTranslationsEn = <String, String>{
   'studentCertificates.empty':
       'You have no certificates yet. Certificates you earn from the events you attend will appear here.',
   'studentCertificates.menu.download': 'Download',
+  'studentCertificates.menu.share': 'Share',
   'studentCertificates.menu.delete': 'Delete',
   'studentCertificates.deleteConfirm':
       'Are you sure you want to delete this certificate?',
@@ -1191,6 +1197,10 @@ const Map<String, String> kTranslationsEn = <String, String>{
       'The document could not be deleted. Please try again.',
   'studentCertificates.feedback.loadError':
       'The documents could not load. Please try again.',
+  'studentCertificates.feedback.downloadError':
+      'The document could not be downloaded. Please try again.',
+  'studentCertificates.feedback.shareError':
+      'The document could not be shared. Please try again.',
   'clubDashboard.welcomeDefault': 'Hello Club',
   'clubDashboard.welcomeWithName': 'Hello {{name}}',
   'clubDashboard.menuAria': 'Club menu',

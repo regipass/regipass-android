@@ -30,6 +30,8 @@ class AppEvent {
     this.allowSessionWithoutCheckin = false,
     this.entryOpen = false,
     this.entryStartedAtMs = 0,
+    this.doorQrPublished = false,
+    this.sessionQrPublished = 0,
     required this.certificateThresholdPercent,
     required this.locationName,
     required this.locationLat,
@@ -107,6 +109,8 @@ class AppEvent {
       // Kapı BİR KEZ açıldığında yazılır ve bir daha silinmez; check-in
       // "bitti" ile "hiç başlamadı" ancak bu alanla ayrılabilir.
       entryStartedAtMs: asEpochMilliseconds(data['entryStartedAtMs']) ?? 0,
+      doorQrPublished: data['doorQrPublished'] == true,
+      sessionQrPublished: asInt(data['sessionQrPublished']) ?? 0,
       certificateThresholdPercent: asInt(data['certificateThresholdPercent']),
       locationName: asString(data['locationName']),
       locationLat: asDouble(data['locationLat']),
@@ -224,6 +228,15 @@ class AppEvent {
   final bool allowSessionWithoutCheckin;
   final bool entryOpen;
   final int entryStartedAtMs;
+  final bool doorQrPublished;
+  final int sessionQrPublished;
+
+  bool get hasActiveDoorQr => hasDoorCheckin && entryOpen && doorQrPublished;
+  bool get hasActiveSessionQr =>
+      isMultiSession &&
+      !sessionsCompleted &&
+      currentSession > 0 &&
+      sessionQrPublished == currentSession;
   final int? certificateThresholdPercent;
   final String locationName;
   final double? locationLat;
@@ -304,12 +317,14 @@ class AppEvent {
   /// Ücretli etkinlikte kulübün oluşturma anındaki onay logu; yoksa `null`.
   final PaidEventConsentLog? clubConsentLog;
 
-  String get resolvedCheckinMode => CheckinMode.resolve(checkinMode, sessionCount);
+  String get resolvedCheckinMode =>
+      CheckinMode.resolve(checkinMode, sessionCount);
 
   /// Bu alan yeni modlarla birlikte yazıldı mı? Eski tek oturum kayıtları
   /// öğrenci QR'ını kulübe okutmaya devam eder; kapıdaki paylaşılan QR'a
   /// kendiliğinden taşınmaz.
-  bool get usesDoorQr => CheckinMode.isValid(checkinMode) &&
+  bool get usesDoorQr =>
+      CheckinMode.isValid(checkinMode) &&
       CheckinMode.hasDoorCheckin(resolvedCheckinMode);
 
   bool get hasDoorCheckin => CheckinMode.hasDoorCheckin(resolvedCheckinMode);
@@ -325,18 +340,18 @@ class AppEvent {
   /// Kapı check-in'inin aşaması: başlamadı / açık / bitti.
   /// Kapı girişi olmayan modda (`attendance_only`) `null`.
   CheckinStage? get checkinStage => resolveCheckinStage(
-        mode: resolvedCheckinMode,
-        entryStartedAtMs: entryStartedAtMs,
-        entryOpen: entryOpen,
-      );
+    mode: resolvedCheckinMode,
+    entryStartedAtMs: entryStartedAtMs,
+    entryOpen: entryOpen,
+  );
 
   /// İlk oturum, kapı check-in'i bitirilmediği için kilitli mi?
   bool get doorCheckinBlocksSessions => doorCheckinBlocksSessionsFor(
-        mode: resolvedCheckinMode,
-        currentSession: currentSession,
-        entryStartedAtMs: entryStartedAtMs,
-        entryOpen: entryOpen,
-      );
+    mode: resolvedCheckinMode,
+    currentSession: currentSession,
+    entryStartedAtMs: entryStartedAtMs,
+    entryOpen: entryOpen,
+  );
 
   bool get hasCertificateTemplate => certificateTemplateUrl.isNotEmpty;
 
@@ -351,10 +366,21 @@ class AppEvent {
   }
 
   /// Konum doğrulaması yapılacak mı? (Her iki koordinat da yazılmışsa.)
-  bool get hasLocationCheck => locationLat != null && locationLng != null;
+  bool get hasLocationCheck =>
+      locationLat != null &&
+      locationLng != null &&
+      locationLat!.isFinite &&
+      locationLng!.isFinite &&
+      locationLat!.abs() <= 90 &&
+      locationLng!.abs() <= 180;
+
+  /// Etkinlik oluşturulurken haritadan hiç konum seçilmediyse, QR okutma
+  /// sırasında öğrencinin cihazından konum istenmez. Yarım ya da hatalı
+  /// koordinatlar bu kapsama girmez; bunlar doğrulama hatası olarak kalır.
+  bool get hasNoLocationCheck => locationLat == null && locationLng == null;
 
   /// Konum yarıçapı — girilmemişse web ile aynı varsayılan: 50 m.
-  int get effectiveRadius => locationRadius ?? 50;
+  int get effectiveRadius => (locationRadius ?? 0) > 0 ? locationRadius! : 50;
 
   /// Kartlarda ve detay penceresinde gösterilecek kapak.
   ///
@@ -413,6 +439,28 @@ class EventDocument {
   final int distributedCount;
 
   bool get isDistributed => distributedAtMs > 0;
+
+  /// Belgeyi aynı etkinliğin diğer belgelerinden ayıran sabit anahtar.
+  ///
+  /// Öğrenciye yazılan belge kaydının kimliği (`{eventId}_{studentId}_{key}`)
+  /// ve öğrenciye kopyalanan dosyanın adı bundan üretilir. İkisi de eskiden
+  /// yalnızca öğrenciye göre adlandırılıyordu: kulüp aynı etkinliğe ikinci bir
+  /// belge yüklediğinde birincinin kaydını da dosyasını da eziyordu — öğrencide
+  /// her zaman tek belge kalıyor, ilk belgenin adresi de geçersizleşiyordu.
+  ///
+  /// Anahtar belgeye bağlı olduğu için AYNI belgenin yeniden dağıtımı hâlâ
+  /// mevcut kaydın üstüne yazar, kopya oluşturmaz.
+  String get key {
+    if (uploadedAtMs > 0) return '$uploadedAtMs';
+
+    // Diziden önce (web tarafında) yazılmış kayıtlarda zaman damgası yok;
+    // yolun dosya adı, o da yoksa adresin özeti ayırt edici olarak yeter.
+    final String named = path.isNotEmpty ? path.split('/').last : '';
+    final String cleaned = named.replaceAll(RegExp('[^A-Za-z0-9]'), '');
+    if (cleaned.isNotEmpty) return cleaned;
+
+    return 'belge${url.hashCode.toUnsigned(32)}';
+  }
 
   /// Aynı belgenin dağıtım damgası tazelenmiş kopyası.
   EventDocument copyWithDistribution({

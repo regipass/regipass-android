@@ -57,3 +57,26 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Gradle derleme ciktisi. Kokteki `/build/` yalnizca kok dizini kapsiyor;
+# android/build asagidaki satir olmadan depoya girer.
+/android/build/
+/android/.gradle/
+
+# CocoaPods. Mac'te `pod install` bu dizini ve kilit dosyasini uretir;
+# ikisi de makineye ozel yollar tasidigi icin depoya girmemeli.
+/ios/Pods/
+/ios/.symlinks/
+/ios/Flutter/ephemeral/
+
+# Apple imzalama materyali. *.p12/*.pem/*.key yukarida kapsandi; APNs
+# kimlik dogrulama anahtari (.p8) ve provisioning profilleri de girmemeli.
+*.p8
+*.mobileprovision
+*.certSigningRequest
+
+# Yedek dosyalar (ornek: google-services.json.bak).
+*.bak
+
+# Test kullanicilarinin e-posta listesi: kisisel veri, kaynak kod degil.
+testers.csv

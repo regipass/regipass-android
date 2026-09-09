@@ -14,27 +14,27 @@ import '../../state/providers.dart';
 /// göre sıralanmış.
 ///
 /// dashboard.js#loadStudentVisibleEvents ile aynı: tüm etkinlikler çekilir,
-/// görünürlük ve tarih filtresi istemcide uygulanır. Tek seferlik okuma
-/// (canlı dinleyici değil) — kayıt sonrası `ref.invalidate` ile tazelenir.
-final FutureProvider<List<AppEvent>> studentVisibleEventsProvider =
-    FutureProvider<List<AppEvent>>((Ref ref) async {
+/// görünürlük ve tarih filtresi istemcide uygulanır. Kayıtların açılması ve
+/// kapanması keşfete canlı yansır.
+final StreamProvider<List<AppEvent>> studentVisibleEventsProvider =
+    StreamProvider<List<AppEvent>>((Ref ref) {
       final StudentProfile? profile = ref.watch(studentProfileProvider).value;
-      final List<AppEvent> all = await ref
-          .watch(eventRepositoryProvider)
-          .fetchAllEvents();
+      return ref.watch(eventRepositoryProvider).watchAllEvents().map((
+        List<AppEvent> all,
+      ) {
+        // `isPastEvent` yalnızca son başvuru tarihine bakar; kulübün kaydı elle
+        // kapattığı etkinlikler de kartta "Süresi Geçmiştir" göründüğü için
+        // keşifte yer almamalı — bu yüzden kapalılığın tamamı kontrol edilir.
+        final List<AppEvent> visible = all
+            .where(
+              (AppEvent event) =>
+                  canStudentSeeEvent(event, profile) &&
+                  isDiscoverableEvent(event),
+            )
+            .toList();
 
-      // `isPastEvent` yalnızca son başvuru tarihine bakar; kulübün kaydı elle
-      // kapattığı etkinlikler de kartta "Süresi Geçmiştir" göründüğü için
-      // keşifte yer almamalı — bu yüzden kapalılığın tamamı kontrol edilir.
-      final List<AppEvent> visible = all
-          .where(
-            (AppEvent event) =>
-                canStudentSeeEvent(event, profile) &&
-                isDiscoverableEvent(event),
-          )
-          .toList();
-
-      return sortEventsForStudent(visible, profile);
+        return sortEventsForStudent(visible, profile);
+      });
     });
 
 /// Öğrencinin kayıtlı olduğu etkinlik kimlikleri (canlı).
@@ -72,8 +72,10 @@ final StreamProvider<List<EventRegistration>> studentRegistrationsProvider =
 /// açıkken kulüp yeni oturumu başlattığında "QR Okut" düğmesinin kendiliğinden
 /// aktifleşmesi için etkinlik dokümanının canlı dinlenmesi gerekiyor.
 // ignore: always_specify_types
-final liveEventProvider =
-    StreamProvider.family<AppEvent?, String>((Ref ref, String eventId) {
+final liveEventProvider = StreamProvider.family<AppEvent?, String>((
+  Ref ref,
+  String eventId,
+) {
   if (eventId.isEmpty) return Stream<AppEvent?>.value(null);
   return ref.watch(eventRepositoryProvider).watchEvent(eventId);
 });
@@ -144,7 +146,7 @@ class RegistrationWithEvent {
 
   int get sessionCount => event?.sessionCount ?? 1;
 
-  bool get isMultiSession => sessionCount > 1;
+  bool get isMultiSession => event?.isMultiSession ?? false;
 
   int? get certificateThresholdPercent => event?.certificateThresholdPercent;
 
@@ -184,9 +186,7 @@ class RegistrationWithEvent {
   /// Giriş bir kez alındıktan sonra bilet gizlenir; aynı bilet ikinci kez işe
   /// yaramaz (kapıda "zaten giriş yapmış" uyarısı çıkar).
   bool get canShowTicket =>
-      event != null &&
-      event!.hasDoorCheckin &&
-      !registration.isCheckedIn;
+      event != null && event!.hasDoorCheckin && !registration.isCheckedIn;
 
   /// Oturumlu etkinlikte QR okutma düğmesinin durumu.
   ///
@@ -202,6 +202,7 @@ class RegistrationWithEvent {
 
     // Kulüp henüz ilk oturumu başlatmadı: ortada okutulacak bir QR yok.
     if (currentSession < 1) return SessionScanState.notStarted;
+    if (!event!.hasActiveSessionQr) return SessionScanState.unavailable;
 
     // Bu oturumun QR'ı okutulmuş; kulüp yeni oturum açınca tekrar açılır.
     return registration.lastAttendedSession >= currentSession

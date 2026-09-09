@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
+import '../../domain/checkin_qr.dart';
 import '../../domain/event_utils.dart';
 import '../../domain/paid_event_consent.dart';
 import '../../domain/registration_capacity.dart';
+import '../../domain/routing.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/event.dart';
 import '../../models/profiles.dart';
@@ -16,14 +19,74 @@ import 'student_providers.dart';
 import 'student_shell.dart';
 
 /// dashboard.html + js/pages/dashboard.js karşılığı — etkinlik keşfi.
-class StudentDashboardScreen extends ConsumerWidget {
-  const StudentDashboardScreen({super.key});
+class StudentDashboardScreen extends ConsumerStatefulWidget {
+  const StudentDashboardScreen({
+    this.openEventId,
+    this.externalQrToken,
+    super.key,
+  });
+
+  /// Dış QR rotası giriş/onboarding sonrasında bu etkinlik penceresini açar.
+  final String? openEventId;
+
+  /// Öğrenci zaten kayıtlıysa detay penceresi açıldıktan sonra bu QR token'ı
+  /// kameraya yeniden okutulmadan işlenir.
+  final String? externalQrToken;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<StudentDashboardScreen> createState() =>
+      _StudentDashboardScreenState();
+}
+
+class _StudentDashboardScreenState
+    extends ConsumerState<StudentDashboardScreen> {
+  String? _autoOpenedKey;
+
+  void _openRequestedEvent(
+    BuildContext context,
+    List<AppEvent> events,
+    AppEvent? directEvent,
+  ) {
+    final String? eventId = widget.openEventId;
+    if (eventId == null || eventId.isEmpty) return;
+
+    AppEvent? event = directEvent;
+    for (final AppEvent item in events) {
+      if (item.id == eventId) {
+        event = item;
+        break;
+      }
+    }
+    final AppEvent? targetEvent = event;
+    if (targetEvent == null) return;
+
+    final String key = '$eventId:${widget.externalQrToken ?? ''}';
+    if (_autoOpenedKey == key) return;
+    _autoOpenedKey = key;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _openEventSheet(
+        context,
+        ref,
+        targetEvent,
+        externalQrToken: widget.externalQrToken,
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final Session session = ref.watch(sessionProvider);
-    final AsyncValue<List<AppEvent>> events = ref.watch(studentVisibleEventsProvider);
+    final AsyncValue<List<AppEvent>> events = ref.watch(
+      studentVisibleEventsProvider,
+    );
     final Set<String> registeredIds = ref.watch(registeredEventIdsProvider);
+    final String? requestedEventId = widget.openEventId;
+    final AppEvent? directEvent =
+        requestedEventId == null || requestedEventId.isEmpty
+        ? null
+        : ref.watch(eventByIdProvider(requestedEventId)).value;
 
     final String name = _welcomeName(context, session);
 
@@ -47,6 +110,10 @@ class StudentDashboardScreen extends ConsumerWidget {
             ],
           ),
           data: (List<AppEvent> list) {
+            // Hedef kitle listesinde görünmese bile kodu gerçekten okutmuş
+            // giriş yapmış kullanıcı etkinliğin detayını görür; kayıt yetkisi
+            // yine RegistrationService + Firestore kurallarıyla doğrulanır.
+            _openRequestedEvent(context, list, directEvent);
             if (list.isEmpty) {
               return ListView(
                 padding: const EdgeInsets.all(20),
@@ -68,7 +135,10 @@ class StudentDashboardScreen extends ConsumerWidget {
                 final AppEvent event = list[index];
                 return _EventCard(
                   event: event,
-                  priority: getStudentEventPriority(event, session.studentProfile),
+                  priority: getStudentEventPriority(
+                    event,
+                    session.studentProfile,
+                  ),
                   isRegistered: registeredIds.contains(event.id),
                   onTap: () => _openEventSheet(context, ref, event),
                 );
@@ -96,14 +166,15 @@ class StudentDashboardScreen extends ConsumerWidget {
 
 /// dashboard.js#getPriorityLabel
 String priorityLabel(BuildContext context, int priority) => switch (priority) {
-      0 => context.t('dashboard.priority.departmentUniversity'),
-      1 => context.t('dashboard.priority.university'),
-      2 => context.t('dashboard.priority.departmentRelated'),
-      _ => context.t('dashboard.priority.general'),
-    };
+  0 => context.t('dashboard.priority.departmentUniversity'),
+  1 => context.t('dashboard.priority.university'),
+  2 => context.t('dashboard.priority.departmentRelated'),
+  _ => context.t('dashboard.priority.general'),
+};
 
 /// dashboard.js#getScopeLabel
-String scopeLabel(BuildContext context, String targetScope) => switch (targetScope) {
+String scopeLabel(BuildContext context, String targetScope) =>
+    switch (targetScope) {
       'university_department' => context.t('dashboard.scope.department'),
       'department' => context.t('dashboard.scope.departmentOnly'),
       'university' => context.t('dashboard.scope.university'),
@@ -130,8 +201,8 @@ class _EventCard extends StatelessWidget {
     final (String label, FeedbackTone tone) = closed
         ? (context.t('dashboard.status.expired'), FeedbackTone.error)
         : isRegistered
-            ? (context.t('dashboard.status.registered'), FeedbackTone.success)
-            : (context.t('dashboard.status.open'), FeedbackTone.info);
+        ? (context.t('dashboard.status.registered'), FeedbackTone.success)
+        : (context.t('dashboard.status.open'), FeedbackTone.info);
 
     return Card(
       child: InkWell(
@@ -168,10 +239,16 @@ class _EventCard extends StatelessWidget {
                   ),
                   _MetaRow(
                     icon: Icons.calendar_today_outlined,
-                    text: formatDeadline(event.deadlineAtMs, locale: context.lang),
+                    text: formatDeadline(
+                      event.deadlineAtMs,
+                      locale: context.lang,
+                    ),
                   ),
                   if (event.locationName.isNotEmpty)
-                    _MetaRow(icon: Icons.place_outlined, text: event.locationName),
+                    _MetaRow(
+                      icon: Icons.place_outlined,
+                      text: event.locationName,
+                    ),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 6,
@@ -206,22 +283,22 @@ class _MetaRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 3),
-        child: Row(
-          children: <Widget>[
-            Icon(icon, size: 14, color: context.inkMuted),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                text,
-                style: Theme.of(context).textTheme.bodySmall,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
+    padding: const EdgeInsets.only(bottom: 3),
+    child: Row(
+      children: <Widget>[
+        Icon(icon, size: 14, color: context.inkMuted),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            text,
+            style: Theme.of(context).textTheme.bodySmall,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
-      );
+      ],
+    ),
+  );
 }
 
 /// Detay penceresinin ekran kenarlarından payı ve köşe yarıçapı.
@@ -233,7 +310,12 @@ const double _kActionBarSpace = 96;
 
 /// Etkinlik detay penceresi + kayıt/kayıt iptali
 /// (dashboard.js#openEventModal, registerToSelectedEvent, unregisterFromSelectedEvent).
-void _openEventSheet(BuildContext context, WidgetRef ref, AppEvent event) {
+void _openEventSheet(
+  BuildContext context,
+  WidgetRef ref,
+  AppEvent event, {
+  String? externalQrToken,
+}) {
   showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -241,14 +323,16 @@ void _openEventSheet(BuildContext context, WidgetRef ref, AppEvent event) {
     // üstünde bittiği için sayfanın zemini ekranın en altına yapışmamalı.
     backgroundColor: Colors.transparent,
     elevation: 0,
-    builder: (_) => _EventDetailSheet(event: event),
+    builder: (_) =>
+        _EventDetailSheet(event: event, externalQrToken: externalQrToken),
   );
 }
 
 class _EventDetailSheet extends ConsumerStatefulWidget {
-  const _EventDetailSheet({required this.event});
+  const _EventDetailSheet({required this.event, this.externalQrToken});
 
   final AppEvent event;
+  final String? externalQrToken;
 
   @override
   ConsumerState<_EventDetailSheet> createState() => _EventDetailSheetState();
@@ -256,6 +340,8 @@ class _EventDetailSheet extends ConsumerStatefulWidget {
 
 class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
   bool _busy = false;
+
+  bool _externalCheckinQueued = false;
 
   /// Kayıt çekişmeye takılıp beklemeye geçti mi?
   ///
@@ -265,7 +351,44 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
   /// işlemin sürdüğünü görmeli.
   bool _queued = false;
 
+  /// Dış QR açıldığında etkinlik penceresi önce görünür. Öğrenci zaten
+  /// kayıtlıysa güvenlik kontrollerini tek yerde tutmak için mevcut tarama
+  /// ekranını token'la açar; MobileScanner yeni kamera verisi beklemez.
+  void _queueExternalQrCheckin(AppEvent event, bool isRegistered) {
+    final String? token = widget.externalQrToken;
+    if (_externalCheckinQueued || !isRegistered || token == null) return;
+
+    final Map<String, dynamic>? payload = parseCheckinQrToken(token);
+    final String type = '${payload?['type'] ?? ''}';
+    if (payload == null ||
+        '${payload['eventId'] ?? ''}' != event.id ||
+        (type != 'event-entry' && type != 'session-checkin')) {
+      return;
+    }
+    _externalCheckinQueued = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // Pencerenin açıldığını kullanıcı görsün; sonra aynı doğrulama yoluna
+      // geçilir. Bu bekleme güvenlik penceresi değildir, yalnızca UX içindir.
+      await Future<void>.delayed(const Duration(milliseconds: 450));
+      if (!mounted) return;
+
+      final GoRouter router = GoRouter.of(context);
+      Navigator.of(context).pop();
+      router.go(
+        Uri(
+          path: Routes.studentQrCheckin,
+          queryParameters: <String, String>{
+            'eventId': event.id,
+            'payload': token,
+          },
+        ).toString(),
+      );
+    });
+  }
+
   Future<void> _register() async {
+    if (_busy) return;
     final Session session = ref.read(sessionProvider);
     final String? uid = session.user?.uid;
     if (uid == null) return;
@@ -275,8 +398,9 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
     try {
       // Kayıt öncesi etkinliği SUNUCUDAN tazele: önbellekteki "kayıt açık"
       // durumuna güvenilmez (dashboard.js `getDocFromServer` kullanıyordu).
-      final AppEvent? latest =
-          await ref.read(eventRepositoryProvider).fetchEventFromServer(widget.event.id);
+      final AppEvent? latest = await ref
+          .read(eventRepositoryProvider)
+          .fetchEventFromServer(widget.event.id);
 
       if (!mounted) return;
 
@@ -311,22 +435,23 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
       // Kontenjanı koruyan yol: kayıt ile sayaç aynı transaction'da yazılır,
       // çekişme olursa jitter'lı bekleyişle yeniden denenir. Bu yüzden çağrı
       // saniyeler sürebilir — düğme `_busy` ile zaten kilitli.
-      final RegistrationResult result =
-          await ref.read(registrationServiceProvider).register(
-                event: latest,
-                studentId: uid,
-                studentEmail: session.user?.email ?? '',
-                profile: profile,
-                displayName: _displayName(session),
-                eventFallbackTitle: context.t('dashboard.eventFallback'),
-                clubFallbackName: context.t('dashboard.clubFallback'),
-                paidEventConsent: paidEventConsent,
-                onWaiting: (int round) {
-                  if (!mounted || _queued) return;
-                  setState(() => _queued = true);
-                  _toast(context.t('dashboard.alerts.registerBusy'));
-                },
-              );
+      final RegistrationResult result = await ref
+          .read(registrationServiceProvider)
+          .register(
+            event: latest,
+            studentId: uid,
+            studentEmail: session.user?.email ?? '',
+            profile: profile,
+            displayName: _displayName(session),
+            eventFallbackTitle: context.t('dashboard.eventFallback'),
+            clubFallbackName: context.t('dashboard.clubFallback'),
+            paidEventConsent: paidEventConsent,
+            onWaiting: (int round) {
+              if (!mounted || _queued) return;
+              setState(() => _queued = true);
+              _toast(context.t('dashboard.alerts.registerBusy'));
+            },
+          );
 
       if (!mounted) return;
       if (_queued) setState(() => _queued = false);
@@ -336,22 +461,30 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
       ref.invalidate(studentVisibleEventsProvider);
 
       _toast(switch (result.outcome) {
-        RegistrationOutcome.registered =>
-          context.t('dashboard.alerts.registerSuccess'),
-        RegistrationOutcome.alreadyRegistered =>
-          context.t('dashboard.alerts.alreadyRegistered'),
-        RegistrationOutcome.quotaFull =>
-          context.t('dashboard.alerts.quotaFull'),
-        RegistrationOutcome.closed =>
-          context.t('dashboard.alerts.registrationClosed'),
-        RegistrationOutcome.notFound =>
-          context.t('dashboard.alerts.eventNotFound'),
-        RegistrationOutcome.notEligible =>
-          context.t('dashboard.errors.register.permissionDenied'),
-        RegistrationOutcome.retryExhausted =>
-          context.t('dashboard.errors.register.retryExhausted'),
-        RegistrationOutcome.unavailable =>
-          context.t('dashboard.errors.register.unavailable'),
+        RegistrationOutcome.registered => context.t(
+          'dashboard.alerts.registerSuccess',
+        ),
+        RegistrationOutcome.alreadyRegistered => context.t(
+          'dashboard.alerts.alreadyRegistered',
+        ),
+        RegistrationOutcome.quotaFull => context.t(
+          'dashboard.alerts.quotaFull',
+        ),
+        RegistrationOutcome.closed => context.t(
+          'dashboard.alerts.registrationClosed',
+        ),
+        RegistrationOutcome.notFound => context.t(
+          'dashboard.alerts.eventNotFound',
+        ),
+        RegistrationOutcome.notEligible => context.t(
+          'dashboard.errors.register.permissionDenied',
+        ),
+        RegistrationOutcome.retryExhausted => context.t(
+          'dashboard.errors.register.retryExhausted',
+        ),
+        RegistrationOutcome.unavailable => context.t(
+          'dashboard.errors.register.unavailable',
+        ),
       });
 
       // Ücretli etkinlikte ödeme uygulama dışında: kayıt alındıktan sonra
@@ -367,7 +500,11 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
       if (!mounted) return;
       _toast(_registerError(error));
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted)
+        setState(() {
+          _busy = false;
+          _queued = false;
+        });
     }
   }
 
@@ -413,8 +550,12 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
     final String code = error is Exception ? _firestoreCode(error) : '';
 
     return switch (code) {
-      'permission-denied' => context.t('dashboard.errors.register.permissionDenied'),
-      'failed-precondition' => context.t('dashboard.errors.register.failedPrecondition'),
+      'permission-denied' => context.t(
+        'dashboard.errors.register.permissionDenied',
+      ),
+      'failed-precondition' => context.t(
+        'dashboard.errors.register.failedPrecondition',
+      ),
       'unavailable' => context.t('dashboard.errors.register.unavailable'),
       'not-found' => context.t('dashboard.errors.register.notFound'),
       '' => context.t('dashboard.errors.register.generic'),
@@ -424,12 +565,15 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
 
   String _firestoreCode(Object error) {
     final String text = '$error';
-    final Match? match = RegExp(r'\[cloud_firestore/([\w-]+)\]').firstMatch(text);
+    final Match? match = RegExp(
+      r'\[cloud_firestore/([\w-]+)\]',
+    ).firstMatch(text);
     return match?.group(1) ?? '';
   }
 
-  void _toast(String message) => ScaffoldMessenger.of(context)
-      .showSnackBar(SnackBar(content: Text(message)));
+  void _toast(String message) => ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(SnackBar(content: Text(message)));
 
   /// Hedef kitle satırı: kapsam etiketi + varsa üniversite/bölüm kırılımı.
   String _audience(BuildContext context, AppEvent event) {
@@ -444,19 +588,26 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final AppEvent event = widget.event;
+    // Liste tek seferlik okunmuş olabilir. Detay penceresi açıkken etkinlik
+    // veya etkinliğe kopyalanan kulüp bilgileri değişirse canlı dokümanı
+    // kullan; dinleyicinin ilk karesine kadar mevcut nesne geri dönüş olsun.
+    final AppEvent event =
+        ref.watch(eventByIdProvider(widget.event.id)).value ?? widget.event;
     final Session session = ref.watch(sessionProvider);
-    final bool isRegistered = ref.watch(registeredEventIdsProvider).contains(event.id);
+    final bool isRegistered = ref
+        .watch(registeredEventIdsProvider)
+        .contains(event.id);
     final bool closed = isRegistrationClosed(event);
     final int priority = getStudentEventPriority(event, session.studentProfile);
+
+    _queueExternalQrCheckin(event, isRegistered);
 
     return DraggableScrollableSheet(
       initialChildSize: 0.92,
       minChildSize: 0.5,
       maxChildSize: 0.96,
       expand: false,
-      builder: (BuildContext context, ScrollController scrollController) =>
-          Padding(
+      builder: (BuildContext context, ScrollController scrollController) => Padding(
         // Alt çubuğun QR düğmesi gövdenin üzerine taştığı için pencere ekranın
         // en altına değil, QR'ın hemen üstünde biten yüzen bir kart olarak
         // oturur; yoksa "Kaydol" düğmesi QR'ın altında kalıyordu.
@@ -501,7 +652,9 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
                               width: 42,
                               height: 4,
                               decoration: BoxDecoration(
-                                color: BrandColors.white.withValues(alpha: 0.75),
+                                color: BrandColors.white.withValues(
+                                  alpha: 0.75,
+                                ),
                                 borderRadius: BorderRadius.circular(999),
                               ),
                             ),
@@ -518,8 +671,11 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
                               onTap: () => Navigator.of(context).pop(),
                               child: const Padding(
                                 padding: EdgeInsets.all(7),
-                                child: Icon(Icons.close,
-                                    size: 19, color: BrandColors.white),
+                                child: Icon(
+                                  Icons.close,
+                                  size: 19,
+                                  color: BrandColors.white,
+                                ),
                               ),
                             ),
                           ),
@@ -551,16 +707,20 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
                                 label: closed
                                     ? context.t('dashboard.status.expired')
                                     : isRegistered
-                                        ? context.t('dashboard.status.registered')
-                                        : context.t('dashboard.status.open'),
+                                    ? context.t('dashboard.status.registered')
+                                    : context.t('dashboard.status.open'),
                                 tone: closed
                                     ? FeedbackTone.error
                                     : isRegistered
-                                        ? FeedbackTone.success
-                                        : FeedbackTone.info,
+                                    ? FeedbackTone.success
+                                    : FeedbackTone.info,
                               ),
-                              StatusPill(label: scopeLabel(context, event.targetScope)),
-                              StatusPill(label: priorityLabel(context, priority)),
+                              StatusPill(
+                                label: scopeLabel(context, event.targetScope),
+                              ),
+                              StatusPill(
+                                label: priorityLabel(context, priority),
+                              ),
                             ],
                           ),
 
@@ -569,48 +729,53 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
                           _SectionTitle(context.t('eventModal.info')),
                           const SizedBox(height: 10),
                           _InfoTable(
-                            rows: <({IconData icon, String label, String value})>[
-                              (
-                                icon: Icons.calendar_today_outlined,
-                                label: context.t('eventModal.deadline'),
-                                value: formatDeadline(event.deadlineAtMs,
-                                    locale: context.lang),
-                              ),
-                              (
-                                icon: Icons.payments_outlined,
-                                label: context.t('eventModal.fee'),
-                                value: event.feeInfo.isNotEmpty
-                                    ? event.feeInfo
-                                    : context.t('eventModal.free'),
-                              ),
-                              (
-                                icon: Icons.event_seat_outlined,
-                                label: context.t('eventModal.quota'),
-                                value: event.quota > 0
-                                    ? '${event.quota}'
-                                    : context.t('eventModal.unlimited'),
-                              ),
-                              if (event.locationName.isNotEmpty)
-                                (
-                                  icon: Icons.place_outlined,
-                                  label: context.t('eventModal.location'),
-                                  value: event.locationName,
-                                ),
-                              if (event.isMultiSession)
-                                (
-                                  icon: Icons.repeat,
-                                  label: context.t('eventModal.sessions'),
-                                  value: context.t(
-                                    'eventModal.sessionsValue',
-                                    <String, Object?>{'count': event.sessionCount},
+                            rows:
+                                <({IconData icon, String label, String value})>[
+                                  (
+                                    icon: Icons.calendar_today_outlined,
+                                    label: context.t('eventModal.deadline'),
+                                    value: formatDeadline(
+                                      event.deadlineAtMs,
+                                      locale: context.lang,
+                                    ),
                                   ),
-                                ),
-                              (
-                                icon: Icons.public_outlined,
-                                label: context.t('eventModal.audience'),
-                                value: _audience(context, event),
-                              ),
-                            ],
+                                  (
+                                    icon: Icons.payments_outlined,
+                                    label: context.t('eventModal.fee'),
+                                    value: event.feeInfo.isNotEmpty
+                                        ? event.feeInfo
+                                        : context.t('eventModal.free'),
+                                  ),
+                                  (
+                                    icon: Icons.event_seat_outlined,
+                                    label: context.t('eventModal.quota'),
+                                    value: event.quota > 0
+                                        ? '${event.quota}'
+                                        : context.t('eventModal.unlimited'),
+                                  ),
+                                  if (event.locationName.isNotEmpty)
+                                    (
+                                      icon: Icons.place_outlined,
+                                      label: context.t('eventModal.location'),
+                                      value: event.locationName,
+                                    ),
+                                  if (event.isMultiSession)
+                                    (
+                                      icon: Icons.repeat,
+                                      label: context.t('eventModal.sessions'),
+                                      value: context.t(
+                                        'eventModal.sessionsValue',
+                                        <String, Object?>{
+                                          'count': event.sessionCount,
+                                        },
+                                      ),
+                                    ),
+                                  (
+                                    icon: Icons.public_outlined,
+                                    label: context.t('eventModal.audience'),
+                                    value: _audience(context, event),
+                                  ),
+                                ],
                           ),
 
                           // Ücretli etkinlik: pop-up kapandıktan sonra da
@@ -785,20 +950,20 @@ class _PrimaryAction extends StatelessWidget {
     final IconData icon = closed
         ? Icons.event_busy_outlined
         : registered
-            ? Icons.verified_outlined
-            : Icons.how_to_reg_outlined;
+        ? Icons.verified_outlined
+        : Icons.how_to_reg_outlined;
 
     final String label = closed
         ? context.t('dashboard.status.expired')
         : registered
-            ? context.t('dashboard.actions.registered')
-            : context.t('dashboard.actions.register');
+        ? context.t('dashboard.actions.registered')
+        : context.t('dashboard.actions.register');
 
     final Color foreground = closed
         ? context.inkMuted
         : registered
-            ? BrandColors.success
-            : BrandColors.white;
+        ? BrandColors.success
+        : BrandColors.white;
 
     return Semantics(
       button: true,
@@ -812,15 +977,13 @@ class _PrimaryAction extends StatelessWidget {
             color: closed
                 ? context.subtleFill
                 : registered
-                    ? BrandColors.success.withValues(
-                        alpha: context.isDarkMode ? 0.20 : 0.12,
-                      )
-                    : null,
+                ? BrandColors.success.withValues(
+                    alpha: context.isDarkMode ? 0.20 : 0.12,
+                  )
+                : null,
             borderRadius: BorderRadius.circular(BrandShape.pillRadius),
             border: registered
-                ? Border.all(
-                    color: BrandColors.success.withValues(alpha: 0.45),
-                  )
+                ? Border.all(color: BrandColors.success.withValues(alpha: 0.45))
                 : null,
             boxShadow: enabled ? BrandShape.raised : null,
           ),
@@ -920,8 +1083,11 @@ class _ClubHeader extends StatelessWidget {
             gradient: BrandColors.gradient,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: const Icon(Icons.groups_outlined,
-              color: BrandColors.white, size: 21),
+          child: const Icon(
+            Icons.groups_outlined,
+            color: BrandColors.white,
+            size: 21,
+          ),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -967,7 +1133,9 @@ class _ClubBubble extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
-        color: BrandColors.red.withValues(alpha: context.isDarkMode ? 0.18 : 0.09),
+        color: BrandColors.red.withValues(
+          alpha: context.isDarkMode ? 0.18 : 0.09,
+        ),
         borderRadius: BorderRadius.circular(BrandShape.pillRadius),
       ),
       child: Text(
@@ -990,26 +1158,26 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-        children: <Widget>[
-          Container(
-            width: 3,
-            height: 15,
-            decoration: BoxDecoration(
-              color: BrandColors.red,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            text,
-            style: TextStyle(
-              fontSize: 14.5,
-              fontWeight: FontWeight.w700,
-              color: context.ink,
-            ),
-          ),
-        ],
-      );
+    children: <Widget>[
+      Container(
+        width: 3,
+        height: 15,
+        decoration: BoxDecoration(
+          color: BrandColors.red,
+          borderRadius: BorderRadius.circular(2),
+        ),
+      ),
+      const SizedBox(width: 8),
+      Text(
+        text,
+        style: TextStyle(
+          fontSize: 14.5,
+          fontWeight: FontWeight.w700,
+          color: context.ink,
+        ),
+      ),
+    ],
+  );
 }
 
 /// Etiket/değer çiftlerinden oluşan bilgi bloğu (web'deki detay tablosu).

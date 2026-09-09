@@ -2,6 +2,7 @@
 library;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
@@ -10,6 +11,11 @@ import '../core/constants.dart';
 FirebaseAuth get fbAuth => FirebaseAuth.instance;
 FirebaseFirestore get fbDb => FirebaseFirestore.instance;
 FirebaseStorage get fbStorage => FirebaseStorage.instance;
+
+/// Bölge: functions/index.js#REGION ile birebir aynı olmalı — farklı bölge
+/// seçilirse fonksiyon "bulunamadı" hatasıyla döner.
+FirebaseFunctions get fbFunctions =>
+    FirebaseFunctions.instanceFor(region: 'europe-west1');
 
 typedef Doc = DocumentReference<Map<String, dynamic>>;
 typedef Col = CollectionReference<Map<String, dynamic>>;
@@ -50,7 +56,16 @@ String registrationIdFor(String eventId, String studentId) =>
 Doc registrationDoc(String eventId, String studentId) =>
     registrationsCol.doc(registrationIdFor(eventId, studentId));
 
-/// Sertifika kimliği de deterministiktir — aynı öğrenciye tekrar dağıtım
-/// üstüne yazar, kopya oluşturmaz.
-Doc certificateDoc(String eventId, String studentId) =>
-    certificatesCol.doc('${eventId}_$studentId');
+/// Sertifika kimliği de deterministiktir — AYNI belgenin tekrar dağıtımı
+/// mevcut kaydın üstüne yazar, kopya oluşturmaz.
+///
+/// Anahtara belge de giriyor ([EventDocument.key]): kimlik yalnızca
+/// etkinlik+öğrenci olduğunda, aynı etkinliğe yüklenen ikinci belge birincinin
+/// kaydını eziyor ve öğrencide etkinlik başına tek belge kalıyordu.
+String certificateIdFor(String eventId, String studentId, String documentKey) =>
+    documentKey.isEmpty
+        ? '${eventId}_$studentId'
+        : '${eventId}_${studentId}_$documentKey';
+
+Doc certificateDoc(String eventId, String studentId, String documentKey) =>
+    certificatesCol.doc(certificateIdFor(eventId, studentId, documentKey));

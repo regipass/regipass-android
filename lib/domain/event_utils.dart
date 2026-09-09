@@ -76,6 +76,67 @@ bool isPastEvent(AppEvent event, {DateTime? now}) {
   return !deadline.isAfter(current);
 }
 
+/// Kulübün "Etkinliklerim" ekranındaki üç durum.
+///
+/// Bu sınıflandırma, keşfet/kayıt kapanışından farklı olarak etkinliğin
+/// **yapılacağı güne** bakar. Web'deki `getClubEventStage` ile aynı kuralı
+/// kullanır: kayıt süresi etkinlik gününden önce kapansa bile etkinlik, o gün
+/// gelene kadar "Gelecek"te kalır.
+enum ClubEventStage { upcoming, active, past }
+
+/// [timestampMs]'in takvim günü bugünden önce mi?
+///
+/// Son başvuru anını kullanan [isPastEvent]'ten ayrıdır: kulüp panelindeki
+/// aşamalar "bugün"ü aktif kabul eder ve mümkünse `eventDateAtMs`e bakar.
+bool _isDayBeforeToday(int timestampMs, DateTime now) {
+  if (timestampMs <= 0) return false;
+
+  final DateTime date = DateTime.fromMillisecondsSinceEpoch(timestampMs);
+  final DateTime day = DateTime(date.year, date.month, date.day);
+  final DateTime today = DateTime(now.year, now.month, now.day);
+  return day.isBefore(today);
+}
+
+/// Etkinliğin günü geldi mi? Eski kayıtlarda etkinlik günü yoksa son başvuru
+/// günü geri dönüş değeridir; webdeki geriye uyumlulukla aynıdır.
+bool _hasClubEventDayArrived(AppEvent event, DateTime now) {
+  final int eventDay = event.eventDateAtMs ?? 0;
+  final int reference = eventDay > 0 ? eventDay : event.deadlineAtMs;
+  if (reference <= 0) return false;
+
+  final DateTime date = DateTime.fromMillisecondsSinceEpoch(reference);
+  final DateTime day = DateTime(date.year, date.month, date.day);
+  final DateTime today = DateTime(now.year, now.month, now.day);
+  return !day.isAfter(today);
+}
+
+/// Kulübün kendi etkinliğinin listede gösterileceği aşama.
+///
+/// - Gelecek: etkinlik günü henüz gelmemiş ve yoklama başlatılmamış.
+/// - Aktif: etkinlik günü gelmiş ya da kulüp kapı/oturum yoklamasını başlatmış.
+/// - Geçmiş: etkinlik günü geçmiş ya da oturumlar tamamlanmış.
+///
+/// `entryStartedAtMs` bilerek ölçüte dahildir. Kapı yoklaması sonradan
+/// kapatılsa bile bu damga etkinliğin bir kez başlatıldığını korur; aksi hâlde
+/// etkinlik yanlışlıkla yeniden "Gelecek"e dönerdi.
+ClubEventStage getClubEventStage(AppEvent event, {DateTime? now}) {
+  final DateTime current = now ?? DateTime.now();
+  final int eventDay = event.eventDateAtMs ?? 0;
+  final int reference = eventDay > 0 ? eventDay : event.deadlineAtMs;
+
+  if (event.sessionsCompleted || _isDayBeforeToday(reference, current)) {
+    return ClubEventStage.past;
+  }
+
+  final bool checkinStarted =
+      event.entryStartedAtMs > 0 || event.currentSession > 0 || event.entryOpen;
+  if (checkinStarted || _hasClubEventDayArrived(event, current)) {
+    return ClubEventStage.active;
+  }
+
+  return ClubEventStage.upcoming;
+}
+
 /// Etkinliğin kendisi (son başvuru değil) bitti mi?
 ///
 /// Belge dağıtımının tek oturumlu etkinliklerdeki kapısı budur: oturumlu
@@ -97,14 +158,7 @@ bool isEventFinished(AppEvent event, {DateTime? now}) {
   final int? dayAtMs = event.eventDateAtMs;
   if (dayAtMs != null && dayAtMs > 0) {
     final DateTime day = DateTime.fromMillisecondsSinceEpoch(dayAtMs);
-    return !DateTime(
-      day.year,
-      day.month,
-      day.day,
-      23,
-      59,
-      59,
-    ).isAfter(current);
+    return !DateTime(day.year, day.month, day.day, 23, 59, 59).isAfter(current);
   }
 
   return isPastEvent(event, now: now);
@@ -242,8 +296,8 @@ List<String> eventClubFields(AppEvent event) =>
 /// kulübün kendi alanları yazılır.
 List<String> eventAudienceFields(AppEvent event) =>
     event.targetDepartments.isNotEmpty
-        ? event.targetDepartments
-        : eventClubFields(event);
+    ? event.targetDepartments
+    : eventClubFields(event);
 
 /// Öğrencinin bölümü etkinlikle ilişkili mi?
 /// Önce tam eşleşme (bölüm == hedef bölüm / sektör / kulübün ALANLARINDAN

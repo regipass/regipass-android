@@ -56,12 +56,14 @@ android {
         // mobile_scanner/ML Kit'in istediği 21'in üzerinde — elle sabitlemek
         // yalnızca tavanı düşürür, bu yüzden varsayılan bırakıldı.
         minSdk = flutter.minSdkVersion
-        // Uygulama artık sistem çubuklarını gizlemiyor (bkz.
-        // lib/app/system_ui.dart), yani API 36'nın gizlemeyi yok sayması
-        // sorun değil; yine de hedef sürüm API 36 ile denenmediği için 35'te
-        // bırakıldı. API 35 Google Play'in güncel alt sınırıdır, dolayısıyla
-        // yayınlamaya engel değil.
-        targetSdk = 35
+        // Google Play artık yeni yüklemelerde API 36 hedefi şart koşuyor, o
+        // yüzden Flutter'ın varsayılanı (36) kullanılıyor. Tek görünür etkisi
+        // şu: API 36, edge-to-edge muafiyetini yok saydığı için alttaki
+        // gezinme çubuğu Android 16 cihazlarda kendiliğinden gizlenmez
+        // (bkz. lib/app/system_ui.dart -> AutoHideNavigationBar ve
+        // res/values-v36/styles.xml). Uygulama o cihazlarda iki çubukla
+        // çalışmaya devam eder.
+        targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
 

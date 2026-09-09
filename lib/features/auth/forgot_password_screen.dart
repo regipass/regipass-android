@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/system_ui.dart';
 import '../../app/theme.dart';
-import '../../core/constants.dart';
+import '../../core/app_log.dart';
+import '../../services/password_reset_auth_session.dart';
 import '../../core/input_guard.dart';
 import '../../core/password_policy.dart';
 import '../../domain/routing.dart';
@@ -15,40 +19,12 @@ import '../shared/common_widgets.dart';
 import '../shared/phone_field.dart';
 import '../shared/phone_guard.dart';
 import 'auth_widgets.dart';
+import 'phone_auth_errors.dart';
 
-/// Şifremi unuttum — giriş ekranıyla aynı sahnede tam sayfa.
-/// (password-reset.html + js/pages/password-reset.js portu.)
-///
-/// Akış:
-///   1. E-postaya bağlı hesabın telefon ipucu okunur (yalnızca ekranda
-///      gösterilecek MASKE için — güvenlik kontrolü buna dayanmaz).
-///   2. Kullanıcı numarasını tam olarak yazar. Sunucudaki
-///      `checkPasswordResetPhone` (Cloud Function) girilen numarayı hesabın
-///      Firebase Auth'taki GERÇEK numarasıyla birebir karşılaştırır; yalnızca
-///      evet/hayır döner. Eşleşmiyorsa SMS HİÇ gönderilmez.
-///   3. Eşleşiyorsa kod **pop-up** içinde girilir; sayfa arkada kalır.
-///   4. Doğrulanınca doğrudan yeni şifre + şifre tekrar alanları açılır.
-///   5. Şifre güncellenince hesapla doğrudan giriş yapılır.
-///
-/// **Neden numara elle yazılıyor, sunucu doğrudan SMS atmıyor?**
-/// Firebase Phone Auth doğrulamayı yalnızca istemci başlatabilir ve tam
-/// numarayı ister; Admin SDK'da sunucudan SMS gönderen bir API yok. Bu yüzden
-/// SMS'i tetikleyen numarayı kullanıcının kendisi girer; sunucu yalnızca bu
-/// numaranın hesaba ait olup olmadığını doğrular
-/// (`functions/index.js#checkPasswordResetPhone`), gerçek numarayı asla
-/// istemciye döndürmez.
-///
-/// **Neden ekrandan çıkarken oturum kapatılıyor?**
-/// Kodu doğrulamak kullanıcıyı Auth'a giriş yaptırır — şifre değiştirmek
-/// oturum gerektiriyor. Router bu rotayı oturumlu kullanıcıya da açık tutar,
-/// ama kullanıcı işlemi iptal edip ekrandan çıktığında oturum kapatılmazsa
-/// router kullanıcıyı doğrudan panele fırlatır. Bu yüzden iptal/geri yolu
-/// `_leave` üzerinden geçer.
-///
-/// **Rol seçim adımı neden yok?**
-/// Bir e-postaya artık tek rol bağlanabiliyor (bkz. `AuthRepository`
-/// kayıt akışı), dolayısıyla seçilecek bir şey kalmadı. Zaten tek Firebase
-/// Auth hesabı = tek şifre olduğu için seçim şifreyi hiç bölmüyordu.
+/// E-postaya bağlı maskeli numara gösterilir; tam numara kullanıcıdan alınır.
+/// SMS doğrulaması ayrı bir Firebase Auth oturumunda yapılır. Doğrulanan
+/// hesabın e-postası eşleşmeden şifre değiştirilemez. Ana uygulama oturumu
+/// yalnızca yeni şifre kaydedildikten sonra açılır.
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({required this.email, super.key});
 
@@ -59,34 +35,47 @@ class ForgotPasswordScreen extends ConsumerStatefulWidget {
       _ForgotPasswordScreenState();
 }
 
-enum _Stage { loadingPhone, enterPhone, sending, newPassword }
+enum _Stage { enterPhone, sending, verifying, newPassword }
 
 class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   final PhoneFieldController _phone = PhoneFieldController();
   final TextEditingController _password = TextEditingController();
   final TextEditingController _passwordConfirm = TextEditingController();
 
-  _Stage _stage = _Stage.loadingPhone;
+  _Stage _stage = _Stage.enterPhone;
   String? _maskedPhone;
-  String? _verificationId;
   bool _obscure = true;
   bool _saving = false;
   String? _feedback;
   FeedbackTone _tone = FeedbackTone.error;
 
-  /// SMS doğrulaması bu ekranda bir Auth oturumu açtı mı? Açtıysa ekrandan
-  /// hangi yolla çıkılırsa çıkılsın oturum kapatılmalı (bkz. sınıf yorumu).
-  bool _signedInHere = false;
-
-  /// Aynı kimlik bilgisi iki kez işlenmesin. Android'in otomatik doğrulaması
-  /// (`verificationCompleted`) ile kullanıcının elle girdiği kod yarışabiliyor;
-  /// ikinci deneme "kod zaten kullanıldı" hatası verip başarılı adımı geri
-  /// alıyordu.
+  PasswordResetAuthSession? _resetAuth;
+  int _attempt = 0;
+  bool _leaving = false;
   bool _applying = false;
-
-  /// Kod penceresi açık mı — otomatik doğrulama tamamlandığında pencereyi
-  /// kapatabilmek için.
   bool _codeDialogOpen = false;
+  int? _resendToken;
+  String? _lastPhone;
+  Timer? _sendWatchdog;
+  static const Duration _kSendTimeout = Duration(seconds: 75);
+  static const Duration _kOperationTimeout = Duration(seconds: 30);
+
+  /// "Doğrulama kodu gönder" düğmesi — klavye açıldığında görünür alana
+  /// çekebilmek için.
+  ///
+  /// **Neden gerekiyor:** kart kaydırma görünümünün içinde ve Flutter klavye
+  /// açılınca yalnızca ODAKTAKİ alanı görünür tutuyor. Telefon alanı düğmenin
+  /// üstünde olduğu için alan görünür kalıyor, düğme klavyenin ALTINDA
+  /// kalıyordu: kullanıcı numarayı yazıp düğmeye bastığında dokunuş düğmeye
+  /// hiç ulaşmıyor, hiçbir şey olmuyordu — "kod gönderilmiyor" şikâyetinin
+  /// kaynağı buydu (400x700 ekran + 320 px klavyede düğmenin merkezi y=418,
+  /// görünür alan ise 380'de bitiyor).
+  final GlobalKey _sendButtonKey = GlobalKey();
+
+  /// Klavyenin son bilinen yüksekliği; yalnızca değiştiğinde iş yapılır.
+  double _keyboardInset = 0;
+
+  Timer? _ensureVisibleTimer;
 
   @override
   void initState() {
@@ -96,6 +85,10 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
   @override
   void dispose() {
+    _attempt++;
+    _sendWatchdog?.cancel();
+    unawaited(_resetAuth?.close());
+    _ensureVisibleTimer?.cancel();
     _phone.dispose();
     _password.dispose();
     _passwordConfirm.dispose();
@@ -108,188 +101,237 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       _feedback = message;
       _tone = tone;
     });
+
+    // Mesaj kartın EN ÜSTÜNDE çiziliyor; klavye açıkken kart oraya kadar
+    // kaydırılmadığı için kullanıcı hatayı hiç göremiyordu. Klavyeyi kapatmak
+    // kartı görünür alana sığdırır ve mesajı ortaya çıkarır — zaten hata
+    // aldığında kullanıcının yapacağı ilk iş de okumaktır.
+    if (message != null) FocusScope.of(context).unfocus();
+  }
+
+  /// Klavye açıldığında gönder düğmesini görünür alana çeker (bkz.
+  /// [_sendButtonKey]). Gecikme, [AuthFixedBody] içindeki klavye payı
+  /// animasyonu (160 ms) bitsin diye: düzen oturmadan kaydırılırsa hedef
+  /// konum yanlış hesaplanıyor.
+  void _ensureSendButtonVisible() {
+    _ensureVisibleTimer?.cancel();
+    _ensureVisibleTimer = Timer(const Duration(milliseconds: 220), () {
+      if (!mounted) return;
+      final BuildContext? target = _sendButtonKey.currentContext;
+      if (target == null) return;
+      Scrollable.ensureVisible(
+        target,
+        alignment: 1,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+      );
+    });
   }
 
   /// Doğrulama tamamlandıktan sonra gelen gecikmiş hatalar/geri çağrılar
   /// kullanıcıyı yeniden telefon adımına düşürmesin.
   bool get _verified => _stage == _Stage.newPassword;
 
-  /// Maskeli ipucunu `phone_hints` koleksiyonundan okur.
-  /// Bulunamazsa ekran maskesiz devam eder — ipucu görsel bir kolaylık,
-  /// akışın çalışması ona bağlı değil.
+  // İpucu yüklenmesi telefon girişini veya devam eden SMS adımını bekletmez.
   Future<void> _loadMaskedPhone() async {
-    final PasswordResetHint hint = await ref
-        .read(phoneHintRepositoryProvider)
-        .readHint(widget.email);
-
-    if (!mounted) return;
-    setState(() {
-      _maskedPhone = hint.maskedPhone.isEmpty ? null : hint.maskedPhone;
-      _stage = _Stage.enterPhone;
-    });
-
-    if (hint.maskedPhone.isEmpty) {
-      _setFeedback(context.t('forgotPassword.noPhone'), FeedbackTone.info);
+    try {
+      final PasswordResetHint hint = await ref
+          .read(phoneHintRepositoryProvider)
+          .readHint(widget.email)
+          .timeout(const Duration(seconds: 12));
+      if (!mounted || _leaving) return;
+      setState(
+        () => _maskedPhone = hint.maskedPhone.isEmpty ? null : hint.maskedPhone,
+      );
+    } catch (error) {
+      _logFailure('hint', error);
     }
   }
 
-  Future<void> _sendCode() async {
-    final String typed = _phone.e164;
+  bool _isCurrent(int attempt) => mounted && !_leaving && attempt == _attempt;
+  bool get _busy => _stage == _Stage.sending || _stage == _Stage.verifying;
 
-    // Ön kontrol (hane sayısı + operatör ön eki): kodu istemeden önce numara
-    // gerçekten o ülkenin cep numarası mı? Sahiplik sorgusu burada yapılmaz —
-    // numaranın bu hesaba ait olduğunu aşağıdaki sunucu (Cloud Function)
-    // kontrolü doğruluyor.
+  void _logFailure(String step, Object error) {
+    // E-posta, numara, kod, parola ve SDK'nın bunları içerebilen mesajı yazılmaz.
+    AppLog.warn('passwordReset.failed', <String, Object?>{
+      'step': step,
+      'attempt': _attempt,
+      'code': error is FirebaseException
+          ? error.code
+          : error.runtimeType.toString(),
+    });
+  }
+
+  void _failAttempt(int attempt, Object error, String step) {
+    if (!_isCurrent(attempt) || _verified) return;
+    _logFailure(step, error);
+    _attempt++; // Eski callback'ler yeni denemenin zamanlayıcısına dokunamaz.
+    _stopSendWatchdog();
+    _closeCodeDialog();
+    unawaited(_resetAuth?.close());
+    _resetAuth = null;
+    _applying = false;
+    setState(() => _stage = _Stage.enterPhone);
+    _setFeedback(_describeError(error));
+  }
+
+  Future<void> _sendCode() async {
+    if (_busy || _verified || _leaving || _codeDialogOpen) return;
+    final String typed = _phone.e164;
     final String? structure = phoneStructureError(context, typed);
     if (structure != null) {
       _setFeedback(structure);
       return;
     }
 
+    FocusScope.of(context).unfocus();
+    unawaited(_resetAuth?.close());
+    final PasswordResetAuthSession auth = ref.read(
+      passwordResetSessionFactoryProvider,
+    )();
+    _resetAuth = auth;
+    final int attempt = ++_attempt;
+    if (_lastPhone != typed) _resendToken = null;
+    _lastPhone = typed;
     setState(() => _stage = _Stage.sending);
     _setFeedback(null);
+    _sendWatchdog = Timer(_kSendTimeout, () {
+      if (!_isCurrent(attempt) || _stage != _Stage.sending) return;
+      _failAttempt(attempt, TimeoutException('sms-send'), 'send');
+    });
+    AppLog.info('passwordReset.sendStarted', <String, Object?>{
+      'attempt': attempt,
+    });
 
-    // Girilen numara gerçekten bu e-postanın hesabına mı ait? Karşılaştırma
-    // sunucuda (Cloud Function, tam numarayla) yapılır ve yalnızca evet/hayır
-    // döner — gerçek numara istemciye hiç açılmaz. Eskiden bu kontrol iki
-    // MASKELENMİŞ diziyi karşılaştırıyordu; ortadaki haneler her iki tarafta
-    // da 'X' olduğundan yalnızca uzunluk + son birkaç hane tutan YANLIŞ bir
-    // numara da "eşleşmiş" gibi görünüp boşuna gerçek SMS gönderiyordu.
-    bool matches;
+    void onCodeAvailable(String verificationId) {
+      if (!_isCurrent(attempt) || _verified || _applying || _codeDialogOpen) {
+        return;
+      }
+      _stopSendWatchdog();
+      setState(() {
+        _stage = _Stage.enterPhone;
+      });
+      AppLog.info('passwordReset.codeAvailable', <String, Object?>{
+        'attempt': attempt,
+      });
+      unawaited(_openCodeDialog(typed, verificationId, attempt));
+    }
+
     try {
-      matches = await ref
-          .read(phoneHintRepositoryProvider)
-          .matchesAccountPhone(email: widget.email, phoneE164: typed);
+      await auth.verifyPhoneNumber(
+        phoneNumber: typed,
+        forceResendingToken: _resendToken,
+        verificationCompleted: (PhoneAuthCredential credential) {
+          if (!_isCurrent(attempt) || _verified || _applying) return;
+          _stopSendWatchdog();
+          unawaited(_applyCredential(credential, attempt));
+        },
+        verificationFailed: (FirebaseAuthException error) {
+          // Otomatik doğrulama ilerlerken SMS dinleyicisinden gelen hata
+          // aynı doğrulamayı geri alamaz.
+          if (_applying) return;
+          _failAttempt(attempt, error, 'send');
+        },
+        codeSent: (String verificationId, int? resendToken) {
+          if (!_isCurrent(attempt)) return;
+          _resendToken = resendToken;
+          onCodeAvailable(verificationId);
+        },
+        codeAutoRetrievalTimeout: (String verificationId) {
+          // Bu olay SMS isteğinin başarısızlığı değil, otomatik okumanın
+          // bitmesidir. Geçerli ID varsa kullanıcı kodu elle girebilir.
+          if (verificationId.isNotEmpty) onCodeAvailable(verificationId);
+        },
+      );
     } catch (error) {
-      if (!mounted) return;
-      setState(() => _stage = _Stage.enterPhone);
-      _setFeedback(_describeError(error));
-      return;
+      if (!_applying) _failAttempt(attempt, error, 'send');
     }
-
-    if (!matches) {
-      if (!mounted) return;
-      setState(() => _stage = _Stage.enterPhone);
-      _setFeedback(context.t('forgotPassword.phoneMismatch'));
-      return;
-    }
-
-    if (!mounted) return;
-    ref.read(passwordResetInProgressProvider.notifier).begin();
-
-    await FirebaseAuth.instance.verifyPhoneNumber(
-      phoneNumber: typed,
-      verificationCompleted: (PhoneAuthCredential credential) =>
-          _applyCredential(credential),
-      verificationFailed: (FirebaseAuthException error) {
-        if (!mounted || _verified) return;
-        setState(() => _stage = _Stage.enterPhone);
-        _setFeedback(_describeError(error));
-      },
-      codeSent: (String verificationId, int? resendToken) {
-        // `_applying`: otomatik doğrulama zaten başladıysa kod penceresini hiç
-        // açma — kullanıcı boşuna kod girmesin.
-        if (!mounted || _verified || _applying) return;
-        setState(() {
-          _verificationId = verificationId;
-          _stage = _Stage.enterPhone;
-        });
-        _openCodeDialog(typed);
-      },
-      codeAutoRetrievalTimeout: (String verificationId) {
-        if (mounted) setState(() => _verificationId = verificationId);
-      },
-      timeout: const Duration(seconds: 60),
-    );
   }
 
-  Future<void> _openCodeDialog(String phoneE164) async {
+  void _stopSendWatchdog() {
+    _sendWatchdog?.cancel();
+    _sendWatchdog = null;
+  }
+
+  Future<void> _openCodeDialog(
+    String phoneE164,
+    String verificationId,
+    int attempt,
+  ) async {
+    if (!_isCurrent(attempt) || _codeDialogOpen) return;
     _codeDialogOpen = true;
     final String? code = await showDialog<String>(
       context: context,
       barrierDismissible: false,
       builder: (_) => _CodeDialog(phoneE164: phoneE164),
     );
+    if (!_isCurrent(attempt)) return;
     _codeDialogOpen = false;
-
-    if (code == null || _verificationId == null) return;
-
+    if (code == null) {
+      if (!_applying && !_verified) {
+        _attempt++;
+        unawaited(_resetAuth?.close());
+        _resetAuth = null;
+      }
+      return;
+    }
     await _applyCredential(
       PhoneAuthProvider.credential(
-        verificationId: _verificationId!,
+        verificationId: verificationId,
         smsCode: code,
       ),
+      attempt,
     );
   }
 
-  /// Otomatik doğrulama (Android) kodu kullanıcı yazmadan tamamlarsa açık
-  /// kalan pencereyi kapatır; aksi hâlde kullanıcı kodu bir kez daha girip
-  /// "kod zaten kullanıldı" hatası alıyordu.
   void _closeCodeDialog() {
     if (!_codeDialogOpen || !mounted) return;
     _codeDialogOpen = false;
     Navigator.of(context, rootNavigator: true).pop();
   }
 
-  /// Kodu doğrular ve hesabın gerçekten bu e-postaya ait olduğunu teyit eder.
-  ///
-  /// Girilen numara hiçbir hesaba bağlı değilse Firebase telefon-only YENİ bir
-  /// hesap açar. Bu hesabı bırakmak hem çöp kayıt üretir hem de kullanıcıyı
-  /// profilsiz bir oturuma düşürür; o yüzden siliniyor.
-  Future<void> _applyCredential(PhoneAuthCredential credential) async {
-    if (_applying || _verified) return;
+  Future<void> _applyCredential(
+    PhoneAuthCredential credential,
+    int attempt,
+  ) async {
+    if (!_isCurrent(attempt) || _applying || _verified) return;
+    final PasswordResetAuthSession? auth = _resetAuth;
+    if (auth == null) return;
     _applying = true;
     _closeCodeDialog();
-
+    setState(() => _stage = _Stage.verifying);
     try {
-      final UserCredential result = await ref
-          .read(authRepositoryProvider)
-          .signInWithPhoneCredential(credential);
-
-      // Giriş sürerken pencere açılmış olabilir (otomatik doğrulama ile
-      // `codeSent` yarışı); bu noktada kesinlikle kapanmalı.
-      _closeCodeDialog();
-      _signedInHere = true;
-
+      final UserCredential result = await auth
+          .signIn(credential)
+          .timeout(_kOperationTimeout);
       final User? user = result.user;
       final bool matchesEmail =
-          (user?.email ?? '').toLowerCase() == widget.email.toLowerCase();
-
+          (user?.email ?? '').trim().toLowerCase() ==
+          widget.email.trim().toLowerCase();
       if (!matchesEmail) {
-        // Yanlış numara: bu hesap istenen e-postaya ait değil.
-        final bool isFreshPhoneOnly =
-            (user?.email ?? '').isEmpty &&
-            result.additionalUserInfo?.isNewUser == true;
-        try {
-          if (isFreshPhoneOnly) {
-            await user?.delete();
-          } else {
-            await ref.read(authRepositoryProvider).signOut();
+        // Yanlış numaraya SMS doğrulanınca oluşan yeni telefon-only hesabını kaldır.
+        if ((user?.email ?? '').isEmpty &&
+            result.additionalUserInfo?.isNewUser == true) {
+          try {
+            await user?.delete().timeout(const Duration(seconds: 5));
+          } catch (error) {
+            _logFailure('deleteUnusedPhoneAccount', error);
           }
-        } catch (_) {
-          await ref.read(authRepositoryProvider).signOut();
         }
-        _signedInHere = false;
-
-        if (!mounted) return;
-        setState(() => _stage = _Stage.enterPhone);
-        _setFeedback(context.t('forgotPassword.phoneMismatch'));
-        return;
+        throw FirebaseAuthException(code: 'password-reset-phone-mismatch');
       }
-
-      if (!mounted) return;
+      if (!_isCurrent(attempt)) return;
       setState(() => _stage = _Stage.newPassword);
       _setFeedback(null);
     } catch (error) {
-      if (!mounted) return;
-      setState(() => _stage = _Stage.enterPhone);
-      _setFeedback(_describeError(error));
+      _failAttempt(attempt, error, 'verify');
     } finally {
-      _applying = false;
+      if (_isCurrent(attempt)) _applying = false;
     }
   }
 
   Future<void> _savePassword() async {
+    if (_saving || _leaving) return;
     final String pw = _password.text;
 
     if (pw.isEmpty || _passwordConfirm.text.isEmpty) {
@@ -305,112 +347,154 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       return;
     }
 
+    final PasswordResetAuthSession? auth = _resetAuth;
+    if (auth == null) return;
+    final int attempt = _attempt;
     setState(() => _saving = true);
+    bool passwordSaved = false;
     try {
-      await ref.read(authRepositoryProvider).updatePassword(pw);
-      if (!mounted) return;
-      // SMS doğrulamasıyla açılan oturum korunur; kullanıcı yenilenmiş şifreli
-      // hesabına doğrudan girer. Rol tek olduğu için seçim adımı yok.
-      _signedInHere = false;
+      await auth.updatePassword(pw).timeout(_kOperationTimeout);
+      passwordSaved = true;
+      if (!_isCurrent(attempt)) return;
+      // Şifre güncellenene kadar SMS oturumu ana uygulamaya giriş yaptıramaz.
+      // Otomatik giriş takılırsa kullanıcı güncellenen şifreyle girişe döner.
+      ref.read(passwordResetInProgressProvider.notifier).begin();
+      await ref
+          .read(authRepositoryProvider)
+          .signInWithEmail(widget.email.trim(), pw)
+          .timeout(_kOperationTimeout);
+      if (!mounted || !_isCurrent(attempt)) return;
       ref.read(passwordResetInProgressProvider.notifier).end();
-      final String? role = ref.read(sessionProvider).resolvedRole;
-      context.go(
-        role == UserRole.club
-            ? Routes.clubHome
-            : role == UserRole.student
-            ? Routes.studentHome
-            : Routes.roleSelect,
-      );
+      unawaited(auth.close());
+      _resetAuth = null;
+      context.go(Routes.roleSelect);
     } catch (error) {
-      if (!mounted) return;
-      _setFeedback(_describeError(error));
+      _logFailure(passwordSaved ? 'signIn' : 'savePassword', error);
+      if (!mounted || !_isCurrent(attempt)) return;
+      ref.read(passwordResetInProgressProvider.notifier).end();
+      _setFeedback(
+        passwordSaved
+            ? context.t('forgotPassword.savedSignInRequired')
+            : _describeError(error),
+      );
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
+  /// Yalnızca bu ekrana özgü kodlar burada karşılanır; telefon doğrulamanın
+  /// tüm hata evreni ortak eşleyicidedir ([describePhoneAuthError]). Eskiden
+  /// bu liste kısaydı ve tanımadığı her şeyi "İşlem tamamlanamadı" diye
+  /// gösteriyordu — cihaz doğrulaması (Play Integrity/reCAPTCHA) düştüğünde
+  /// ya da numaraya kota sınırı geldiğinde kullanıcı nedeni hiç göremiyordu.
   String _describeError(Object error) {
+    if (error is TimeoutException) {
+      return context.t(
+        error.message == 'sms-send'
+            ? 'forgotPassword.sendTimeout'
+            : 'forgotPassword.operationTimeout',
+      );
+    }
     final String code = switch (error) {
       FirebaseAuthException(:final String code) => code,
       FirebaseException(:final String code) => code,
       _ => '',
     };
 
-    return switch (code) {
-      'not-found' => context.t('forgotPassword.noPhone'),
+    final String message = switch (code) {
+      'password-reset-phone-mismatch' => context.t(
+        'forgotPassword.phoneMismatch',
+      ),
       'resource-exhausted' => context.t('forgotPassword.tooManyAttempts'),
-      'invalid-verification-code' => context.t('phoneVerify.error.invalidCode'),
-      'session-expired' ||
-      'code-expired' => context.t('phoneVerify.error.codeExpired'),
-      'too-many-requests' => context.t('phoneVerify.error.tooManyRequests'),
-      'invalid-phone-number' => context.t('phoneVerify.error.invalidPhone'),
       'weak-password' => context.t('auth.error.weakPassword'),
       'requires-recent-login' => context.t('auth.error.requiresRecentLogin'),
-      _ => context.t('forgotPassword.genericError'),
+      _ => describePhoneAuthError(context, error),
     };
+
+    // Ham kod da gösteriliyor. "Kod gelmiyor" şikâyeti tek başına hiçbir şey
+    // söylemiyor: SMS'i engelleyen onlarca ayrı durum var (cihaz doğrulaması,
+    // numaraya uygulanan kötüye kullanım sınırı, projenin SMS bölge
+    // politikası...) ve hepsi kullanıcıya aynı cümleyi gösteriyordu. Kod
+    // ekranda görününce hangi kapının kapalı olduğu tek bakışta anlaşılıyor.
+    return code.isEmpty ? message : '$message\n(kod: $code)';
   }
 
-  /// Ekrandan çıkarken SMS ile açılmış oturumu kapat: kullanıcı şifresini
-  /// değiştirmeden panele girmiş olmasın.
   Future<void> _leave() async {
-    if (_signedInHere) {
-      _signedInHere = false;
-      await ref.read(authRepositoryProvider).signOut();
-    }
+    if (_leaving || _saving) return;
+    _leaving = true;
+    _attempt++;
+    _stopSendWatchdog();
+    _closeCodeDialog();
+    unawaited(_resetAuth?.close());
+    _resetAuth = null;
     ref.read(passwordResetInProgressProvider.notifier).end();
     if (mounted) context.go(Routes.landing);
   }
 
   @override
   Widget build(BuildContext context) {
+    // Klavye yeni açıldıysa gönder düğmesini görünür alana çek.
+    final double inset = MediaQuery.viewInsetsOf(context).bottom;
+    if (inset != _keyboardInset) {
+      _keyboardInset = inset;
+      if (inset > 0) _ensureSendButtonVisible();
+    }
+
     return PopScope(
-      // Doğrulanmış oturum varken sistem "geri" hareketi ekranı kapatamaz;
-      // önce oturumu kapatıp girişe döneriz, aksi hâlde router altta kalan
-      // ekrandan kullanıcıyı panele fırlatır.
-      canPop: !_signedInHere,
+      canPop: false,
       onPopInvokedWithResult: (bool didPop, Object? _) {
         if (!didPop) _leave();
       },
-      child: Scaffold(
-        backgroundColor: BrandColors.loginBase,
-        resizeToAvoidBottomInset: false,
-        body: Stack(
-          fit: StackFit.expand,
-          children: <Widget>[
-            const AuthBackground(),
-            SafeArea(
-              child: Column(
-                children: <Widget>[
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: <Widget>[
-                        AuthGhostButton(
-                          label: context.t('common.back'),
-                          icon: Icons.arrow_back,
-                          onPressed: _leave,
-                        ),
-                        const LanguageToggleDark(),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: AuthFixedBody(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
+      child: DarkScreenSystemBars(
+        child: Scaffold(
+          backgroundColor: BrandColors.loginBase,
+          resizeToAvoidBottomInset: false,
+          body: Stack(
+            fit: StackFit.expand,
+            children: <Widget>[
+              const AuthBackground(),
+              SafeArea(
+                child: Column(
+                  children: <Widget>[
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: <Widget>[
-                          const AuthBrandHero(compact: true),
-                          const SizedBox(height: 22),
-                          _buildCard(context),
+                          AuthGhostButton(
+                            label: context.t('common.back'),
+                            icon: Icons.arrow_back,
+                            onPressed: _leave,
+                          ),
+                          const LanguageToggleDark(),
                         ],
                       ),
                     ),
-                  ),
-                ],
+                    Expanded(
+                      child: AuthFixedBody(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            // Klavye açıkken logo gizlenir: bu ekranın kartı
+                            // uygulamanın en uzun kartı (maske + ipucu + alan
+                            // + düğme) ve logo da yer kaplayınca kart görünür
+                            // alana sığmıyor, kullanıcı yazarken içerik yukarı
+                            // kayıyordu.
+                            if (MediaQuery.viewInsetsOf(context).bottom <=
+                                0) ...<Widget>[
+                              const AuthBrandHero(compact: true),
+                              const SizedBox(height: 22),
+                            ],
+                            _buildCard(context),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -450,49 +534,45 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
   List<Widget> _buildStageContent(BuildContext context) {
     switch (_stage) {
-      case _Stage.loadingPhone:
-        return const <Widget>[
-          Padding(
-            padding: EdgeInsets.symmetric(vertical: 24),
-            child: Center(
-              child: CircularProgressIndicator(color: BrandColors.red),
-            ),
-          ),
-        ];
-
       case _Stage.enterPhone:
       case _Stage.sending:
+      case _Stage.verifying:
         return <Widget>[
+          // Maske tek satırda duruyor: eskiden bir paragraf + iri bir kutu
+          // kaplıyordu ve klavye açıkken kart görünür alana sığmadığı için
+          // kullanıcı numarayı yazarken maske yukarı kayıp gözden
+          // kayboluyordu ("numara birden gitti"). Kısa satır kartı ~90 piksel
+          // kısaltıyor, böylece maske alanla birlikte ekranda kalıyor.
           if (_maskedPhone != null) ...<Widget>[
-            Text(
-              context.t('forgotPassword.phoneQuestion'),
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: BrandColors.loginMuted,
-                fontSize: 13.5,
-                height: 1.45,
-              ),
-            ),
-            const SizedBox(height: 12),
             Container(
-              padding: const EdgeInsets.symmetric(vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
                 color: const Color(0x14FFFFFF),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: BrandColors.loginGlassBorder),
               ),
-              child: Text(
-                _maskedPhone!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: BrandColors.white,
-                  fontSize: 19,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.5,
-                ),
+              child: Row(
+                children: <Widget>[
+                  const Icon(
+                    Icons.sms_outlined,
+                    size: 18,
+                    color: BrandColors.red,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      _maskedPhone!,
+                      style: const TextStyle(
+                        color: BrandColors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
           ],
           Text(
             context.t('forgotPassword.enterPhoneHint'),
@@ -509,12 +589,22 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
             // Başlık üstte ayrı duruyor; alanın içindeki etiket ekrandaki
             // diğer alanlarla uyuşmuyor, aşağı kaymış gibi görünüyordu.
             floatingLabel: false,
-            enabled: _stage != _Stage.sending,
+            enabled: !_busy,
+            // Klavyenin "bitti" tuşu doğrudan kodu ister: düğme küçük
+            // ekranlarda klavyenin altında kalabildiği için ikinci bir yol.
+            onSubmitted: (_) {
+              if (!_busy) _sendCode();
+            },
           ),
           const SizedBox(height: 18),
           AuthPrimaryButton(
-            label: context.t('forgotPassword.sendCode'),
-            loading: _stage == _Stage.sending,
+            key: _sendButtonKey,
+            label: context.t(
+              _stage == _Stage.verifying
+                  ? 'forgotPassword.verifying'
+                  : 'forgotPassword.sendCode',
+            ),
+            loading: _busy,
             onPressed: _sendCode,
           ),
         ];
@@ -637,8 +727,12 @@ class _CodeDialogState extends State<_CodeDialog> {
 
   bool get _complete => _code.text.length == InputLimits.verificationCode;
 
+  bool _submitted = false;
+
   void _submit() {
-    if (_complete) Navigator.of(context).pop(_code.text);
+    if (!_complete || _submitted) return;
+    _submitted = true;
+    Navigator.of(context).pop(_code.text);
   }
 
   @override

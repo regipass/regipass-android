@@ -16,22 +16,55 @@ import 'club_shell.dart';
 /// club-events.html + js/pages/club-events.js karşılığı — kulübün kendi
 /// etkinlikleri.
 ///
-/// Web'de üç ayrı ızgara vardı (aktif / beklemede / geçmiş). Mobilde aynı üç
-/// grup, listenin üstündeki yuvarlak sayaçlı düğmelerle değiştirilir.
+/// Web'deki gelecek / aktif / geçmiş ayrımı, mobilde listenin üstündeki
+/// yuvarlak sayaçlı düğmelerle değiştirilir. Kullanıcı ilk açılışta aktif
+/// etkinlikleri görür; düğme sırası Aktif → Gelecek → Geçmiş'tir.
 class ClubEventsScreen extends ConsumerStatefulWidget {
-  const ClubEventsScreen({super.key});
+  const ClubEventsScreen({this.openEventId, super.key});
+
+  /// QR okutma başarıyla tamamlandığında gösterilecek etkinlik.
+  ///
+  /// Tarayıcı ekranı doğrudan pencere açmaz; rota değişince ağaçtan düştüğü
+  /// için pencerenin, güncel liste verisi ile burada açılması gerekir.
+  final String? openEventId;
 
   @override
   ConsumerState<ClubEventsScreen> createState() => _ClubEventsScreenState();
 }
 
-enum _Group { active, pending, past }
+enum _Group { active, upcoming, past }
 
 class _ClubEventsScreenState extends ConsumerState<ClubEventsScreen> {
   _Group _group = _Group.active;
 
-  void _toast(String message) => ScaffoldMessenger.of(context)
-      .showSnackBar(SnackBar(content: Text(message)));
+  /// Aynı URL parametresiyle yeniden build olduğunda pencerenin ikinci kez
+  /// açılmasını engeller.
+  String? _autoOpenedEventId;
+
+  void _toast(String message) => ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(SnackBar(content: Text(message)));
+
+  void _openRequestedSheet(List<AppEvent> events) {
+    final String? eventId = widget.openEventId;
+    if (eventId == null || eventId.isEmpty || _autoOpenedEventId == eventId) {
+      return;
+    }
+
+    AppEvent? event;
+    for (final AppEvent candidate in events) {
+      if (candidate.id == eventId) {
+        event = candidate;
+        break;
+      }
+    }
+    if (event == null) return;
+
+    _autoOpenedEventId = eventId;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) showEventDetailSheet(context, event: event!);
+    });
+  }
 
   /// Süresi geçmemiş etkinlik herkesten silinir; geçmiş etkinlik yalnızca
   /// kulüp listesinden kaldırılır (öğrencinin geçmiş kaydı bozulmasın).
@@ -92,18 +125,19 @@ class _ClubEventsScreenState extends ConsumerState<ClubEventsScreen> {
             tone: FeedbackTone.error,
           ),
         ),
-        data: (List<AppEvent> _) {
+        data: (List<AppEvent> allEvents) {
+          _openRequestedSheet(allEvents);
           final ClubEventGroups groups = ref.watch(clubEventGroupsProvider);
 
           final List<AppEvent> visible = switch (_group) {
             _Group.active => groups.active,
-            _Group.pending => groups.pending,
+            _Group.upcoming => groups.upcoming,
             _Group.past => groups.past,
           };
 
           final String emptyMessage = switch (_group) {
             _Group.active => context.t('clubEvents.empty.active'),
-            _Group.pending => context.t('clubEvents.empty.pending'),
+            _Group.upcoming => context.t('clubEvents.empty.upcoming'),
             _Group.past => context.t('clubEvents.empty.past'),
           };
 
@@ -122,10 +156,10 @@ class _ClubEventsScreenState extends ConsumerState<ClubEventsScreen> {
                     ),
                     const SizedBox(width: 8),
                     _GroupButton(
-                      label: context.t('clubEvents.group.pending'),
-                      count: groups.pending.length,
-                      selected: _group == _Group.pending,
-                      onTap: () => setState(() => _group = _Group.pending),
+                      label: context.t('clubEvents.group.upcoming'),
+                      count: groups.upcoming.length,
+                      selected: _group == _Group.upcoming,
+                      onTap: () => setState(() => _group = _Group.upcoming),
                     ),
                     const SizedBox(width: 8),
                     _GroupButton(
@@ -231,7 +265,7 @@ class _CardActions extends StatelessWidget {
   }
 }
 
-/// Aktif / beklemede / geçmiş seçimi — öğrenci tarafındaki sayaçlı yuvarlak
+/// Aktif / gelecek / geçmiş seçimi — öğrenci tarafındaki sayaçlı yuvarlak
 /// düğmelerle aynı dil.
 class _GroupButton extends StatelessWidget {
   const _GroupButton({

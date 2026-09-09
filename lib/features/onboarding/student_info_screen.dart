@@ -311,6 +311,22 @@ class _StudentInfoScreenState extends ConsumerState<StudentInfoScreen> {
       return;
     }
 
+    // Google/Apple ile GİRİŞ EKRANINDAN gelen yeni hesaplar kayıt ekranındaki
+    // onay kutusundan hiç geçmemiş olabilir (bkz. login_screen.dart —
+    // sosyal girişte terms kontrolü yok). Bu formu tamamlamak da fiilen
+    // kaydı tamamlamak anlamına geldiği için, daha önce hiçbir yolla onay
+    // verilmemişse burada da onaylanmadan devam edilemez.
+    final bool termsAlreadyAccepted =
+        profile?.termsAccepted == true || session.appUser?.termsAccepted == true;
+    if (!termsAlreadyAccepted &&
+        ref.read(pendingConsentProvider)?.termsAccepted != true) {
+      _setFeedback(
+        context.t('auth.feedback.termsRequired'),
+        FeedbackTone.error,
+      );
+      return;
+    }
+
     // XSS kalıbı yakalanırsa kaydetmeden uyar (web ile aynı davranış).
     if (detectHarmfulInput(_firstName.text) ||
         detectHarmfulInput(_lastName.text) ||
@@ -810,22 +826,67 @@ class _StudentInfoScreenState extends ConsumerState<StudentInfoScreen> {
               const SizedBox(height: 24),
               const Divider(),
               const SizedBox(height: 12),
-              ConsentSummary(
-                termsAccepted:
-                    ref.watch(pendingConsentProvider)?.termsAccepted ??
-                    session.studentProfile?.termsAccepted ??
-                    session.appUser?.termsAccepted ??
-                    false,
-                marketingConsent:
-                    ref.watch(pendingConsentProvider)?.marketingConsent ??
-                    session.studentProfile?.marketingConsent ??
-                    session.appUser?.marketingConsent ??
-                    false,
-                acceptedAtMs:
-                    ref.watch(pendingConsentProvider)?.acceptedAtMs ??
-                    session.studentProfile?.termsAcceptedAtMs ??
-                    session.appUser?.termsAcceptedAtMs,
-              ),
+              if (session.studentProfile?.termsAccepted == true ||
+                  session.appUser?.termsAccepted == true)
+                ConsentSummary(
+                  termsAccepted:
+                      ref.watch(pendingConsentProvider)?.termsAccepted ??
+                      session.studentProfile?.termsAccepted ??
+                      session.appUser?.termsAccepted ??
+                      false,
+                  marketingConsent:
+                      ref.watch(pendingConsentProvider)?.marketingConsent ??
+                      session.studentProfile?.marketingConsent ??
+                      session.appUser?.marketingConsent ??
+                      false,
+                  acceptedAtMs:
+                      ref.watch(pendingConsentProvider)?.acceptedAtMs ??
+                      session.studentProfile?.termsAcceptedAtMs ??
+                      session.appUser?.termsAcceptedAtMs,
+                )
+              else ...<Widget>[
+                // Google/Apple ile daha önce hiç onay vermemiş hesap: kayıt
+                // ekranındaki aynı onay kutusu burada da imzalanabilir —
+                // form bu onay verilmeden kaydedilemez (bkz. _save).
+                Text(
+                  context.t('legal.consent.summaryTitle'),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                LegalConsentSection(
+                  termsAccepted:
+                      ref.watch(pendingConsentProvider)?.termsAccepted ??
+                      false,
+                  marketingConsent:
+                      ref.watch(pendingConsentProvider)?.marketingConsent ??
+                      false,
+                  onTermsChanged: _saving
+                      ? null
+                      : (bool value) => ref
+                            .read(pendingConsentProvider.notifier)
+                            .set(
+                              termsAccepted: value,
+                              marketingConsent:
+                                  ref
+                                      .read(pendingConsentProvider)
+                                      ?.marketingConsent ??
+                                  false,
+                            ),
+                  onMarketingChanged: _saving
+                      ? null
+                      : (bool value) => ref
+                            .read(pendingConsentProvider.notifier)
+                            .set(
+                              termsAccepted:
+                                  ref.read(pendingConsentProvider)?.termsAccepted ??
+                                  false,
+                              marketingConsent: value,
+                            ),
+                ),
+              ],
               const SizedBox(height: 12),
             ],
           ),

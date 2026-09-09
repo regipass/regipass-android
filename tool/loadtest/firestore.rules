@@ -360,12 +360,21 @@ service cloud.firestore {
       allow get: if true;
       allow list: if false;
 
+      // Mobil: maske + roller. Eski web: maske + phoneHash.
+      // phoneHash eski istemciler icin opsiyonel; mobil hash yayimlamaz.
       allow create, update: if isSignedIn()
-        && request.resource.data.keys().hasOnly(["maskedPhone", "phoneHash", "updatedAt"])
+        && request.resource.data.keys().hasOnly(["maskedPhone", "roles", "phoneHash", "updatedAt"])
         && request.resource.data.maskedPhone is string
+        && request.resource.data.maskedPhone.size() > 0
         && request.resource.data.maskedPhone.size() <= 40
-        && request.resource.data.phoneHash is string
-        && request.resource.data.phoneHash.size() == 64;
+        && (!('phoneHash' in request.resource.data)
+          || (request.resource.data.phoneHash is string
+            && request.resource.data.phoneHash.size() == 64))
+        && (!('roles' in request.resource.data)
+          || (request.resource.data.roles is list
+            && request.resource.data.roles.size() > 0
+            && request.resource.data.roles.size() <= 2
+            && request.resource.data.roles.hasOnly(['student', 'club'])));
 
       allow delete: if false;
     }
@@ -471,6 +480,17 @@ service cloud.firestore {
       //   • Var olan gecerli bir log SILINEMEZ/BOZULAMAZ.
       allow update: if isSignedIn()
         && resource.data.clubId == request.auth.uid
+        // Kayitlari yeniden acmak icin kapi kapali ve oturumlar basta olmali.
+        // Ilgisiz eski belge guncellemelerini kilitlemeden durum yazimini koru.
+        && (
+          !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['registrationClosed', 'entryOpen', 'currentSession'])
+          || request.resource.data.get('registrationClosed', false) == true
+          || (
+            request.resource.data.get('entryOpen', false) == false
+            && request.resource.data.get('currentSession', 0) == 0
+          )
+        )
         && (
           !isPaidEventData(request.resource.data)
           || isPaidEventData(resource.data)
@@ -758,7 +778,9 @@ service cloud.firestore {
       function targetEventAllowsRegistration() {
         return eventDoc(request.resource.data.eventId).data != null
           && eventDoc(request.resource.data.eventId).data.hiddenGlobally != true
-          && eventDoc(request.resource.data.eventId).data.registrationClosed != true;
+          && eventDoc(request.resource.data.eventId).data.registrationClosed != true
+          && eventDoc(request.resource.data.eventId).data.get('entryOpen', false) == false
+          && eventDoc(request.resource.data.eventId).data.get('currentSession', 0) == 0;
       }
 
       // ── Kontenjan (parca sayaci) ─────────────────────────────────────────

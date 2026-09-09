@@ -1,0 +1,1290 @@
+{
+  "flutterTests": {
+    "passed": 373,
+    "failed": 0,
+    "log": "qr-capacity-all-flutter-tests.log"
+  },
+  "runs": [
+    {
+      "startedAt": "2026-09-09T11:18:24.481Z",
+      "projectId": "demo-regipass-qr-load",
+      "port": 9091,
+      "rulesPath": "C:\\Users\\5sana\\StudioProjects\\Regipass\\tool\\loadtest\\firestore.rules",
+      "rulesSha256": "995e38b5b21326ab4f6f35bf1f715a395e9e499d422d7d36a88cd482ac5d1106",
+      "cpu": "12th Gen Intel(R) Core(TM) i5-12450H",
+      "logicalCpus": 12,
+      "ramGB": 23.677913665771484,
+      "sdk": "12.18.0",
+      "caveat": "Local emulator, synthetic authenticated clients; no camera, Auth/SMS, GPS, hosting, mobile runtime or production capacity measurement.",
+      "scenarios": [
+        {
+          "mode": "door",
+          "n": 25,
+          "quota": 0,
+          "shards": 0,
+          "elapsedMs": 255,
+          "statuses": {
+            "ok": 25
+          },
+          "p50Ms": 218,
+          "p95Ms": 252,
+          "p99Ms": 255,
+          "maxMs": 255,
+          "integrity": {
+            "stored": 25,
+            "checkedIn": 25,
+            "session1": 0,
+            "shardUsed": 0,
+            "quotaOverflow": false,
+            "countersMatch": null,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "session",
+          "n": 25,
+          "quota": 0,
+          "shards": 0,
+          "elapsedMs": 275,
+          "statuses": {
+            "ok": 25
+          },
+          "p50Ms": 244,
+          "p95Ms": 248,
+          "p99Ms": 275,
+          "maxMs": 275,
+          "integrity": {
+            "stored": 25,
+            "checkedIn": 25,
+            "session1": 25,
+            "shardUsed": 0,
+            "quotaOverflow": false,
+            "countersMatch": null,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "unbounded",
+          "n": 25,
+          "quota": 0,
+          "shards": 0,
+          "elapsedMs": 883,
+          "statuses": {
+            "ok": 25
+          },
+          "p50Ms": 836,
+          "p95Ms": 882,
+          "p99Ms": 883,
+          "maxMs": 883,
+          "integrity": {
+            "stored": 25,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 0,
+            "quotaOverflow": false,
+            "countersMatch": null,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "mobile",
+          "n": 25,
+          "quota": 25,
+          "shards": 4,
+          "elapsedMs": 3171,
+          "statuses": {
+            "permission-denied": 16,
+            "ok": 9
+          },
+          "p50Ms": 999,
+          "p95Ms": 1034,
+          "p99Ms": 3171,
+          "maxMs": 3171,
+          "integrity": {
+            "stored": 9,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 9,
+            "quotaOverflow": false,
+            "countersMatch": true,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "web",
+          "n": 25,
+          "quota": 25,
+          "shards": 8,
+          "elapsedMs": 2416,
+          "statuses": {
+            "ok": 14,
+            "permission-denied": 11
+          },
+          "p50Ms": 348,
+          "p95Ms": 383,
+          "p99Ms": 2416,
+          "maxMs": 2416,
+          "integrity": {
+            "stored": 14,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 14,
+            "quotaOverflow": false,
+            "countersMatch": true,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "closed",
+          "n": 25,
+          "quota": 0,
+          "shards": 0,
+          "elapsedMs": 187,
+          "statuses": {
+            "permission-denied": 25
+          },
+          "p50Ms": 163,
+          "p95Ms": 182,
+          "p99Ms": 187,
+          "maxMs": 187,
+          "integrity": {
+            "stored": 0,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 0,
+            "quotaOverflow": false,
+            "countersMatch": null,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "stale-door",
+          "n": 25,
+          "quota": 0,
+          "shards": 0,
+          "elapsedMs": 260,
+          "statuses": {
+            "permission-denied": 25
+          },
+          "p50Ms": 233,
+          "p95Ms": 260,
+          "p99Ms": 260,
+          "maxMs": 260,
+          "integrity": {
+            "stored": 0,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 0,
+            "quotaOverflow": false,
+            "countersMatch": null,
+            "overfullShards": 0
+          }
+        }
+      ],
+      "webSources": {
+        "quota-plan.js": "6c6c6bfc1741d7638d0ab6efa9ffbe1ec450fad27afd3321ffbd71378287c8e1",
+        "quota-shards.js": "727eab33f43e478e672786419fff1b1fe101c17ff74ac891fc06d287dc52ae4f",
+        "registration-queue.js": "61dc5f13a485b9c142142c8528808640c0d384b4810d8abcb305d05b813e5fcd"
+      },
+      "completedAt": "2026-09-09T11:18:33.542Z",
+      "rawPath": "tool/loadtest/logs/qr-1788952704481.json"
+    },
+    {
+      "startedAt": "2026-09-09T11:18:41.975Z",
+      "projectId": "demo-regipass-qr-load",
+      "port": 9091,
+      "rulesPath": "C:\\Users\\5sana\\StudioProjects\\Regipass\\tool\\loadtest\\firestore.rules",
+      "rulesSha256": "995e38b5b21326ab4f6f35bf1f715a395e9e499d422d7d36a88cd482ac5d1106",
+      "cpu": "12th Gen Intel(R) Core(TM) i5-12450H",
+      "logicalCpus": 12,
+      "ramGB": 23.677913665771484,
+      "sdk": "12.18.0",
+      "caveat": "Local emulator, synthetic authenticated clients; no camera, Auth/SMS, GPS, hosting, mobile runtime or production capacity measurement.",
+      "scenarios": [
+        {
+          "mode": "door",
+          "n": 100,
+          "quota": 0,
+          "shards": 0,
+          "elapsedMs": 530,
+          "statuses": {
+            "ok": 100
+          },
+          "p50Ms": 475,
+          "p95Ms": 523,
+          "p99Ms": 530,
+          "maxMs": 530,
+          "integrity": {
+            "stored": 100,
+            "checkedIn": 100,
+            "session1": 0,
+            "shardUsed": 0,
+            "quotaOverflow": false,
+            "countersMatch": null,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "session",
+          "n": 100,
+          "quota": 0,
+          "shards": 0,
+          "elapsedMs": 407,
+          "statuses": {
+            "ok": 100
+          },
+          "p50Ms": 380,
+          "p95Ms": 400,
+          "p99Ms": 403,
+          "maxMs": 406,
+          "integrity": {
+            "stored": 100,
+            "checkedIn": 100,
+            "session1": 100,
+            "shardUsed": 0,
+            "quotaOverflow": false,
+            "countersMatch": null,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "unbounded",
+          "n": 100,
+          "quota": 0,
+          "shards": 0,
+          "elapsedMs": 387,
+          "statuses": {
+            "ok": 100
+          },
+          "p50Ms": 268,
+          "p95Ms": 379,
+          "p99Ms": 386,
+          "maxMs": 387,
+          "integrity": {
+            "stored": 100,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 0,
+            "quotaOverflow": false,
+            "countersMatch": null,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "door",
+          "n": 250,
+          "quota": 0,
+          "shards": 0,
+          "elapsedMs": 987,
+          "statuses": {
+            "ok": 250
+          },
+          "p50Ms": 919,
+          "p95Ms": 957,
+          "p99Ms": 986,
+          "maxMs": 987,
+          "integrity": {
+            "stored": 250,
+            "checkedIn": 250,
+            "session1": 0,
+            "shardUsed": 0,
+            "quotaOverflow": false,
+            "countersMatch": null,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "session",
+          "n": 250,
+          "quota": 0,
+          "shards": 0,
+          "elapsedMs": 926,
+          "statuses": {
+            "ok": 250
+          },
+          "p50Ms": 657,
+          "p95Ms": 924,
+          "p99Ms": 925,
+          "maxMs": 925,
+          "integrity": {
+            "stored": 250,
+            "checkedIn": 250,
+            "session1": 250,
+            "shardUsed": 0,
+            "quotaOverflow": false,
+            "countersMatch": null,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "unbounded",
+          "n": 250,
+          "quota": 0,
+          "shards": 0,
+          "elapsedMs": 854,
+          "statuses": {
+            "ok": 250
+          },
+          "p50Ms": 742,
+          "p95Ms": 852,
+          "p99Ms": 853,
+          "maxMs": 854,
+          "integrity": {
+            "stored": 250,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 0,
+            "quotaOverflow": false,
+            "countersMatch": null,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "door",
+          "n": 500,
+          "quota": 0,
+          "shards": 0,
+          "elapsedMs": 1461,
+          "statuses": {
+            "ok": 500
+          },
+          "p50Ms": 1378,
+          "p95Ms": 1436,
+          "p99Ms": 1458,
+          "maxMs": 1461,
+          "integrity": {
+            "stored": 500,
+            "checkedIn": 500,
+            "session1": 0,
+            "shardUsed": 0,
+            "quotaOverflow": false,
+            "countersMatch": null,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "session",
+          "n": 500,
+          "quota": 0,
+          "shards": 0,
+          "elapsedMs": 1588,
+          "statuses": {
+            "ok": 500
+          },
+          "p50Ms": 1519,
+          "p95Ms": 1554,
+          "p99Ms": 1587,
+          "maxMs": 1588,
+          "integrity": {
+            "stored": 500,
+            "checkedIn": 500,
+            "session1": 500,
+            "shardUsed": 0,
+            "quotaOverflow": false,
+            "countersMatch": null,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "unbounded",
+          "n": 500,
+          "quota": 0,
+          "shards": 0,
+          "elapsedMs": 1423,
+          "statuses": {
+            "ok": 500
+          },
+          "p50Ms": 1299,
+          "p95Ms": 1357,
+          "p99Ms": 1421,
+          "maxMs": 1423,
+          "integrity": {
+            "stored": 500,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 0,
+            "quotaOverflow": false,
+            "countersMatch": null,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "door",
+          "n": 1000,
+          "quota": 0,
+          "shards": 0,
+          "elapsedMs": 3743,
+          "statuses": {
+            "ok": 1000
+          },
+          "p50Ms": 2954,
+          "p95Ms": 3714,
+          "p99Ms": 3740,
+          "maxMs": 3742,
+          "integrity": {
+            "stored": 1000,
+            "checkedIn": 1000,
+            "session1": 0,
+            "shardUsed": 0,
+            "quotaOverflow": false,
+            "countersMatch": null,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "session",
+          "n": 1000,
+          "quota": 0,
+          "shards": 0,
+          "elapsedMs": 2801,
+          "statuses": {
+            "ok": 1000
+          },
+          "p50Ms": 1653,
+          "p95Ms": 2779,
+          "p99Ms": 2784,
+          "maxMs": 2800,
+          "integrity": {
+            "stored": 1000,
+            "checkedIn": 1000,
+            "session1": 1000,
+            "shardUsed": 0,
+            "quotaOverflow": false,
+            "countersMatch": null,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "unbounded",
+          "n": 1000,
+          "quota": 0,
+          "shards": 0,
+          "elapsedMs": 3163,
+          "statuses": {
+            "ok": 1000
+          },
+          "p50Ms": 2775,
+          "p95Ms": 3139,
+          "p99Ms": 3160,
+          "maxMs": 3163,
+          "integrity": {
+            "stored": 1000,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 0,
+            "quotaOverflow": false,
+            "countersMatch": null,
+            "overfullShards": 0
+          }
+        }
+      ],
+      "webSources": {
+        "quota-plan.js": "6c6c6bfc1741d7638d0ab6efa9ffbe1ec450fad27afd3321ffbd71378287c8e1",
+        "quota-shards.js": "727eab33f43e478e672786419fff1b1fe101c17ff74ac891fc06d287dc52ae4f",
+        "registration-queue.js": "61dc5f13a485b9c142142c8528808640c0d384b4810d8abcb305d05b813e5fcd"
+      },
+      "completedAt": "2026-09-09T11:19:24.550Z",
+      "rawPath": "tool/loadtest/logs/qr-1788952721975.json"
+    },
+    {
+      "startedAt": "2026-09-09T11:19:49.428Z",
+      "projectId": "demo-regipass-qr-load",
+      "port": 9091,
+      "rulesPath": "C:\\Users\\5sana\\StudioProjects\\Regipass\\tool\\loadtest\\firestore.rules",
+      "rulesSha256": "995e38b5b21326ab4f6f35bf1f715a395e9e499d422d7d36a88cd482ac5d1106",
+      "cpu": "12th Gen Intel(R) Core(TM) i5-12450H",
+      "logicalCpus": 12,
+      "ramGB": 23.677913665771484,
+      "sdk": "12.18.0",
+      "caveat": "Local emulator, synthetic authenticated clients; no camera, Auth/SMS, GPS, hosting, mobile runtime or production capacity measurement.",
+      "scenarios": [
+        {
+          "mode": "mobile",
+          "n": 1,
+          "quota": 1,
+          "shards": 1,
+          "elapsedMs": 44,
+          "statuses": {
+            "ok": 1
+          },
+          "p50Ms": 44,
+          "p95Ms": 44,
+          "p99Ms": 44,
+          "maxMs": 44,
+          "integrity": {
+            "stored": 1,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 1,
+            "quotaOverflow": false,
+            "countersMatch": true,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "web",
+          "n": 1,
+          "quota": 1,
+          "shards": 1,
+          "elapsedMs": 29,
+          "statuses": {
+            "ok": 1
+          },
+          "p50Ms": 29,
+          "p95Ms": 29,
+          "p99Ms": 29,
+          "maxMs": 29,
+          "integrity": {
+            "stored": 1,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 1,
+            "quotaOverflow": false,
+            "countersMatch": true,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "mobile-overflow",
+          "n": 1,
+          "quota": 1,
+          "shards": 1,
+          "elapsedMs": 57,
+          "statuses": {
+            "ok": 1
+          },
+          "p50Ms": 57,
+          "p95Ms": 57,
+          "p99Ms": 57,
+          "maxMs": 57,
+          "integrity": {
+            "stored": 1,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 1,
+            "quotaOverflow": false,
+            "countersMatch": true,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "web-overflow",
+          "n": 1,
+          "quota": 1,
+          "shards": 1,
+          "elapsedMs": 52,
+          "statuses": {
+            "ok": 1
+          },
+          "p50Ms": 52,
+          "p95Ms": 52,
+          "p99Ms": 52,
+          "maxMs": 52,
+          "integrity": {
+            "stored": 1,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 1,
+            "quotaOverflow": false,
+            "countersMatch": true,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "mobile",
+          "n": 25,
+          "quota": 25,
+          "shards": 4,
+          "elapsedMs": 124,
+          "statuses": {
+            "permission-denied": 17,
+            "ok": 8
+          },
+          "p50Ms": 100,
+          "p95Ms": 123,
+          "p99Ms": 124,
+          "maxMs": 124,
+          "integrity": {
+            "stored": 8,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 8,
+            "quotaOverflow": false,
+            "countersMatch": true,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "web",
+          "n": 25,
+          "quota": 25,
+          "shards": 8,
+          "elapsedMs": 88,
+          "statuses": {
+            "ok": 12,
+            "permission-denied": 13
+          },
+          "p50Ms": 78,
+          "p95Ms": 81,
+          "p99Ms": 88,
+          "maxMs": 88,
+          "integrity": {
+            "stored": 12,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 12,
+            "quotaOverflow": false,
+            "countersMatch": true,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "mobile-overflow",
+          "n": 25,
+          "quota": 12,
+          "shards": 4,
+          "elapsedMs": 98,
+          "statuses": {
+            "permission-denied": 17,
+            "ok": 8
+          },
+          "p50Ms": 95,
+          "p95Ms": 98,
+          "p99Ms": 98,
+          "maxMs": 98,
+          "integrity": {
+            "stored": 8,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 8,
+            "quotaOverflow": false,
+            "countersMatch": true,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "web-overflow",
+          "n": 25,
+          "quota": 12,
+          "shards": 8,
+          "elapsedMs": 195,
+          "statuses": {
+            "ok": 12,
+            "permission-denied": 11,
+            "quota-full": 2
+          },
+          "p50Ms": 78,
+          "p95Ms": 179,
+          "p99Ms": 195,
+          "maxMs": 195,
+          "integrity": {
+            "stored": 12,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 12,
+            "quotaOverflow": false,
+            "countersMatch": true,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "mobile",
+          "n": 100,
+          "quota": 100,
+          "shards": 8,
+          "elapsedMs": 475,
+          "statuses": {
+            "permission-denied": 77,
+            "ok": 23
+          },
+          "p50Ms": 470,
+          "p95Ms": 475,
+          "p99Ms": 475,
+          "maxMs": 475,
+          "integrity": {
+            "stored": 23,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 23,
+            "quotaOverflow": false,
+            "countersMatch": true,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "web",
+          "n": 100,
+          "quota": 100,
+          "shards": 20,
+          "elapsedMs": 6416,
+          "statuses": {
+            "ok": 99,
+            "permission-denied": 1
+          },
+          "p50Ms": 2843,
+          "p95Ms": 5734,
+          "p99Ms": 6049,
+          "maxMs": 6416,
+          "integrity": {
+            "stored": 99,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 99,
+            "quotaOverflow": false,
+            "countersMatch": true,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "mobile-overflow",
+          "n": 100,
+          "quota": 50,
+          "shards": 4,
+          "elapsedMs": 2670,
+          "statuses": {
+            "permission-denied": 91,
+            "ok": 9
+          },
+          "p50Ms": 536,
+          "p95Ms": 541,
+          "p99Ms": 541,
+          "maxMs": 2670,
+          "integrity": {
+            "stored": 9,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 9,
+            "quotaOverflow": false,
+            "countersMatch": true,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "web-overflow",
+          "n": 100,
+          "quota": 50,
+          "shards": 10,
+          "elapsedMs": 6165,
+          "statuses": {
+            "quota-full": 46,
+            "ok": 50,
+            "permission-denied": 4
+          },
+          "p50Ms": 2657,
+          "p95Ms": 5889,
+          "p99Ms": 6147,
+          "maxMs": 6165,
+          "integrity": {
+            "stored": 50,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 50,
+            "quotaOverflow": false,
+            "countersMatch": true,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "mobile",
+          "n": 250,
+          "quota": 250,
+          "shards": 16,
+          "elapsedMs": 2895,
+          "statuses": {
+            "permission-denied": 217,
+            "ok": 33
+          },
+          "p50Ms": 859,
+          "p95Ms": 870,
+          "p99Ms": 870,
+          "maxMs": 2895,
+          "integrity": {
+            "stored": 33,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 33,
+            "quotaOverflow": false,
+            "countersMatch": true,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "web",
+          "n": 250,
+          "quota": 250,
+          "shards": 50,
+          "elapsedMs": 6263,
+          "statuses": {
+            "ok": 247,
+            "permission-denied": 3
+          },
+          "p50Ms": 3081,
+          "p95Ms": 5908,
+          "p99Ms": 6156,
+          "maxMs": 6263,
+          "integrity": {
+            "stored": 247,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 247,
+            "quotaOverflow": false,
+            "countersMatch": true,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "mobile-overflow",
+          "n": 250,
+          "quota": 125,
+          "shards": 8,
+          "elapsedMs": 656,
+          "statuses": {
+            "permission-denied": 230,
+            "ok": 20
+          },
+          "p50Ms": 469,
+          "p95Ms": 654,
+          "p99Ms": 656,
+          "maxMs": 656,
+          "integrity": {
+            "stored": 20,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 20,
+            "quotaOverflow": false,
+            "countersMatch": true,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "web-overflow",
+          "n": 250,
+          "quota": 125,
+          "shards": 25,
+          "elapsedMs": 9869,
+          "statuses": {
+            "aborted": 123,
+            "ok": 125,
+            "permission-denied": 2
+          },
+          "p50Ms": 3670,
+          "p95Ms": 9417,
+          "p99Ms": 9750,
+          "maxMs": 9869,
+          "integrity": {
+            "stored": 125,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 125,
+            "quotaOverflow": false,
+            "countersMatch": true,
+            "overfullShards": 0
+          }
+        }
+      ],
+      "webSources": {
+        "quota-plan.js": "6c6c6bfc1741d7638d0ab6efa9ffbe1ec450fad27afd3321ffbd71378287c8e1",
+        "quota-shards.js": "727eab33f43e478e672786419fff1b1fe101c17ff74ac891fc06d287dc52ae4f",
+        "registration-queue.js": "61dc5f13a485b9c142142c8528808640c0d384b4810d8abcb305d05b813e5fcd"
+      },
+      "completedAt": "2026-09-09T11:20:31.445Z",
+      "rawPath": "tool/loadtest/logs/qr-1788952789428.json"
+    },
+    {
+      "startedAt": "2026-09-09T11:20:40.930Z",
+      "projectId": "demo-regipass-qr-load",
+      "port": 9091,
+      "rulesPath": "C:\\Users\\5sana\\StudioProjects\\Regipass\\tool\\loadtest\\firestore.rules",
+      "rulesSha256": "995e38b5b21326ab4f6f35bf1f715a395e9e499d422d7d36a88cd482ac5d1106",
+      "cpu": "12th Gen Intel(R) Core(TM) i5-12450H",
+      "logicalCpus": 12,
+      "ramGB": 23.677913665771484,
+      "sdk": "12.18.0",
+      "caveat": "Local emulator, synthetic authenticated clients; no camera, Auth/SMS, GPS, hosting, mobile runtime or production capacity measurement.",
+      "scenarios": [
+        {
+          "mode": "duplicate-door",
+          "n": 25,
+          "quota": 0,
+          "shards": 0,
+          "elapsedMs": 133,
+          "statuses": {
+            "one-ok-one-denied": 25
+          },
+          "p50Ms": 125,
+          "p95Ms": 133,
+          "p99Ms": 133,
+          "maxMs": 133,
+          "integrity": {
+            "stored": 25,
+            "checkedIn": 25,
+            "session1": 0,
+            "shardUsed": 0,
+            "quotaOverflow": false,
+            "countersMatch": null,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "duplicate-session",
+          "n": 25,
+          "quota": 0,
+          "shards": 0,
+          "elapsedMs": 95,
+          "statuses": {
+            "one-ok-one-denied": 25
+          },
+          "p50Ms": 89,
+          "p95Ms": 95,
+          "p99Ms": 95,
+          "maxMs": 95,
+          "integrity": {
+            "stored": 25,
+            "checkedIn": 25,
+            "session1": 25,
+            "shardUsed": 0,
+            "quotaOverflow": false,
+            "countersMatch": null,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "closed",
+          "n": 25,
+          "quota": 0,
+          "shards": 0,
+          "elapsedMs": 102,
+          "statuses": {
+            "permission-denied": 25
+          },
+          "p50Ms": 93,
+          "p95Ms": 102,
+          "p99Ms": 102,
+          "maxMs": 102,
+          "integrity": {
+            "stored": 0,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 0,
+            "quotaOverflow": false,
+            "countersMatch": null,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "stale-door",
+          "n": 25,
+          "quota": 0,
+          "shards": 0,
+          "elapsedMs": 66,
+          "statuses": {
+            "permission-denied": 25
+          },
+          "p50Ms": 57,
+          "p95Ms": 65,
+          "p99Ms": 66,
+          "maxMs": 66,
+          "integrity": {
+            "stored": 0,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 0,
+            "quotaOverflow": false,
+            "countersMatch": null,
+            "overfullShards": 0
+          }
+        }
+      ],
+      "webSources": {
+        "quota-plan.js": "6c6c6bfc1741d7638d0ab6efa9ffbe1ec450fad27afd3321ffbd71378287c8e1",
+        "quota-shards.js": "727eab33f43e478e672786419fff1b1fe101c17ff74ac891fc06d287dc52ae4f",
+        "registration-queue.js": "61dc5f13a485b9c142142c8528808640c0d384b4810d8abcb305d05b813e5fcd"
+      },
+      "completedAt": "2026-09-09T11:20:42.298Z",
+      "rawPath": "tool/loadtest/logs/qr-1788952840930.json"
+    },
+    {
+      "startedAt": "2026-09-09T11:20:53.924Z",
+      "projectId": "demo-regipass-qr-load",
+      "port": 9091,
+      "rulesPath": "C:\\Users\\5sana\\Desktop\\REGİPASS\\firestore.rules",
+      "rulesSha256": "2d0135ab59de1d26288b2dba2260ff2e8a632d9b148951e0de88706f24fbccb3",
+      "cpu": "12th Gen Intel(R) Core(TM) i5-12450H",
+      "logicalCpus": 12,
+      "ramGB": 23.677913665771484,
+      "sdk": "12.18.0",
+      "caveat": "Local emulator, synthetic authenticated clients; no camera, Auth/SMS, GPS, hosting, mobile runtime or production capacity measurement.",
+      "scenarios": [
+        {
+          "mode": "mobile",
+          "n": 25,
+          "quota": 25,
+          "shards": 4,
+          "elapsedMs": 131,
+          "statuses": {
+            "permission-denied": 17,
+            "ok": 8
+          },
+          "p50Ms": 128,
+          "p95Ms": 131,
+          "p99Ms": 131,
+          "maxMs": 131,
+          "integrity": {
+            "stored": 8,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 8,
+            "quotaOverflow": false,
+            "countersMatch": true,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "web",
+          "n": 25,
+          "quota": 25,
+          "shards": 8,
+          "elapsedMs": 2076,
+          "statuses": {
+            "ok": 12,
+            "permission-denied": 13
+          },
+          "p50Ms": 68,
+          "p95Ms": 77,
+          "p99Ms": 2076,
+          "maxMs": 2076,
+          "integrity": {
+            "stored": 12,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 12,
+            "quotaOverflow": false,
+            "countersMatch": true,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "closed",
+          "n": 25,
+          "quota": 0,
+          "shards": 0,
+          "elapsedMs": 91,
+          "statuses": {
+            "permission-denied": 25
+          },
+          "p50Ms": 84,
+          "p95Ms": 90,
+          "p99Ms": 91,
+          "maxMs": 91,
+          "integrity": {
+            "stored": 0,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 0,
+            "quotaOverflow": false,
+            "countersMatch": null,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "stale-door",
+          "n": 25,
+          "quota": 0,
+          "shards": 0,
+          "elapsedMs": 84,
+          "statuses": {
+            "ok": 25
+          },
+          "p50Ms": 78,
+          "p95Ms": 84,
+          "p99Ms": 84,
+          "maxMs": 84,
+          "integrity": {
+            "stored": 25,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 0,
+            "quotaOverflow": false,
+            "countersMatch": null,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "mobile",
+          "n": 100,
+          "quota": 100,
+          "shards": 8,
+          "elapsedMs": 358,
+          "statuses": {
+            "permission-denied": 85,
+            "ok": 15
+          },
+          "p50Ms": 352,
+          "p95Ms": 357,
+          "p99Ms": 357,
+          "maxMs": 358,
+          "integrity": {
+            "stored": 15,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 15,
+            "quotaOverflow": false,
+            "countersMatch": true,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "web",
+          "n": 100,
+          "quota": 100,
+          "shards": 20,
+          "elapsedMs": 6070,
+          "statuses": {
+            "ok": 97,
+            "permission-denied": 3
+          },
+          "p50Ms": 2244,
+          "p95Ms": 5559,
+          "p99Ms": 6021,
+          "maxMs": 6070,
+          "integrity": {
+            "stored": 97,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 97,
+            "quotaOverflow": false,
+            "countersMatch": true,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "closed",
+          "n": 100,
+          "quota": 0,
+          "shards": 0,
+          "elapsedMs": 234,
+          "statuses": {
+            "permission-denied": 100
+          },
+          "p50Ms": 203,
+          "p95Ms": 233,
+          "p99Ms": 234,
+          "maxMs": 234,
+          "integrity": {
+            "stored": 0,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 0,
+            "quotaOverflow": false,
+            "countersMatch": null,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "stale-door",
+          "n": 100,
+          "quota": 0,
+          "shards": 0,
+          "elapsedMs": 237,
+          "statuses": {
+            "ok": 100
+          },
+          "p50Ms": 223,
+          "p95Ms": 230,
+          "p99Ms": 237,
+          "maxMs": 237,
+          "integrity": {
+            "stored": 100,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 0,
+            "quotaOverflow": false,
+            "countersMatch": null,
+            "overfullShards": 0
+          }
+        }
+      ],
+      "webSources": {
+        "quota-plan.js": "6c6c6bfc1741d7638d0ab6efa9ffbe1ec450fad27afd3321ffbd71378287c8e1",
+        "quota-shards.js": "727eab33f43e478e672786419fff1b1fe101c17ff74ac891fc06d287dc52ae4f",
+        "registration-queue.js": "61dc5f13a485b9c142142c8528808640c0d384b4810d8abcb305d05b813e5fcd"
+      },
+      "completedAt": "2026-09-09T11:21:05.669Z",
+      "rawPath": "tool/loadtest/logs/qr-1788952853924.json"
+    },
+    {
+      "startedAt": "2026-09-09T11:21:54.272Z",
+      "projectId": "demo-regipass-qr-load",
+      "port": 9091,
+      "rulesPath": "C:\\Users\\5sana\\StudioProjects\\Regipass\\tool\\loadtest\\firestore.rules",
+      "rulesSha256": "995e38b5b21326ab4f6f35bf1f715a395e9e499d422d7d36a88cd482ac5d1106",
+      "cpu": "12th Gen Intel(R) Core(TM) i5-12450H",
+      "logicalCpus": 12,
+      "ramGB": 23.677913665771484,
+      "sdk": "12.18.0",
+      "caveat": "Local emulator, synthetic authenticated clients; no camera, Auth/SMS, GPS, hosting, mobile runtime or production capacity measurement.",
+      "scenarios": [
+        {
+          "mode": "mixed",
+          "n": 100,
+          "quota": 100,
+          "shards": 8,
+          "elapsedMs": 8209,
+          "statuses": {
+            "permission-denied": 30,
+            "ok": 70
+          },
+          "p50Ms": 584,
+          "p95Ms": 6951,
+          "p99Ms": 7479,
+          "maxMs": 8209,
+          "integrity": {
+            "stored": 70,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 70,
+            "quotaOverflow": false,
+            "countersMatch": true,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "mixed",
+          "n": 250,
+          "quota": 250,
+          "shards": 16,
+          "elapsedMs": 9279,
+          "statuses": {
+            "permission-denied": 105,
+            "ok": 145
+          },
+          "p50Ms": 2189,
+          "p95Ms": 8071,
+          "p99Ms": 9175,
+          "maxMs": 9278,
+          "integrity": {
+            "stored": 145,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 145,
+            "quotaOverflow": false,
+            "countersMatch": true,
+            "overfullShards": 0
+          }
+        }
+      ],
+      "mobileSources": {
+        "lib/services/registration_service.dart": "50d3a5039030452392bb7502680fcd64f3dafb1f4ba773857283da7ae3816624",
+        "lib/services/event_repository.dart": "62091b47a82fd591abdafedc9dbd6914ff3c2c780b3ef60418d435ab9aeb43d9",
+        "lib/domain/registration_capacity.dart": "c53138a4b0aa186a962a35b90d72da5dbf00cda04e50e4fd8188cebce754cf96"
+      },
+      "webSources": {
+        "quota-plan.js": "6c6c6bfc1741d7638d0ab6efa9ffbe1ec450fad27afd3321ffbd71378287c8e1",
+        "quota-shards.js": "727eab33f43e478e672786419fff1b1fe101c17ff74ac891fc06d287dc52ae4f",
+        "registration-queue.js": "61dc5f13a485b9c142142c8528808640c0d384b4810d8abcb305d05b813e5fcd"
+      },
+      "completedAt": "2026-09-09T11:22:22.909Z",
+      "rawPath": "tool/loadtest/logs/qr-1788952914272.json"
+    }
+  ]
+}

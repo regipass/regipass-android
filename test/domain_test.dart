@@ -65,47 +65,57 @@ void main() {
       // Kulup "kayitlari ac" diyerek registrationClosed'i elle false yapabilir
       // (bkz. club_event_detail_screen.dart > _toggleRegistrations); bu, zaten
       // basalamis bir etkinligin yeniden kesfe dusmesine izin vermemeli.
-      final AppEvent event = AppEvent.fromMap('event-started', <String, dynamic>{
-        'registrationClosed': false,
-        'currentSession': 1,
-        'hiddenGlobally': false,
-      });
+      final AppEvent event = AppEvent.fromMap(
+        'event-started',
+        <String, dynamic>{
+          'registrationClosed': false,
+          'currentSession': 1,
+          'hiddenGlobally': false,
+        },
+      );
 
       expect(eventHasStarted(event), isTrue);
       expect(isRegistrationClosed(event), isTrue);
       expect(isDiscoverableEvent(event), isFalse);
     });
 
-    test('kapi checkini ACIKKEN kayit bayragi elle acilsa bile kesfe kapali', () {
-      final AppEvent event = AppEvent.fromMap('event-door', <String, dynamic>{
-        'registrationClosed': false,
-        'currentSession': 0,
-        'entryStartedAtMs': DateTime(2026, 9, 1).millisecondsSinceEpoch,
-        'entryOpen': true,
-        'hiddenGlobally': false,
-      });
+    test(
+      'kapi checkini ACIKKEN kayit bayragi elle acilsa bile kesfe kapali',
+      () {
+        final AppEvent event = AppEvent.fromMap('event-door', <String, dynamic>{
+          'registrationClosed': false,
+          'currentSession': 0,
+          'entryStartedAtMs': DateTime(2026, 9, 1).millisecondsSinceEpoch,
+          'entryOpen': true,
+          'hiddenGlobally': false,
+        });
 
-      expect(eventHasStarted(event), isTrue);
-      expect(isDiscoverableEvent(event), isFalse);
-    });
+        expect(eventHasStarted(event), isTrue);
+        expect(isDiscoverableEvent(event), isFalse);
+      },
+    );
 
-    test('checkin BITIRILIP kayitlar yeniden acilirsa etkinlik kesfe doner', () {
-      // Kulup kapiyi "Bitir" ile kapatti (damga duruyor ama kapi kapali) ve
-      // kayitlari elle yeniden acti. Olcut damga olsaydi, kapisi bir kez
-      // acilmis etkinlik bir daha asla kesfe donemezdi — oturumsuz
-      // (checkin_only) etkinlikte geri alinacak oturum da olmadigi icin bu
-      // kalici bir cikmaz olurdu.
-      final AppEvent event = AppEvent.fromMap('event-door-done', <String, dynamic>{
-        'registrationClosed': false,
-        'currentSession': 0,
-        'entryStartedAtMs': DateTime(2026, 9, 1).millisecondsSinceEpoch,
-        'entryOpen': false,
-        'hiddenGlobally': false,
-      });
+    test(
+      'checkin BITIRILIP kayitlar yeniden acilirsa etkinlik kesfe doner',
+      () {
+        // Kulup kapiyi "Bitir" ile kapatti (damga duruyor ama kapi kapali) ve
+        // kayitlari elle yeniden acti. Olcut damga olsaydi, kapisi bir kez
+        // acilmis etkinlik bir daha asla kesfe donemezdi — oturumsuz
+        // (checkin_only) etkinlikte geri alinacak oturum da olmadigi icin bu
+        // kalici bir cikmaz olurdu.
+        final AppEvent event =
+            AppEvent.fromMap('event-door-done', <String, dynamic>{
+              'registrationClosed': false,
+              'currentSession': 0,
+              'entryStartedAtMs': DateTime(2026, 9, 1).millisecondsSinceEpoch,
+              'entryOpen': false,
+              'hiddenGlobally': false,
+            });
 
-      expect(eventHasStarted(event), isFalse);
-      expect(isDiscoverableEvent(event), isTrue);
-    });
+        expect(eventHasStarted(event), isFalse);
+        expect(isDiscoverableEvent(event), isTrue);
+      },
+    );
 
     test('oturumlar en basa alinip kayitlar acilinca etkinlik kesfe doner', () {
       final AppEvent event = AppEvent.fromMap('event-undone', <String, dynamic>{
@@ -122,13 +132,14 @@ void main() {
 
     test('checkin bitse de kayitlar kapaliyken kesfette gorunmez', () {
       // Otomatik kapanan kayit, kulup ELLE acana kadar kapali kalir.
-      final AppEvent event = AppEvent.fromMap('event-door-closed', <String, dynamic>{
-        'registrationClosed': true,
-        'currentSession': 0,
-        'entryStartedAtMs': DateTime(2026, 9, 1).millisecondsSinceEpoch,
-        'entryOpen': false,
-        'hiddenGlobally': false,
-      });
+      final AppEvent event =
+          AppEvent.fromMap('event-door-closed', <String, dynamic>{
+            'registrationClosed': true,
+            'currentSession': 0,
+            'entryStartedAtMs': DateTime(2026, 9, 1).millisecondsSinceEpoch,
+            'entryOpen': false,
+            'hiddenGlobally': false,
+          });
 
       expect(eventHasStarted(event), isFalse);
       expect(isDiscoverableEvent(event), isFalse);
@@ -147,18 +158,21 @@ void main() {
   });
 
   group('kayitli ogrenci icin etkinligin gercekten bitmesi', () {
-    test('kulup kayitlari elle durdurunca etkinlik hala devam eden sayilir', () {
-      final AppEvent event = AppEvent.fromMap('event-3', <String, dynamic>{
-        'registrationClosed': true,
-        'eventEndAtMs': DateTime(2026, 9, 10).millisecondsSinceEpoch,
-      });
+    test(
+      'kulup kayitlari elle durdurunca etkinlik hala devam eden sayilir',
+      () {
+        final AppEvent event = AppEvent.fromMap('event-3', <String, dynamic>{
+          'registrationClosed': true,
+          'eventEndAtMs': DateTime(2026, 9, 10).millisecondsSinceEpoch,
+        });
 
-      expect(isRegistrationClosed(event), isTrue);
-      expect(
-        isEventOverForAttendee(event, now: DateTime(2026, 9, 1)),
-        isFalse,
-      );
-    });
+        expect(isRegistrationClosed(event), isTrue);
+        expect(
+          isEventOverForAttendee(event, now: DateTime(2026, 9, 1)),
+          isFalse,
+        );
+      },
+    );
 
     test('oturumlu etkinlikte oturumlar bitmeden gecmis sayilmaz', () {
       final AppEvent event = AppEvent.fromMap('event-4', <String, dynamic>{
@@ -168,10 +182,7 @@ void main() {
       });
 
       // Takvim gunu gecmis olsa bile kulup oturumlari bitirmediyse aktif.
-      expect(
-        isEventOverForAttendee(event, now: DateTime(2026, 9, 5)),
-        isFalse,
-      );
+      expect(isEventOverForAttendee(event, now: DateTime(2026, 9, 5)), isFalse);
     });
 
     test('oturumlar bitip etkinlik suresi de dolunca gecmis sayilir', () {
@@ -181,10 +192,7 @@ void main() {
         'eventEndAtMs': DateTime(2026, 9, 1).millisecondsSinceEpoch,
       });
 
-      expect(
-        isEventOverForAttendee(event, now: DateTime(2026, 9, 5)),
-        isTrue,
-      );
+      expect(isEventOverForAttendee(event, now: DateTime(2026, 9, 5)), isTrue);
     });
 
     test('tek oturumlu etkinlikte olcut yalnizca etkinlik suresidir', () {
@@ -196,10 +204,7 @@ void main() {
         isEventOverForAttendee(event, now: DateTime(2026, 8, 30)),
         isFalse,
       );
-      expect(
-        isEventOverForAttendee(event, now: DateTime(2026, 9, 5)),
-        isTrue,
-      );
+      expect(isEventOverForAttendee(event, now: DateTime(2026, 9, 5)), isTrue);
     });
 
     test('etkinlik silinmisse gecmis sayilir', () {
@@ -307,7 +312,10 @@ void main() {
         expect(
           canStudentSeeEvent(
             event,
-            student(university: 'İstanbul Üniversitesi', department: department),
+            student(
+              university: 'İstanbul Üniversitesi',
+              department: department,
+            ),
           ),
           isTrue,
           reason: department,
@@ -437,13 +445,54 @@ void main() {
 
     test('oturum QR yükü kulübün ürettiği biçimde', () {
       final String token = createCheckinQrToken(
-        buildSessionCheckinPayload(eventId: 'e1', session: 3, slot: 12345),
+        buildSessionCheckinPayload(
+          eventId: 'e1',
+          session: 3,
+          slot: 12345,
+          locationLat: 41.0,
+          locationLng: 29.0,
+          locationRadius: 50,
+        ),
       );
       final Map<String, dynamic> parsed = parseCheckinQrToken(token)!;
       expect(parsed['type'], 'session-checkin');
       expect(parsed['session'], 3);
       expect(parsed['slot'], 12345);
+      expect(parsed['locationLat'], 41.0);
+      expect(parsed['locationLng'], 29.0);
+      expect(parsed['locationRadius'], 50);
     });
+
+    test(
+      'konumsuz etkinliğin QR yükü konum taşımadan aynı bağlantı biçiminde kalır',
+      () {
+        final Map<String, dynamic> sessionPayload = buildSessionCheckinPayload(
+          eventId: 'e1',
+          session: 3,
+          slot: 12345,
+        );
+        final Map<String, dynamic> entryPayload = buildEventEntryPayload(
+          eventId: 'e1',
+        );
+
+        for (final Map<String, dynamic> payload in <Map<String, dynamic>>[
+          sessionPayload,
+          entryPayload,
+        ]) {
+          expect(payload.containsKey('locationLat'), isFalse);
+          expect(payload.containsKey('locationLng'), isFalse);
+          expect(payload.containsKey('locationRadius'), isFalse);
+
+          final String token = createCheckinQrToken(payload);
+          final String url = buildCheckinQrUrl(token);
+          expect(
+            url.startsWith('https://regipass.com/qr.html'),
+            isTrue,
+          );
+          expect(extractCheckinQrToken(url), token);
+        }
+      },
+    );
 
     // Kulübün ekrana bastığı QR'ın içeriği ham token değil bir ADRESTİR;
     // öğrencinin telefon kamerası onu link olarak açabilsin diye. Uygulama içi
@@ -451,17 +500,25 @@ void main() {
     // bastığını web okuyor (checkin-qr.js#extractCheckinQrToken).
     test('adres biçimindeki QR da çözülür', () {
       final String token = createCheckinQrToken(
-        buildEventEntryPayload(eventId: 'e1'),
+        buildEventEntryPayload(
+          eventId: 'e1',
+          locationLat: 41.0,
+          locationLng: 29.0,
+          locationRadius: 50,
+        ),
       );
       final String url = buildCheckinQrUrl(token);
 
-      expect(url.startsWith('https://eventapp-604a5.web.app/qr.html'), isTrue);
+      expect(url.startsWith('https://regipass.com/qr.html'), isTrue);
       expect(extractCheckinQrToken(url), token);
       expect(parseCheckinQrToken(url)!['eventId'], 'e1');
     });
 
     test('Regipass token taşımayan adres reddedilir', () {
-      expect(extractCheckinQrToken('https://eventapp-604a5.web.app/qr.html'), isNull);
+      expect(
+        extractCheckinQrToken('https://eventapp-604a5.web.app/qr.html'),
+        isNull,
+      );
       expect(extractCheckinQrToken('https://example.com/?t=merhaba'), isNull);
       expect(extractCheckinQrToken('  '), isNull);
     });
@@ -470,9 +527,19 @@ void main() {
     // (bkz. js/pages/qr-entry.js, js/pages/club-events.js#showEntryQr).
     test('kapı QR yükü öğrenci kimliği taşımaz', () {
       final Map<String, dynamic> parsed = parseCheckinQrToken(
-        createCheckinQrToken(buildEventEntryPayload(eventId: 'e1')),
+        createCheckinQrToken(
+          buildEventEntryPayload(
+            eventId: 'e1',
+            locationLat: 41.0,
+            locationLng: 29.0,
+            locationRadius: 50,
+          ),
+        ),
       )!;
       expect(parsed['type'], 'event-entry');
+      expect(parsed['locationLat'], 41.0);
+      expect(parsed['locationLng'], 29.0);
+      expect(parsed['locationRadius'], 50);
       expect(parsed['eventId'], 'e1');
       expect(parsed.containsKey('studentId'), isFalse);
     });
@@ -507,31 +574,32 @@ void main() {
   // Kapı check-in'i üç adımdır ve sırası zorunludur; oturumlar ancak
   // "bitir"den sonra başlatılabilir (checkin-mode.js > CHECKIN_STAGES).
   group('kapı check-in aşamaları', () {
-    AppEvent build(Map<String, dynamic> extra) => AppEvent.fromMap(
-          'e1',
-          <String, dynamic>{
-            'checkinMode': CheckinMode.checkinAttendance,
-            'sessionCount': 3,
-            ...extra,
-          },
-        );
+    AppEvent build(Map<String, dynamic> extra) =>
+        AppEvent.fromMap('e1', <String, dynamic>{
+          'checkinMode': CheckinMode.checkinAttendance,
+          'sessionCount': 3,
+          ...extra,
+        });
 
     test('damga yoksa aşama başlamadıdır', () {
       expect(build(<String, dynamic>{}).checkinStage, CheckinStage.notStarted);
     });
 
     test('kapı açıkken aşama çalışıyordur', () {
-      final AppEvent event =
-          build(<String, dynamic>{'entryStartedAtMs': 1000, 'entryOpen': true});
+      final AppEvent event = build(<String, dynamic>{
+        'entryStartedAtMs': 1000,
+        'entryOpen': true,
+      });
       expect(event.checkinStage, CheckinStage.running);
     });
 
     // "Bitir" damgayı SİLMEZ: aşama "hiç başlamadı"ya dönmez, yeniden
     // başlatma okunan girişleri korur.
     test('kapı kapandığında aşama bittidir', () {
-      final AppEvent event = build(
-        <String, dynamic>{'entryStartedAtMs': 1000, 'entryOpen': false},
-      );
+      final AppEvent event = build(<String, dynamic>{
+        'entryStartedAtMs': 1000,
+        'entryOpen': false,
+      });
       expect(event.checkinStage, CheckinStage.finished);
     });
 
@@ -547,13 +615,17 @@ void main() {
     test('ilk oturum, check-in bitirilene kadar kilitlidir', () {
       expect(build(<String, dynamic>{}).doorCheckinBlocksSessions, isTrue);
       expect(
-        build(<String, dynamic>{'entryStartedAtMs': 1, 'entryOpen': true})
-            .doorCheckinBlocksSessions,
+        build(<String, dynamic>{
+          'entryStartedAtMs': 1,
+          'entryOpen': true,
+        }).doorCheckinBlocksSessions,
         isTrue,
       );
       expect(
-        build(<String, dynamic>{'entryStartedAtMs': 1, 'entryOpen': false})
-            .doorCheckinBlocksSessions,
+        build(<String, dynamic>{
+          'entryStartedAtMs': 1,
+          'entryOpen': false,
+        }).doorCheckinBlocksSessions,
         isFalse,
       );
     });
@@ -774,14 +846,13 @@ void main() {
       bool onboarded = true,
       bool phoneVerified = true,
       String? status,
-    }) =>
-        ClubProfile.fromMap('c1', <String, dynamic>{
-          'onboardingCompleted': onboarded,
-          'phoneVerified': phoneVerified,
-          // Alan hiç yazılmamışsa varsayılanın uygulandığını da doğrulamak için
-          // null geçildiğinde anahtar eklenmez.
-          'clubStatus': ?status,
-        });
+    }) => ClubProfile.fromMap('c1', <String, dynamic>{
+      'onboardingCompleted': onboarded,
+      'phoneVerified': phoneVerified,
+      // Alan hiç yazılmamışsa varsayılanın uygulandığını da doğrulamak için
+      // null geçildiğinde anahtar eklenmez.
+      'clubStatus': ?status,
+    });
 
     test('kulüp: bilgi -> belge -> inceleme -> panel sırası', () {
       expect(getClubRouteByStatus(null), Routes.clubOnboarding);

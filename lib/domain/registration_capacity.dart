@@ -1,71 +1,16 @@
-/// Eşzamanlı kayıt politikası — parça sayısı, yeniden deneme, sınırlar.
-///
-/// Bu dosya **saf**tır: Firebase'e dokunmaz, yalnızca karar verir. Böylece
-/// eşzamanlılık kararları emulator gerektirmeden test edilebilir
-/// (`test/registration_capacity_test.dart`).
-///
-/// ── Sayılar nereden geliyor ──────────────────────────────────────────
-///
-/// `tool/loadtest/` altındaki yük testleri Firestore emulator'e karşı
-/// çalıştırıldı.
-///
-/// **1. Kontenjan hiç korunmuyordu.** Kontenjanı 100 olan etkinliğe 2000
-/// kişi aynı anda kaydolabildi — tek hata bile almadan (`01-baseline`).
-/// Uygulama çökmüyor, sessizce yanlış çalışıyor.
-///
-/// **2. Sayacı tek dokümanda tutmak çare değil.** Aynı satır için yarışan
-/// istekler birbirini iptal ettiriyor (`02-quota-contention`):
-///
-///   | eşzamanlı | başarı | p50      |
-///   |-----------|--------|----------|
-///   | 10        | %100   | 3,4 sn   |
-///   | 50        | %62    | 15,3 sn  |
-///   | 100       | %1     | 20,4 sn  |
-///
-/// **3. Parçalara bölmek tavanı yükseltiyor** ama tek başına yetmiyor
-/// (500 istek aynı anda, kabul denetimi yok — `03-sharded-queue` A):
-///
-///   | parça | kaydolabilen |
-///   |-------|--------------|
-///   | 1     | 1            |
-///   | 8     | 16           |
-///   | 16    | 48           |
-///   | 64    | 294          |
-///
-/// **4. Asıl kol KABUL DENETİMİ.** Aynı anda uçan istek sayısı parça
-/// sayısını aşmadığı sürece hata sıfır (`03-sharded-queue` B, 16 parça):
-///
-///   | aynı anda uçan | başarı | p50    |
-///   |----------------|--------|--------|
-///   | 8              | %100   | 13 ms  |
-///   | 16             | %100   | 16 ms  |
-///   | 32             | %87    | 12 ms  |
-///   | 500            | %10    | 23,5 sn|
-///
-/// Kural: **kabul edilen eşzamanlılık ≤ parça sayısı.** Parçalar tavanı
-/// belirler, yeniden deneme kuyruğu da fazlasını zamana yayar.
-///
-/// **Kontenjan bütünlüğü** parçalı kurulumun hiçbir koşusunda bozulmadı:
-/// aşım da eksik de olmadı.
-///
-/// ── Üretimdeki tavanlar ──────────────────────────────────────────────
-///
-/// Emulator kota uygulamaz; üretimde bağlayıcı olan Firestore'un belgelenmiş
-/// sınırlarıdır ve [kSustainedWritesPerDocPerSecond] ile
-/// [kMaxWritesPerSecondPerEvent] bunları taşır.
+/// Kontenjan parçaları, ilk istek yayma ve yeniden deneme politikası.
+/// Parça sayısı eşzamanlı öğrenci sınırı değildir. Yerel yük ölçümleri
+/// üretim Firestore kapasitesi veya fiziksel cihaz performansı sayılmaz.
 library;
 
 import 'dart:math';
 
-// ── Firestore'un dayattığı sınırlar ──────────────────────────────────
+// ── Eski kapasite araçlarıyla uyumluluk ──────────────────────────────
 
-/// Tek bir dokümana sürdürülebilir yazma hızı (Firestore belgelenmiş sınırı).
-///
-/// Kontenjan sayacı tek dokümanda tutulursa etkinliğin **tamamının** kayıt
-/// hızı budur: saniyede bir kişi.
+/// Eski test varsayımı; güncel Firestore garantisi veya kullanılan hız limiti değil.
 const int kSustainedWritesPerDocPerSecond = 1;
 
-/// Aynı etkinliğe sürdürülebilir kayıt hızı.
+/// Eski indeks yükü varsayımı; etkinlik başına garanti edilmiş kayıt hızı değil.
 ///
 /// `event_registrations` dokümanlarında `eventId` tek bir değer, `createdAt`
 /// ise sürekli artan bir zaman damgasıdır. Firestore her alanı kendiliğinden
@@ -83,10 +28,8 @@ const int kColdStartOpsPerSecond = 500;
 /// Bir etkinliğin kontenjanı kaç parçaya bölünsün.
 ///
 /// Her parça `events/{id}/quota_shards/{n}` yolunda ayrı bir dokümandır.
-/// **Parça sayısı bu etkinliğin eşzamanlı kayıt kapasitesidir** — yük
-/// testlerinin en net sonucu bu (bkz. `docs/kayit-kapasitesi.md`):
-/// yeniden deneme kapalıyken 500 istekten tam parça sayısı kadarı geçiyor,
-/// ve tur sayısını artırmak kapasite eklemiyor.
+/// Parçalar eşzamanlı yazma çekişmesini azaltır. Öğrenci kapasitesi sadece
+/// bu sayıdan çıkarılamaz; ilk istek yayma ve yeniden deneme de sonucu etkiler.
 ///
 /// Sayı neden bu: iki maliyet birbirine karşı çalışıyor.
 ///
@@ -112,10 +55,10 @@ int quotaShardCount(int quota) {
   final int fromTable = quota <= 50
       ? 4
       : quota <= 200
-          ? 8
-          : quota <= 1000
-              ? 16
-              : 32;
+      ? 8
+      : quota <= 1000
+      ? 16
+      : 32;
 
   // Kontenjandan çok parça olmasın: kapasitesi 0 olan parçalar yalnızca
   // taranıp geçilecek ölü dokümanlardır.
@@ -130,10 +73,7 @@ List<int> shardCapacities(int quota, int shards) {
   if (shards <= 0 || quota <= 0) return const <int>[];
   final int base = quota ~/ shards;
   final int extra = quota % shards;
-  return List<int>.generate(
-    shards,
-    (int s) => base + (s < extra ? 1 : 0),
-  );
+  return List<int>.generate(shards, (int s) => base + (s < extra ? 1 : 0));
 }
 
 /// Öğrencinin **başlangıç** parçası.
@@ -165,6 +105,52 @@ const Duration kRegistrationBaseDelay = Duration(milliseconds: 150);
 /// Bekleyiş tavanı — bir tur bundan uzun sürmez.
 const Duration kRegistrationMaxDelay = Duration(seconds: 6);
 
+/// Web registration-queue.js ile aynı ilk istek yayma penceresi.
+/// Bu, merkezî/FIFO sıra veya bir Firestore hız limiti değildir.
+Duration registrationAdmissionWindow({
+  required int quota,
+  required int shards,
+}) {
+  if (quota < 40 || shards <= 0) return Duration.zero;
+  final int seats = (quota / shards).ceil();
+  return Duration(milliseconds: (seats * 1200).clamp(2000, 8000));
+}
+
+Duration registrationAdmissionDelay({
+  required int quota,
+  required int shards,
+  Random? random,
+}) {
+  final int window = registrationAdmissionWindow(
+    quota: quota,
+    shards: shards,
+  ).inMilliseconds;
+  if (window == 0) return Duration.zero;
+  return Duration(milliseconds: (random ?? _defaultRandom).nextInt(window));
+}
+
+/// Kural reddi kendi başına çekişme kanıtı değildir. Yalnızca denemede
+/// okunan sayaç sonradan değişmişse işlem taze değerle tekrar denenebilir.
+bool quotaChangedAfterDeniedWrite({
+  required String code,
+  required int? attemptedCount,
+  required int? currentCount,
+}) =>
+    code == 'permission-denied' &&
+    attemptedCount != null &&
+    currentCount != null &&
+    attemptedCount != currentCount;
+
+bool isRegistrationRetryable(String code) => const <String>{
+  'aborted',
+  'failed-precondition',
+  'unavailable',
+  'deadline-exceeded',
+  'resource-exhausted',
+  'internal',
+  'cancelled',
+}.contains(code);
+
 final Random _defaultRandom = Random();
 
 /// [round] numaralı turdan sonra ne kadar beklenecek — **tam jitter**.
@@ -187,11 +173,11 @@ Duration registrationBackoff(int round, {Random? random}) {
   final int capMs = kRegistrationMaxDelay.inMilliseconds;
 
   // `1 << round` büyük turlarda taşabilir; tavana çarpınca zaten sabitlenir.
-  final int windowMs = round >= 31
-      ? capMs
-      : min(capMs, baseMs << round);
+  final int windowMs = round >= 31 ? capMs : min(capMs, baseMs << round);
 
-  return Duration(milliseconds: (random ?? _defaultRandom).nextInt(windowMs + 1));
+  return Duration(
+    milliseconds: (random ?? _defaultRandom).nextInt(windowMs + 1),
+  );
 }
 
 /// En kötü hâlde toplam ne kadar beklenir (bütün turlar tavana çarparsa).

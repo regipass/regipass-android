@@ -67,7 +67,7 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
     initialLocation: Routes.landing,
     refreshListenable: refresh,
     redirect: (BuildContext context, GoRouterState state) =>
-        _resolveRedirect(ref.read(sessionProvider), state.matchedLocation),
+        _resolveRedirect(ref.read(sessionProvider), state.uri),
     routes: <RouteBase>[
       GoRoute(
         path: Routes.landing,
@@ -76,6 +76,19 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
       GoRoute(
         path: Routes.explore,
         pageBuilder: (_, state) => _instantPage(state, const ExploreScreen()),
+      ),
+      // Telefon kamerasının okuduğu HTTPS QR linki. Uygulama kurulu değilse
+      // aynı adres webdeki `qr.html` tarafından karşılanır; kuruluysa App
+      // Link/Universal Link bu rotayı doğrudan Flutter'a verir.
+      GoRoute(
+        path: Routes.qrEntry,
+        pageBuilder: (_, state) => _instantPage(
+          state,
+          ExploreScreen(
+            initialEventId: CheckinQrDeepLink.parse(state.uri)?.eventId ?? '',
+            externalQrUri: state.uri,
+          ),
+        ),
       ),
       GoRoute(
         path: Routes.forgotPassword,
@@ -126,7 +139,11 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
         routes: <RouteBase>[
           GoRoute(
             path: Routes.studentHome,
-            builder: (_, _) => const StudentDashboardScreen(),
+            builder: (BuildContext context, GoRouterState state) =>
+                StudentDashboardScreen(
+                  openEventId: state.uri.queryParameters['openEventId'],
+                  externalQrToken: state.uri.queryParameters['qr'],
+                ),
           ),
           GoRoute(
             path: Routes.studentAppointments,
@@ -148,6 +165,7 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
             builder: (BuildContext context, GoRouterState state) =>
                 StudentQrCheckinScreen(
                   expectedEventId: state.uri.queryParameters['eventId'],
+                  initialQrValue: state.uri.queryParameters['payload'],
                 ),
           ),
           GoRoute(
@@ -179,7 +197,12 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
           ),
           GoRoute(
             path: Routes.clubEvents,
-            builder: (_, _) => const ClubEventsScreen(),
+            // QR ile başarılı girişten dönüldüğünde, ilgili etkinliğin
+            // penceresi liste yüklenir yüklenmez otomatik açılır.
+            builder: (BuildContext context, GoRouterState state) =>
+                ClubEventsScreen(
+                  openEventId: state.uri.queryParameters['openEventId'],
+                ),
           ),
           GoRoute(
             path: Routes.clubEventDetail,
@@ -264,9 +287,14 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
 /// içindeki dinleyicide yapılır (bkz. lib/app/app.dart).
 @visibleForTesting
 String? resolveRedirectForTest(Session session, String location) =>
-    _resolveRedirect(session, location);
+    _resolveRedirect(session, Uri.parse(location));
 
-String? _resolveRedirect(Session session, String location) {
+@visibleForTesting
+String? resolveRedirectUriForTest(Session session, Uri uri) =>
+    _resolveRedirect(session, uri);
+
+String? _resolveRedirect(Session session, Uri uri) {
+  final String location = uri.path;
   // Kayıt ekranı "bu e-postaya ait hesapta bu rol zaten var mı" diye
   // bakıyor. Soruyu sorabilmek için oturum bir an açılır; bu oturum bir
   // GİRİŞ değildir ve rol zaten varsa hemen kapatılır. Bu aralıkta
@@ -297,6 +325,7 @@ String? _resolveRedirect(Session session, String location) {
       Routes.landing,
       Routes.register,
       Routes.explore,
+      Routes.qrEntry,
     };
     return publicRoutes.contains(location) ? null : Routes.landing;
   }
@@ -315,7 +344,9 @@ String? _resolveRedirect(Session session, String location) {
     session.pendingRole,
   );
   if (pendingTarget != null) {
-    return location == pendingTarget ? null : pendingTarget;
+    return location == pendingTarget
+        ? null
+        : routeWithExternalQrContinuation(pendingTarget, uri);
   }
 
   // ── Rol seçimi ──────────────────────────────────────────────────
@@ -331,11 +362,13 @@ String? _resolveRedirect(Session session, String location) {
   // silinmediği için ikinci rolün verisi Firestore'da durur.
   final String? role = session.resolvedRole;
   if (role == null) {
-    return location == Routes.roleSelect ? null : Routes.roleSelect;
+    return location == Routes.roleSelect
+        ? null
+        : routeWithExternalQrContinuation(Routes.roleSelect, uri);
   }
   if (location == Routes.roleSelect) {
     // Seçim yapıldı; role göre hedefe düş.
-    return _homeFor(role, session);
+    return routeWithExternalQrContinuation(_homeFor(role, session), uri);
   }
 
   // ── Rol içi durum kapıları ──────────────────────────────────────
@@ -363,7 +396,19 @@ String? _resolveRedirect(Session session, String location) {
       return null;
     }
 
-    return location == target ? null : target;
+    return location == target
+        ? null
+        : routeWithExternalQrContinuation(target, uri);
+  }
+
+  // Giriş, rol seçimi, profil formu ve SMS doğrulaması bitince kullanıcıyı
+  // başlangıç paneline değil QR'ın işaret ettiği etkinliğe döndür. Böylece
+  // dış kamera ile okutulan kod için ikinci bir uygulama içi tarama gerekmez.
+  final CheckinQrDeepLink? externalQr = externalQrLinkForUri(uri);
+  if (externalQr != null) {
+    return role == UserRole.student
+        ? externalQr.studentDestination()
+        : externalQr.clubDestination();
   }
 
   // ── Tam yetkili: kendi rol alanının dışına çıkamaz ───────────────

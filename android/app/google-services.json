@@ -23,6 +23,38 @@
           }
         },
         {
+          "client_id": "738082064551-958vt2eo5djgrhfa3o3uncsqsn61ogud.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "app.regipass.mobile",
+            "certificate_hash": "395bc3c4ef1da043735fb3d77ffdde65a75e4249"
+          }
+        },
+        {
+          "client_id": "738082064551-brqponrtk8em9csqd9cj93dludahe7o9.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "app.regipass.mobile",
+            "certificate_hash": "c1753d7f3b419c92f5610ef803e8b673c6d794ca"
+          }
+        },
+        {
+          "client_id": "738082064551-fdflru8rer5urbffk96pi28ql3e4dsdl.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "app.regipass.mobile",
+            "certificate_hash": "1ef2b4830ba1fa79b425b59b6b82f30f9aa20c35"
+          }
+        },
+        {
+          "client_id": "738082064551-sagvcm6sbtq08nr380ilst83od5u3kte.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "app.regipass.mobile",
+            "certificate_hash": "a0f4f13edf1f3d6a8443825cf5cf6fe6a9967504"
+          }
+        },
+        {
           "client_id": "738082064551-5h5e3jab4u4ndk580og5gkkfvj5p9m0f.apps.googleusercontent.com",
           "client_type": 3
         }

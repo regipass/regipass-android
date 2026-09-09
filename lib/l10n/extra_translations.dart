@@ -48,15 +48,12 @@ kExtraTranslations = <String, Map<String, String>>{
     // Şifremi unuttum
     'forgotPassword.title': 'Şifreni Sıfırla',
     'forgotPassword.emailRequired': 'Önce e-posta adresini gir.',
-    'forgotPassword.phoneQuestion':
-        'Bu hesaba kayıtlı telefon numarası aşağıdaki gibi. Doğrulama kodu bu numaraya gönderilecek.',
+    'forgotPassword.savedNumber': 'Kayıtlı numaran:',
     'forgotPassword.enterPhoneHint':
         'Kodu gönderebilmemiz için numaranı tam olarak yaz:',
     'forgotPassword.sendCode': 'Doğrulama kodu gönder',
     'forgotPassword.phoneMismatch':
         'Bu numara girdiğin e-postaya ait hesapla eşleşmiyor. Numaranı kontrol et.',
-    'forgotPassword.noPhone':
-        'Kayıtlı numaranı burada gösteremiyoruz. Hesabına ait telefon numarasını yaz; doğrulama kodu o numaraya gönderilir.',
     'forgotPassword.tooManyAttempts':
         'Çok fazla deneme yapıldı. Biraz sonra tekrar dene.',
     'forgotPassword.newPasswordHint': 'Doğrulandı. Yeni şifreni belirle.',
@@ -64,6 +61,13 @@ kExtraTranslations = <String, Map<String, String>>{
     'forgotPassword.success': 'Şifren güncellendi.',
     'forgotPassword.continue': 'Girişe dön',
     'forgotPassword.genericError': 'İşlem tamamlanamadı. Lütfen tekrar dene.',
+    'forgotPassword.sendTimeout':
+        'SMS isteği zamanında yanıtlanmadı. Bağlantını kontrol edip tekrar dene.',
+    'forgotPassword.operationTimeout':
+        'İşlem zamanında yanıtlanmadı. Bağlantını kontrol edip tekrar dene.',
+    'forgotPassword.verifying': 'Kod doğrulanıyor',
+    'forgotPassword.savedSignInRequired':
+        'Şifren kaydedildi. Giriş ekranından yeni şifrenle giriş yapabilirsin.',
     'account.sharedPhoneNotice':
         'Bu telefon aynı e-postaya bağlı öğrenci ve kulüp hesaplarında ortak kullanılır ve zaten doğrulanmıştır. Bu formdan değiştirilemez.',
     'auth.error.networkFailed': 'Bağlantı kurulamadı. İnternetini kontrol et.',
@@ -315,11 +319,11 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubEvents.edit': 'Düzenle',
     'clubEvents.status.closed': 'Başvuru Kapalı',
     'clubEvents.group.active': 'Aktif',
-    'clubEvents.group.pending': 'Beklemede',
+    'clubEvents.group.upcoming': 'Gelecek',
     'clubEvents.group.past': 'Geçmiş',
     'clubEvents.empty.active':
         'Aktif etkinlik bulunmuyor. Alttaki + düğmesinden yeni etkinlik oluşturabilirsin.',
-    'clubEvents.empty.pending': 'Beklemede olan etkinlik bulunmuyor.',
+    'clubEvents.empty.upcoming': 'Gelecek etkinlik bulunmuyor.',
     'clubEvents.empty.past': 'Geçmiş etkinlik bulunmuyor.',
     'clubEvents.feedback.loadError':
         'Etkinlikler yüklenemedi. Lütfen tekrar dene.',
@@ -338,6 +342,8 @@ kExtraTranslations = <String, Map<String, String>>{
         'Geçmiş etkinlik yalnızca kendi listenden kaldırılacak; öğrencilerin kayıtları etkilenmez.',
 
     'clubEvents.registrations.title': 'Kayıtlar',
+    'clubEvents.qr.locationRequired':
+        'QR oluşturmak için etkinliği düzenleyip haritadan konum seç. Öğrencinin güncel konumu bu konumla karşılaştırılacak.',
     'clubEvents.quota.title': 'Kontenjan',
     'clubEvents.quota.remaining': '{{count}} kişilik yer kaldı.',
     'clubEvents.quota.full': 'Kontenjan doldu.',
@@ -435,7 +441,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubEvents.entry.subtitle':
         'Kapıda gösterilen QR. Öğrenciler kendi telefonlarından okutur.',
     'clubEvents.entry.open': 'Giriş QR\'ını Aç',
-    'clubEvents.entry.show': 'Giriş QR\'ını Göster',
+    'clubEvents.entry.show': 'Kapıda Tek QR Giriş',
     'clubEvents.entry.close': 'Girişi Kapat',
     'clubEvents.entry.qrTitle': 'Etkinlik Giriş QR\'ı',
     'clubEvents.entry.qrHint':
@@ -602,8 +608,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubCreateEvent.location.notSet': 'Belirlenmedi',
     'clubCreateEvent.location.captured': 'Konum alındı.',
     'clubCreateEvent.location.error': 'Konum alınamadı.',
-    'clubCreateEvent.location.missingCoordinates':
-        'Konumu haritadan da seç.',
+    'clubCreateEvent.location.missingCoordinates': 'Konumu haritadan da seç.',
     'clubCreateEvent.feedback.invalidEventDate': 'Etkinlik tarihini seç.',
     'clubCreateEvent.feedback.deadlineAfterEventDate':
         'Son başvuru tarihi etkinlik tarihinden sonra olamaz.',
@@ -839,8 +844,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'support.title': 'Regipass Destek Hattı',
     'support.callPrompt': 'Bu numara aransın mı?',
     'support.call': 'Ara',
-    'support.callFailed':
-        'Arama başlatılamadı; numara panoya kopyalandı.',
+    'support.callFailed': 'Arama başlatılamadı; numara panoya kopyalandı.',
 
     // Ücretli etkinlik iletişim satırları (bkz. event_widgets.dart)
     'eventModal.phoneCopied': 'Numara kopyalandı',
@@ -876,8 +880,7 @@ kExtraTranslations = <String, Map<String, String>>{
         'Hesabında doğrulanmış bir telefon numarası yok.',
     'accountSecurity.error.phoneMismatch': 'Bu numara hesabına ait değil.',
     'accountSecurity.error.wrongPassword': 'Mevcut şifren hatalı.',
-    'accountSecurity.error.generic':
-        'İşlem tamamlanamadı. Lütfen tekrar dene.',
+    'accountSecurity.error.generic': 'İşlem tamamlanamadı. Lütfen tekrar dene.',
 
     'changePassword.subtitle': 'Güvenliğin için önce mevcut şifreni gir.',
     'changePassword.subtitleVerified':
@@ -904,8 +907,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'deleteAccount.submit': 'Hesabımı Kalıcı Olarak Sil',
     'deleteAccount.feedback.passwordRequired':
         'Hesabını silmek için şifreni gir.',
-    'deleteAccount.feedback.verifyFirst':
-        'Önce telefonunla kimliğini doğrula.',
+    'deleteAccount.feedback.verifyFirst': 'Önce telefonunla kimliğini doğrula.',
     'deleteAccount.feedback.phoneVerified':
         'Kimliğin doğrulandı. Hesabını silebilirsin.',
     'deleteAccount.notice.done': 'Hesabın kalıcı olarak silindi.',
@@ -958,15 +960,12 @@ kExtraTranslations = <String, Map<String, String>>{
 
     'forgotPassword.title': 'Reset your password',
     'forgotPassword.emailRequired': 'Enter your email address first.',
-    'forgotPassword.phoneQuestion':
-        'The phone number registered to this account is shown below. The verification code will be sent to it.',
+    'forgotPassword.savedNumber': 'Your saved number:',
     'forgotPassword.enterPhoneHint':
         'Type your number in full so we can send the code:',
     'forgotPassword.sendCode': 'Send verification code',
     'forgotPassword.phoneMismatch':
         "This number doesn't match the account for that email. Please check it.",
-    'forgotPassword.noPhone':
-        "We can't display your saved number here. Type the phone number registered to this account and the code will be sent to it.",
     'forgotPassword.tooManyAttempts':
         'Too many attempts. Please try again later.',
     'forgotPassword.newPasswordHint': 'Verified. Choose your new password.',
@@ -974,6 +973,13 @@ kExtraTranslations = <String, Map<String, String>>{
     'forgotPassword.success': 'Your password has been updated.',
     'forgotPassword.continue': 'Back to sign in',
     'forgotPassword.genericError': 'Something went wrong. Please try again.',
+    'forgotPassword.sendTimeout':
+        'The SMS request timed out. Check your connection and try again.',
+    'forgotPassword.operationTimeout':
+        'The request timed out. Check your connection and try again.',
+    'forgotPassword.verifying': 'Verifying code',
+    'forgotPassword.savedSignInRequired':
+        'Your password was saved. Return to sign in with your new password.',
     'account.sharedPhoneNotice':
         'This phone is shared by the student and club accounts linked to the same email and is already verified. It cannot be changed here.',
     'auth.error.networkFailed': 'No connection. Check your internet.',
@@ -1193,11 +1199,11 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubEvents.edit': 'Edit',
     'clubEvents.status.closed': 'Registration Closed',
     'clubEvents.group.active': 'Active',
-    'clubEvents.group.pending': 'On Hold',
+    'clubEvents.group.upcoming': 'Upcoming',
     'clubEvents.group.past': 'Past',
     'clubEvents.empty.active':
         'No active events. Use the + button below to create one.',
-    'clubEvents.empty.pending': 'No events on hold.',
+    'clubEvents.empty.upcoming': 'No upcoming events.',
     'clubEvents.empty.past': 'No past events.',
     'clubEvents.feedback.loadError': 'Events could not load. Please try again.',
     'clubEvents.feedback.updateError':
@@ -1215,6 +1221,8 @@ kExtraTranslations = <String, Map<String, String>>{
         'The past event will only be removed from your own list; student records are unaffected.',
 
     'clubEvents.registrations.title': 'Registrations',
+    'clubEvents.qr.locationRequired':
+        'Edit the event and select its location on the map before creating a QR code. Students will be checked against this location.',
     'clubEvents.quota.title': 'Capacity',
     'clubEvents.quota.remaining': '{{count}} spots left.',
     'clubEvents.quota.full': 'Capacity is full.',
@@ -1547,7 +1555,8 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubScan.success': 'Check-in confirmed for {{name}}.',
     'clubScan.noDoorCheckin':
         'This event has no door check-in — show the session QR instead and let students scan it.',
-    'clubScan.doorClosed': 'Entry is closed. Start check-in from the event screen first.',
+    'clubScan.doorClosed':
+        'Entry is closed. Start check-in from the event screen first.',
     'clubScan.sessionSuccess':
         'Session {{current}} confirmed for {{name}} (attendance {{attended}}/{{total}}).',
 
@@ -1738,7 +1747,8 @@ kExtraTranslations = <String, Map<String, String>>{
     'accountSecurity.error.generic':
         'The action could not be completed. Please try again.',
 
-    'changePassword.subtitle': 'For your security, enter your current password.',
+    'changePassword.subtitle':
+        'For your security, enter your current password.',
     'changePassword.subtitleVerified':
         'Your identity is verified. Now set your new password.',
     'changePassword.currentPassword': 'Current Password',
@@ -1748,8 +1758,7 @@ kExtraTranslations = <String, Map<String, String>>{
         "I don't remember my password, verify with my phone",
     'changePassword.submit': 'Update Password',
     'changePassword.feedback.success': 'Your password has been updated.',
-    'changePassword.feedback.currentRequired':
-        'Enter your current password.',
+    'changePassword.feedback.currentRequired': 'Enter your current password.',
     'changePassword.feedback.sameAsCurrent':
         'Your new password cannot be the same as the old one.',
     'changePassword.feedback.phoneVerified':
@@ -1769,8 +1778,7 @@ kExtraTranslations = <String, Map<String, String>>{
         'Verify your identity with your phone first.',
     'deleteAccount.feedback.phoneVerified':
         'Your identity is verified. You can delete your account.',
-    'deleteAccount.notice.done':
-        'Your account has been permanently deleted.',
+    'deleteAccount.notice.done': 'Your account has been permanently deleted.',
 
     'screen.comingSoon': 'This section is under construction.',
     'screen.comingSoonDesc':
