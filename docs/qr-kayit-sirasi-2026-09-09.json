@@ -1,0 +1,340 @@
+{
+  "tests": {
+    "flutter": 377,
+    "webExisting": 133,
+    "webRetry": 7
+  },
+  "runs": [
+    {
+      "startedAt": "2026-09-09T16:22:52.500Z",
+      "projectId": "demo-regipass-qr-load",
+      "port": 9091,
+      "rulesPath": "C:\\Users\\5sana\\StudioProjects\\Regipass\\tool\\loadtest\\firestore.rules",
+      "rulesSha256": "995e38b5b21326ab4f6f35bf1f715a395e9e499d422d7d36a88cd482ac5d1106",
+      "cpu": "12th Gen Intel(R) Core(TM) i5-12450H",
+      "logicalCpus": 12,
+      "ramGB": 23.677913665771484,
+      "sdk": "12.18.0",
+      "caveat": "Local emulator, synthetic authenticated clients; no camera, Auth/SMS, GPS, hosting, mobile runtime or production capacity measurement.",
+      "scenarios": [
+        {
+          "mode": "mobile",
+          "n": 100,
+          "quota": 100,
+          "shards": 8,
+          "elapsedMs": 9030,
+          "statuses": {
+            "ok": 100
+          },
+          "p50Ms": 4848,
+          "p95Ms": 8367,
+          "p99Ms": 9008,
+          "maxMs": 9029,
+          "integrity": {
+            "stored": 100,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 100,
+            "quotaOverflow": false,
+            "countersMatch": true,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "web",
+          "n": 100,
+          "quota": 100,
+          "shards": 20,
+          "elapsedMs": 6947,
+          "statuses": {
+            "ok": 100
+          },
+          "p50Ms": 3173,
+          "p95Ms": 6341,
+          "p99Ms": 6563,
+          "maxMs": 6947,
+          "integrity": {
+            "stored": 100,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 100,
+            "quotaOverflow": false,
+            "countersMatch": true,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "mixed",
+          "n": 100,
+          "quota": 100,
+          "shards": 8,
+          "elapsedMs": 8221,
+          "statuses": {
+            "ok": 100
+          },
+          "p50Ms": 4605,
+          "p95Ms": 7870,
+          "p99Ms": 8190,
+          "maxMs": 8220,
+          "integrity": {
+            "stored": 100,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 100,
+            "quotaOverflow": false,
+            "countersMatch": true,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "mobile",
+          "n": 200,
+          "quota": 200,
+          "shards": 8,
+          "elapsedMs": 8547,
+          "statuses": {
+            "ok": 200
+          },
+          "p50Ms": 3929,
+          "p95Ms": 7900,
+          "p99Ms": 8375,
+          "maxMs": 8547,
+          "integrity": {
+            "stored": 200,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 200,
+            "quotaOverflow": false,
+            "countersMatch": true,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "web",
+          "n": 200,
+          "quota": 200,
+          "shards": 40,
+          "elapsedMs": 7110,
+          "statuses": {
+            "ok": 200
+          },
+          "p50Ms": 3572,
+          "p95Ms": 5957,
+          "p99Ms": 6268,
+          "maxMs": 7110,
+          "integrity": {
+            "stored": 200,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 200,
+            "quotaOverflow": false,
+            "countersMatch": true,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "mixed",
+          "n": 200,
+          "quota": 200,
+          "shards": 8,
+          "elapsedMs": 8290,
+          "statuses": {
+            "ok": 200
+          },
+          "p50Ms": 3997,
+          "p95Ms": 7835,
+          "p99Ms": 8091,
+          "maxMs": 8290,
+          "integrity": {
+            "stored": 200,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 200,
+            "quotaOverflow": false,
+            "countersMatch": true,
+            "overfullShards": 0
+          }
+        }
+      ],
+      "mobileSources": {
+        "lib/services/registration_service.dart": "b1d93228dd8c4d9a4bf1a4b34777b2282b4f149f324aca0320a4e6c119460ad5",
+        "lib/services/event_repository.dart": "62091b47a82fd591abdafedc9dbd6914ff3c2c780b3ef60418d435ab9aeb43d9",
+        "lib/domain/registration_capacity.dart": "f30e2ce5d6bb9c29e1db7e5578db0b3ce828ae5802ea4279640aebe2a478cb2e"
+      },
+      "webSources": {
+        "quota-plan.js": "6c6c6bfc1741d7638d0ab6efa9ffbe1ec450fad27afd3321ffbd71378287c8e1",
+        "quota-shards.js": "35c1d73cb8b80f6e1c506becb694b633e0e93869b44b51bb6e27a4bd006cc40b",
+        "registration-queue.js": "61dc5f13a485b9c142142c8528808640c0d384b4810d8abcb305d05b813e5fcd"
+      },
+      "completedAt": "2026-09-09T16:24:17.995Z",
+      "rawPath": "tool/loadtest/logs/qr-1788970972499.json"
+    },
+    {
+      "startedAt": "2026-09-09T16:26:32.492Z",
+      "projectId": "demo-regipass-qr-load",
+      "port": 9091,
+      "rulesPath": "C:\\Users\\5sana\\StudioProjects\\Regipass\\tool\\loadtest\\firestore.rules",
+      "rulesSha256": "995e38b5b21326ab4f6f35bf1f715a395e9e499d422d7d36a88cd482ac5d1106",
+      "cpu": "12th Gen Intel(R) Core(TM) i5-12450H",
+      "logicalCpus": 12,
+      "ramGB": 23.677913665771484,
+      "sdk": "12.18.0",
+      "caveat": "Local emulator, synthetic authenticated clients; no camera, Auth/SMS, GPS, hosting, mobile runtime or production capacity measurement.",
+      "scenarios": [
+        {
+          "mode": "mobile",
+          "n": 300,
+          "quota": 300,
+          "shards": 16,
+          "elapsedMs": 9194,
+          "statuses": {
+            "ok": 300
+          },
+          "p50Ms": 5007,
+          "p95Ms": 8700,
+          "p99Ms": 9007,
+          "maxMs": 9193,
+          "integrity": {
+            "stored": 300,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 300,
+            "quotaOverflow": false,
+            "countersMatch": true,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "web",
+          "n": 300,
+          "quota": 300,
+          "shards": 60,
+          "elapsedMs": 6848,
+          "statuses": {
+            "ok": 300
+          },
+          "p50Ms": 3508,
+          "p95Ms": 6424,
+          "p99Ms": 6651,
+          "maxMs": 6847,
+          "integrity": {
+            "stored": 300,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 300,
+            "quotaOverflow": false,
+            "countersMatch": true,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "mixed",
+          "n": 300,
+          "quota": 300,
+          "shards": 16,
+          "elapsedMs": 8582,
+          "statuses": {
+            "ok": 300
+          },
+          "p50Ms": 4415,
+          "p95Ms": 8091,
+          "p99Ms": 8370,
+          "maxMs": 8582,
+          "integrity": {
+            "stored": 300,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 300,
+            "quotaOverflow": false,
+            "countersMatch": true,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "mobile-overflow",
+          "n": 300,
+          "quota": 150,
+          "shards": 8,
+          "elapsedMs": 8771,
+          "statuses": {
+            "ok": 150,
+            "quota-full": 150
+          },
+          "p50Ms": 4721,
+          "p95Ms": 8306,
+          "p99Ms": 8606,
+          "maxMs": 8771,
+          "integrity": {
+            "stored": 150,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 150,
+            "quotaOverflow": false,
+            "countersMatch": true,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "web-overflow",
+          "n": 300,
+          "quota": 150,
+          "shards": 30,
+          "elapsedMs": 6384,
+          "statuses": {
+            "quota-full": 150,
+            "ok": 150
+          },
+          "p50Ms": 3605,
+          "p95Ms": 6116,
+          "p99Ms": 6362,
+          "maxMs": 6383,
+          "integrity": {
+            "stored": 150,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 150,
+            "quotaOverflow": false,
+            "countersMatch": true,
+            "overfullShards": 0
+          }
+        },
+        {
+          "mode": "mixed-overflow",
+          "n": 300,
+          "quota": 150,
+          "shards": 8,
+          "elapsedMs": 9101,
+          "statuses": {
+            "ok": 150,
+            "quota-full": 150
+          },
+          "p50Ms": 4637,
+          "p95Ms": 9001,
+          "p99Ms": 9081,
+          "maxMs": 9100,
+          "integrity": {
+            "stored": 150,
+            "checkedIn": 0,
+            "session1": 0,
+            "shardUsed": 150,
+            "quotaOverflow": false,
+            "countersMatch": true,
+            "overfullShards": 0
+          }
+        }
+      ],
+      "mobileSources": {
+        "lib/services/registration_service.dart": "b1d93228dd8c4d9a4bf1a4b34777b2282b4f149f324aca0320a4e6c119460ad5",
+        "lib/services/event_repository.dart": "62091b47a82fd591abdafedc9dbd6914ff3c2c780b3ef60418d435ab9aeb43d9",
+        "lib/domain/registration_capacity.dart": "f30e2ce5d6bb9c29e1db7e5578db0b3ce828ae5802ea4279640aebe2a478cb2e"
+      },
+      "webSources": {
+        "quota-plan.js": "6c6c6bfc1741d7638d0ab6efa9ffbe1ec450fad27afd3321ffbd71378287c8e1",
+        "quota-shards.js": "50f653a78957137b700717d1a7dc78ab92b37f0840490718528dd0cee3643313",
+        "registration-queue.js": "61dc5f13a485b9c142142c8528808640c0d384b4810d8abcb305d05b813e5fcd"
+      },
+      "completedAt": "2026-09-09T16:27:31.408Z",
+      "rawPath": "tool/loadtest/logs/qr-1788971192492.json"
+    }
+  ]
+}

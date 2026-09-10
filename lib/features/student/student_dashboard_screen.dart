@@ -500,11 +500,12 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
       if (!mounted) return;
       _toast(_registerError(error));
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _busy = false;
           _queued = false;
         });
+      }
     }
   }
 
