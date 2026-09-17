@@ -1,7 +1,7 @@
 /// Bildirim akışının kaynakları.
 ///
 /// İki kaynak birleştirilir:
-///   1. Yönetici duyuruları (Firestore `announcements`),
+///   1. Yönetici duyuruları (Firestore `notifications`),
 ///   2. Kullanıcının etkinliklerinden türeyen ve zamanı gelmiş hatırlatmalar
 ///      (yaklaşıyor / başladı / başvurular kapandı).
 ///
@@ -60,7 +60,7 @@ final StreamProvider<List<Announcement>> myAnnouncementsProvider =
       final ReminderAudience? audience = ref.watch(notificationAudienceProvider);
       final String university = ref.watch(notificationUniversityProvider);
 
-      if (audience == null || university.isEmpty) {
+      if (audience == null) {
         return Stream<List<Announcement>>.value(const <Announcement>[]);
       }
 
@@ -68,11 +68,9 @@ final StreamProvider<List<Announcement>> myAnnouncementsProvider =
 
       return ref
           .watch(announcementRepositoryProvider)
-          .watchForUniversity(university)
-          .map(
-            (List<Announcement> all) => all
-                .where((Announcement a) => a.reaches(asClub: asClub))
-                .toList(),
+          .watchForViewer(
+            university: university,
+            role: asClub ? 'club' : 'student',
           );
     });
 

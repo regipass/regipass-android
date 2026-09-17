@@ -302,7 +302,7 @@ class _PhoneVerifyDialogState extends ConsumerState<_PhoneVerifyDialog> {
             .read(phoneHintRepositoryProvider)
             .write(
               email: email,
-              maskedPhone: maskE164ForDisplay(widget.phoneE164),
+              maskedPhone: passwordResetHintPhone(widget.phoneE164),
               roles: <String>[
                 if (session.hasStudentRole) UserRole.student,
                 if (session.hasClubRole) UserRole.club,

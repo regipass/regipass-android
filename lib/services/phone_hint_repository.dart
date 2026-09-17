@@ -10,10 +10,37 @@ import '../core/constants.dart';
 import 'firebase_refs.dart';
 
 class PasswordResetHint {
-  const PasswordResetHint({required this.maskedPhone, required this.roles});
+  const PasswordResetHint({
+    required this.maskedPhone,
+    required this.roles,
+    this.resolved = true,
+  });
+
+  /// Hiçbir kaynağa ulaşılamadığında dönen sonuç. [resolved] `false` olduğu
+  /// için "bu hesabın telefonu yok" diye yorumlanamaz.
+  static const PasswordResetHint unavailable = PasswordResetHint(
+    maskedPhone: '',
+    roles: <String>[],
+    resolved: false,
+  );
 
   final String maskedPhone;
   final List<String> roles;
+
+  /// Bir kaynak (Firestore ipucu ya da Auth'u okuyan Cloud Function)
+  /// gerçekten yanıt verdi mi?
+  ///
+  /// Boş [maskedPhone] iki ayrı şey demek olabilir: "hesaba bağlı doğrulanmış
+  /// telefon yok" ya da "okuyamadık". Birincisinde kullanıcıyı SMS
+  /// beklemeden uyarmak gerekir, ikincisinde akışı durdurmak kullanıcıyı
+  /// kurtarmadan tamamen koparır. [resolved] ikisini ayırır.
+  final bool resolved;
+
+  /// Karşılaştırılabilir bir maske elde var mı?
+  bool get hasMask => maskedPhone.isNotEmpty;
+
+  /// Kaynak yanıt verdi ve hesapta doğrulanmış telefon **yok**.
+  bool get knownPhoneless => resolved && maskedPhone.isEmpty;
 }
 
 /// js/modules/auth/phone-hint.js karşılığı.
@@ -36,6 +63,24 @@ class PasswordResetHint {
 class PhoneHintRepository {
   const PhoneHintRepository();
 
+  /// Maske değil, sunucudaki güncel Firebase Auth numarası karşılaştırılır.
+  /// Hata durumunda çağıran SMS göndermemelidir.
+  Future<bool> matchesAccountPhone({
+    required String email,
+    required String phoneE164,
+  }) async {
+    final result = await fbFunctions
+        .httpsCallable(
+          'checkPasswordResetPhone',
+          options: HttpsCallableOptions(timeout: const Duration(seconds: 8)),
+        )
+        .call(<String, String>{
+          'email': email.trim().toLowerCase(),
+          'phoneE164': phoneE164,
+        });
+    return result.data is Map && result.data['match'] == true;
+  }
+
   static const String _collection = 'phone_hints';
 
   /// E-posta düz metin yazılmasın diye SHA-256 (küçük harf hex).
@@ -53,15 +98,20 @@ class PhoneHintRepository {
   /// listelenip toplu tarama yapılamaz.
   Future<PasswordResetHint> readHint(String email) async {
     final String key = hashEmail(email);
-    if (key.isEmpty) {
-      return const PasswordResetHint(maskedPhone: '', roles: <String>[]);
-    }
+    // Boş e-posta sorulmadı bile; "telefonu yok" diye yorumlanmamalı.
+    if (key.isEmpty) return PasswordResetHint.unavailable;
 
     try {
       final PasswordResetHint stored = await readStoredHint(
         key,
       ).timeout(const Duration(seconds: 3));
-      if (stored.maskedPhone.isNotEmpty) return stored;
+      // Maskesiz kip açıkken elde kalmış ESKİ maskeli belge işe yaramaz:
+      // birebir karşılaştırma yapılamaz, kullanıcı yine yalnızca son iki
+      // hanesi tutan bir numarayla geçebilirdi. Böyle bir belge yok sayılıp
+      // Auth'u okuyan Cloud Function'a düşülür; o tam numarayı döndürür.
+      if (stored.maskedPhone.isNotEmpty && !_isStaleMask(stored.maskedPhone)) {
+        return stored;
+      }
     } catch (error) {
       _logReadFailure('firestore', error);
     }
@@ -73,9 +123,13 @@ class PhoneHintRepository {
       ).timeout(const Duration(seconds: 8));
     } catch (error) {
       _logReadFailure('authHint', error);
-      return const PasswordResetHint(maskedPhone: '', roles: <String>[]);
+      return PasswordResetHint.unavailable;
     }
   }
+
+  /// Maskesiz kip açıkken hâlâ maske taşıyan belge.
+  static bool _isStaleMask(String value) =>
+      kRevealPasswordResetPhone && (value.contains('X') || value.contains('x'));
 
   Future<PasswordResetHint> readStoredHint(String key) async {
     final Snap snap = await fbDb

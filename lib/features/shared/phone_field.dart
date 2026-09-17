@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../app/theme.dart';
+import '../../core/constants.dart';
 import '../../core/input_guard.dart';
 import '../../core/keyboard.dart';
 import '../../data/country_codes.dart';
@@ -73,6 +74,22 @@ String maskE164ForDisplay(String? e164, {int visibleCount = 2}) {
       : _groupBy3(masked);
 
   return '${match.dial} $grouped'.trim();
+}
+
+/// `phone_hints` belgesine yazılacak değer.
+///
+/// Normalde maske; [kRevealPasswordResetPhone] açıkken tam E.164 numara.
+/// Tek kapı olması önemli: ipucunu üç ayrı ekran yazıyor (oturum senkronu,
+/// telefon doğrulama ekranı ve sayfası) ve biri maskeli biri maskesiz
+/// yazarsa aynı kullanıcı hangi ekrandan geçtiğine göre farklı denetime
+/// tabi olurdu.
+String passwordResetHintPhone(String? e164) {
+  if (!kRevealPasswordResetPhone) return maskE164ForDisplay(e164);
+
+  final String value = (e164 ?? '').trim();
+  if (!value.startsWith('+')) return '';
+  final String digits = value.substring(1).replaceAll(RegExp(r'\D'), '');
+  return digits.isEmpty ? '' : '+$digits';
 }
 
 String _groupBy3(String digits) {

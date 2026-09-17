@@ -138,6 +138,22 @@ değişmez. Ayrıntı, QR türleri ve kural tarafı:
 
 ## Komutlar
 
+### GitHub'dan IPA alma
+
+`main` dalina push edildiginde **Actions > iOS derleme** akisi macOS'ta
+analiz, test ve iOS release derlemesini calistirir. Basarili calismanin
+**Artifacts > Regipass-ipa-unsigned** dosyasini indirip ZIP'i acin;
+icinde `Regipass-unsigned.ipa` bulunur.
+
+Bu IPA **imzasizdir**: cihaza kurulumdan once Apple sertifikasi ve uygun
+provisioning profiliyle imzalanmalidir. TestFlight / App Store icin Mac'te
+imzalama ayarlari tamamlanip `flutter build ipa --release` calistirilir;
+ayrintilar [iOS kurulum belgesinde](docs/ios-kurulum.md).
+Haritanin calismasi icin depodaki Actions secrets alanina `MAPS_API_KEY`
+eklenmelidir.
+
+### Yerel gelistirme
+
 ```bash
 flutter pub get
 flutter analyze

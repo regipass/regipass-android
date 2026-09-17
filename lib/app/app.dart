@@ -97,7 +97,7 @@ class _RegipassAppState extends ConsumerState<RegipassApp>
         .read(phoneHintRepositoryProvider)
         .write(
           email: email,
-          maskedPhone: maskE164ForDisplay(phone),
+          maskedPhone: passwordResetHintPhone(phone),
           roles: roles,
         );
     if (!saved && _lastPasswordResetHint == signature) {

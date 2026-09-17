@@ -62,6 +62,26 @@ class _AdminNotificationsScreenState
         s.universities.isNotEmpty).toList();
   }
 
+  /// Gönderim hatasının ekranda görünecek metni.
+  ///
+  /// `permission-denied` iki AYRI nedenden gelebiliyor ve ikisi istemciden
+  /// ayırt edilemiyor (emulator'de ikisi de aynı kodu üretiyor):
+  ///
+  ///   1. Yayındaki firestore.rules'ta `notifications` bloğu yok — dosyanın
+  ///      sonundaki `match /{document=**}` her yazmayı reddediyor.
+  ///   2. Kuraldaki sabit yönetici UID'si bu oturumunkinden farklı. Panele
+  ///      giriş E-POSTAYA bakıyor (`isAdminEmail`, state/providers.dart),
+  ///      Firestore izni ise UID'ye: aynı e-postayla açılmış BAŞKA bir hesap
+  ///      panele girebiliyor ama hiçbir şey yazamıyor.
+  ///
+  /// İkisini ayırmanın tek yolu oturumun UID'sini kuraldakiyle karşılaştırmak,
+  /// o yüzden UID mesaja ekleniyor. Bu metni yalnızca yönetici görür ve
+  /// gördüğü kendi UID'sidir.
+  String _sendErrorMessage(FirebaseException error, String uid) =>
+      error.code == 'permission-denied'
+      ? '${context.t('admin.notify.sendDenied')} (uid: $uid)'
+      : '${context.t('admin.notify.sendError')} (${error.code})';
+
   Future<void> _openComposer(String city, String university) async {
     final _ComposedAnnouncement? result =
         await showDialog<_ComposedAnnouncement>(
@@ -106,13 +126,7 @@ class _AdminNotificationsScreenState
       // uyarısının arkasında kaldı. Kod artık mesajda görünüyor.
       AppLog.error('announcement.send', error: error);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            error.code == 'permission-denied'
-                ? context.t('admin.notify.sendDenied')
-                : '${context.t('admin.notify.sendError')} (${error.code})',
-          ),
-        ),
+        SnackBar(content: Text(_sendErrorMessage(error, uid))),
       );
     } catch (error) {
       if (!mounted) return;
@@ -145,24 +159,43 @@ class _AdminNotificationsScreenState
       (int sum, List<String> list) => sum + list.length,
     );
 
+    // DİKKAT: Pencerenin kendi context'i (`dialogContext`) kullanılmak
+    // zorunda. Ekranın context'i yönetici kabuğunun (ShellRoute) KENDİ
+    // Navigator'ının altında kalıyor; `showDialog` ise pencereyi kök
+    // Navigator'a itiyor. Buraya ekranın context'i yazıldığında
+    // `Navigator.of(context).pop(...)` pencereyi değil kabuğun sayfasını
+    // açıyordu: onay penceresi ekranda kalıyor, arkasındaki bildirim ekranı
+    // kayboluyor ve duyuru hiç gönderilmiyordu.
     final bool confirmed =
         await showDialog<bool>(
           context: context,
-          builder: (BuildContext _) => AlertDialog(
-            title: Text(context.t('admin.notify.broadcastConfirmTitle')),
-            content: Text(
-              context.t('admin.notify.broadcastConfirmBody', <String, Object?>{
-                'count': universityCount,
-              }),
+          builder: (BuildContext dialogContext) => AlertDialog(
+            scrollable: true,
+            title: Text(dialogContext.t('admin.notify.broadcastConfirmTitle')),
+            // Onay penceresi eskiden yalnızca "197 üniversiteye gidecek"
+            // diyordu; gönderilecek metnin kendisi görünmüyordu. Geri
+            // alınamayan bir gönderimden önce yöneticinin başlığı, metni ve
+            // hedef kitleyi son bir kez görmesi gerekiyor.
+            content: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Text(
+                  dialogContext.t('admin.notify.broadcastConfirmBody',
+                      <String, Object?>{'count': universityCount}),
+                ),
+                const SizedBox(height: 14),
+                _BroadcastPreview(announcement: result),
+              ],
             ),
             actions: <Widget>[
               TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: Text(context.t('common.cancel')),
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: Text(dialogContext.t('common.cancel')),
               ),
               FilledButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: Text(context.t('admin.notify.send')),
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: Text(dialogContext.t('admin.notify.send')),
               ),
             ],
           ),
@@ -192,13 +225,7 @@ class _AdminNotificationsScreenState
       if (!mounted) return;
       AppLog.error('announcement.sendBroadcast', error: error);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            error.code == 'permission-denied'
-                ? context.t('admin.notify.sendDenied')
-                : '${context.t('admin.notify.sendError')} (${error.code})',
-          ),
-        ),
+        SnackBar(content: Text(_sendErrorMessage(error, uid))),
       );
     } catch (error) {
       if (!mounted) return;
@@ -413,6 +440,68 @@ class _ComposedAnnouncement {
   final String title;
   final String body;
   final String audience;
+}
+
+/// Hedef kitle değerinin ekranda görünen adı.
+String _audienceLabel(BuildContext context, String audience) =>
+    context.t(switch (audience) {
+      AnnouncementAudience.students => 'admin.notify.audience.students',
+      AnnouncementAudience.clubs => 'admin.notify.audience.clubs',
+      _ => 'admin.notify.audience.all',
+    });
+
+/// Onay penceresindeki "ne gönderilecek" özeti — hedef kitle, başlık, metin.
+class _BroadcastPreview extends StatelessWidget {
+  const _BroadcastPreview({required this.announcement});
+
+  final _ComposedAnnouncement announcement;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: context.subtleFill,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: context.hairline),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Icon(
+                Icons.people_alt_outlined,
+                size: 14,
+                color: context.inkMuted,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  _audienceLabel(context, announcement.audience),
+                  style: TextStyle(fontSize: 11.5, color: context.inkMuted),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            announcement.title,
+            style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            announcement.body,
+            maxLines: 4,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 12.5, color: context.inkMuted),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// Üniversiteye dokununca açılan metin penceresi.

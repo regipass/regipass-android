@@ -39,7 +39,7 @@ class DefaultFirebaseOptions {
     appId: '1:738082064551:web:96b3d0367a838bc904b382',
     messagingSenderId: '738082064551',
     projectId: 'eventapp-604a5',
-    authDomain: 'eventapp-604a5.firebaseapp.com',
+    authDomain: 'regipass.com',
     storageBucket: 'eventapp-604a5.firebasestorage.app',
     measurementId: 'G-KDR4SDH4W2',
   );

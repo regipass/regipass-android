@@ -147,3 +147,25 @@ bool isAutoCoverUrl(String url) =>
     url.isEmpty ||
     url == kEventPlaceholderImage ||
     kNatureImagePool.contains(url);
+
+/// **GEÇİCİ TEST ANAHTARI — şifre sıfırlama ipucunda telefon maskelenmez.**
+///
+/// `true` iken "şifremi unuttum" ekranı e-postaya bağlı numarayı maskesiz
+/// alır ve girilen numarayı **birebir** karşılaştırır: maskenin gizlediği
+/// ortadaki haneler de denetlenir, yani yalnızca son iki hanesi tutan bir
+/// numaraya artık SMS gitmez.
+///
+/// **Bedeli:** maske, e-posta adresini bilen birinin hesabın tam numarasını
+/// öğrenmesini engelliyordu. Anahtar açıkken bu koruma yok:
+/// - `phone_hints` koleksiyonu kurallarda tek tek okumaya açık,
+/// - `getPasswordResetHint` Cloud Function'ı oturum istemiyor.
+///
+/// Ayrıca açıkken telefon doğrulayan her kullanıcı `phone_hints` belgesine
+/// **tam numarasını** yazar; anahtar kapatılsa bile o belgeler kullanıcı
+/// numarasını yeniden doğrulayana kadar tam numarayı taşımaya devam eder
+/// (temizlik: koleksiyondaki ilgili belgeleri sil).
+///
+/// Sunucu tarafında karşılığı: `functions/passwordResetHint.js#kRevealPhone`.
+/// İkisi birlikte açılmalı — Cloud Function maskeli dönerse istemci birebir
+/// karşılaştırma yapamaz, maskeli denetime düşer.
+const bool kRevealPasswordResetPhone = true;

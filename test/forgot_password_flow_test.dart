@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:regipass/app/theme.dart';
 import 'package:regipass/features/auth/auth_widgets.dart';
+import 'package:regipass/features/shared/phone_field.dart';
 import 'package:regipass/features/auth/forgot_password_screen.dart';
 import 'package:regipass/l10n/app_strings.dart';
 import 'package:regipass/services/password_reset_auth_session.dart';
@@ -14,11 +15,41 @@ import 'package:regipass/state/providers.dart';
 
 class _Hints extends PhoneHintRepository {
   final Completer<PasswordResetHint>? pending;
-  const _Hints([this.pending]);
+  final PasswordResetHint hint;
+  const _Hints([
+    this.pending,
+    this.hint = const PasswordResetHint(
+      maskedPhone: '+90 XXX XXX XX 67',
+      roles: [],
+    ),
+  ]);
   @override
-  Future<PasswordResetHint> readHint(String email) async => pending != null
-      ? pending!.future
-      : const PasswordResetHint(maskedPhone: '+90 XXX XXX XX 67', roles: []);
+  Future<PasswordResetHint> readHint(String email) async =>
+      pending != null ? pending!.future : hint;
+
+  @override
+  Future<bool> matchesAccountPhone({
+    required String email,
+    required String phoneE164,
+  }) async => phoneE164 == '+905551234567' || phoneE164 == '+4915112345667';
+}
+
+class _PendingCheck extends _Hints {
+  final result = Completer<bool>();
+  int calls = 0;
+  String? checkedEmail;
+  String? checkedPhone;
+
+  @override
+  Future<bool> matchesAccountPhone({
+    required String email,
+    required String phoneE164,
+  }) {
+    calls++;
+    checkedEmail = email;
+    checkedPhone = phoneE164;
+    return result.future;
+  }
 }
 
 class _User implements User {
@@ -93,6 +124,7 @@ void main() {
   Future<void> screen(
     WidgetTester tester, {
     PhoneHintRepository hints = const _Hints(),
+    String number = '5551234567',
   }) async {
     sessions = [];
     tester.view.devicePixelRatio = 1;
@@ -118,7 +150,7 @@ void main() {
       ),
     );
     await frames(tester);
-    await tester.enterText(find.byType(TextField).first, '5551234567');
+    await tester.enterText(find.byType(TextField).first, number);
   }
 
   Future<void> send(WidgetTester tester) async {
@@ -130,17 +162,77 @@ void main() {
       .widget<AuthPrimaryButton>(find.byType(AuthPrimaryButton).first)
       .loading;
 
+  testWidgets('sunucu onayi beklenir ve tekrar gonder tek sorguda kalir', (
+    tester,
+  ) async {
+    final hints = _PendingCheck();
+    await screen(tester, hints: hints);
+    await send(tester);
+    await send(tester);
+    expect(hints.calls, 1);
+    expect(hints.checkedEmail, ' Test@Example.com ');
+    expect(hints.checkedPhone, '+905551234567');
+    expect(sessions, isEmpty);
+    hints.result.complete(true);
+    await frames(tester);
+    expect(sessions, hasLength(1));
+  });
+
+  testWidgets('sunucu sorgusu hata verirse SMS gonderilmez', (tester) async {
+    final hints = _PendingCheck();
+    await screen(tester, hints: hints);
+    await send(tester);
+    hints.result.completeError(
+      FirebaseException(plugin: 'cloud_functions', code: 'unavailable'),
+    );
+    await frames(tester);
+    expect(sessions, isEmpty);
+    expect(loading(tester), isFalse);
+    expect(find.byType(AuthFeedback), findsOneWidget);
+  });
+
+  testWidgets('sunucu zaman asimi sonrasi gec onay SMS baslatamaz', (
+    tester,
+  ) async {
+    final hints = _PendingCheck();
+    await screen(tester, hints: hints);
+    await send(tester);
+    await tester.pump(const Duration(seconds: 10));
+    await frames(tester);
+    expect(sessions, isEmpty);
+    expect(loading(tester), isFalse);
+    hints.result.complete(true);
+    await frames(tester);
+    expect(sessions, isEmpty);
+  });
+
+  testWidgets('ekran kapandiktan sonra sunucu onayi SMS baslatamaz', (
+    tester,
+  ) async {
+    final hints = _PendingCheck();
+    await screen(tester, hints: hints);
+    await send(tester);
+    await tester.pumpWidget(const SizedBox());
+    hints.result.complete(true);
+    await frames(tester);
+    expect(sessions, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
-    'ipucu okunamasa bile numara girilir; geciken ipucu SMS durumunu bozmaz',
+    'geciken ipucu beklenir, gelince numara dogrulanip SMS gonderilir',
     (tester) async {
       final pending = Completer<PasswordResetHint>();
       await screen(tester, hints: _Hints(pending));
       await send(tester);
-      expect(sessions, hasLength(1));
+      // Maske denetimi yapılamadan SMS gitmez: ipucu beklenir.
+      expect(sessions, isEmpty);
+      expect(loading(tester), isTrue);
       pending.complete(
         const PasswordResetHint(maskedPhone: '+90 XXX XXX XX 67', roles: []),
       );
       await frames(tester);
+      expect(sessions, hasLength(1));
       expect(loading(tester), isTrue);
       expect(find.textContaining('XX 67', findRichText: true), findsOneWidget);
       await tester.pump(const Duration(seconds: 76));
@@ -152,6 +244,192 @@ void main() {
       );
     },
   );
+
+  // --- SMS ONCESI MASKE DENETIMI ---------------------------------------
+  //
+  // Bu blogun tamaminda olculen tek sey su: `sessions` bos kalmali.
+  // `sessions` yalnizca `passwordResetSessionFactoryProvider` cagrildiginda
+  // doluyor, o da `verifyPhoneNumber`in tek yolu — yani bos liste "SMS
+  // istegi hic yapilmadi" demek.
+
+  testWidgets('maskeyle uyusmayan son hane SMS istegini hic baslatmaz', (
+    tester,
+  ) async {
+    await screen(tester, number: '5551234568'); // kayitli: ...67
+    await send(tester);
+    expect(sessions, isEmpty);
+    expect(loading(tester), isFalse);
+    expect(find.textContaining('kayıtlı numaranla uyuşmuyor'), findsOneWidget);
+    // Maske hata metninde de duruyor ki kullanici karsilastirabilsin.
+    expect(find.textContaining('+90 XXX XXX XX 67'), findsWidgets);
+  });
+
+  testWidgets('yanlis ulke kodu kendi mesajiyla ve SMS gondermeden durur', (
+    tester,
+  ) async {
+    await screen(
+      tester,
+      hints: const _Hints(
+        null,
+        PasswordResetHint(maskedPhone: '+49 XXX XXX XXX 67', roles: []),
+      ),
+      number: '5551234567',
+    );
+    await send(tester);
+    expect(sessions, isEmpty);
+    expect(find.textContaining('Ülke kodu'), findsOneWidget);
+  });
+
+  testWidgets('ayni ulkede hane sayisi tutmayan numara durur, tutan gecer', (
+    tester,
+  ) async {
+    // Almanya 10-11 hane kabul ediyor: ayni ulkede iki farkli uzunluk
+    // mumkun, yani uzunluk denetimi tek basina is goruyor.
+    await screen(
+      tester,
+      hints: const _Hints(
+        null,
+        PasswordResetHint(maskedPhone: '+49 XXX XXX XXX 67', roles: []),
+      ),
+    );
+    tester
+        .widget<PhoneField>(find.byType(PhoneField))
+        .controller
+        .selectCountry(findCountry('DE'));
+    await frames(tester);
+
+    await tester.enterText(find.byType(TextField).first, '1511234567'); // 10
+    await send(tester);
+    expect(sessions, isEmpty);
+    expect(find.textContaining('hane sayısı'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField).first, '15112345667'); // 11
+    await send(tester);
+    expect(sessions, hasLength(1));
+  });
+
+  testWidgets('dogru numara eskisi gibi SMS istegini baslatir', (tester) async {
+    await screen(tester, number: '5551234567');
+    await send(tester);
+    expect(sessions, hasLength(1));
+    expect(find.textContaining('uyuşmuyor'), findsNothing);
+  });
+
+  testWidgets(
+    'maskenin gizledigi hane farkliysa sunucu SMS gonderimini engeller',
+    (tester) async {
+      // Son iki hane aynı olsa bile sunucu tam numarayı karşılaştırır.
+      await screen(tester, number: '5339998867');
+      await send(tester);
+      expect(sessions, isEmpty);
+      expect(
+        find.textContaining('bu e-posta adresine kayıtlı değil'),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets('hesapta telefon yoksa SMS istenmeden aciklama gosterilir', (
+    tester,
+  ) async {
+    await screen(
+      tester,
+      hints: const _Hints(null, PasswordResetHint(maskedPhone: '', roles: [])),
+    );
+    await send(tester);
+    expect(sessions, isEmpty);
+    expect(
+      find.textContaining('doğrulanmış bir telefon numarası yok'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('ipucu okunamadiysa kurtarma kapanmaz, SMS gonderilir', (
+    tester,
+  ) async {
+    // Ag/kural hatasi: kaynak yanit vermedi. "Telefonu yok" diye
+    // yorumlanirsa kullanici kurtarmadan tamamen kopar.
+    await screen(
+      tester,
+      hints: const _Hints(null, PasswordResetHint.unavailable),
+    );
+    await send(tester);
+    expect(sessions, hasLength(1));
+    expect(find.textContaining('uyuşmuyor'), findsNothing);
+  });
+
+  testWidgets('ipucu hic gelmezse bekleme bitince SMS yine gonderilir', (
+    tester,
+  ) async {
+    await screen(tester, hints: _Hints(Completer<PasswordResetHint>()));
+    await send(tester);
+    expect(sessions, isEmpty);
+    await tester.pump(const Duration(seconds: 7));
+    await frames(tester);
+    expect(sessions, hasLength(1));
+    await tester.pump(const Duration(seconds: 76));
+    await frames(tester);
+  });
+
+  // --- MASKESIZ KIP (kRevealPasswordResetPhone) --------------------------
+
+  testWidgets('tam numarali ipucu: basi yanlis numara SMS gondermez', (
+    tester,
+  ) async {
+    // Bildirilen sorun: son iki hane dogru olunca numara geciyordu.
+    // Ipucu tam numara tasidiginda ortadaki haneler de denetleniyor.
+    await screen(
+      tester,
+      hints: const _Hints(
+        null,
+        PasswordResetHint(maskedPhone: '+905551234567', roles: []),
+      ),
+      number: '5339998867', // son iki hane ayni: ...67
+    );
+    await send(tester);
+    expect(sessions, isEmpty);
+    expect(find.textContaining('bu hesaba ait değil'), findsOneWidget);
+  });
+
+  testWidgets('tam numarali ipucu: tek hane farki bile SMS gondermez', (
+    tester,
+  ) async {
+    await screen(
+      tester,
+      hints: const _Hints(
+        null,
+        PasswordResetHint(maskedPhone: '+905551234567', roles: []),
+      ),
+      number: '5551234667', // ortadaki bir hane farkli
+    );
+    await send(tester);
+    expect(sessions, isEmpty);
+  });
+
+  testWidgets('tam numarali ipucu: dogru numara SMS gonderir', (tester) async {
+    await screen(
+      tester,
+      hints: const _Hints(
+        null,
+        PasswordResetHint(maskedPhone: '+905551234567', roles: []),
+      ),
+      number: '5551234567',
+    );
+    await send(tester);
+    expect(sessions, hasLength(1));
+    expect(find.textContaining('ait değil'), findsNothing);
+  });
+
+  testWidgets('maske hatasi sonrasi duzeltilen numara gonderilebilir', (
+    tester,
+  ) async {
+    await screen(tester, number: '5551234568');
+    await send(tester);
+    expect(sessions, isEmpty);
+    await tester.enterText(find.byType(TextField).first, '5551234567');
+    await send(tester);
+    expect(sessions, hasLength(1));
+  });
 
   testWidgets(
     'ilk hata sonrasi eski callback ikinci denemenin suresini durduramaz',
@@ -250,7 +528,10 @@ void main() {
     auth.signInResult.complete(_Credential('other@example.com'));
     await frames(tester);
     expect(find.text('Şifreyi Kaydet'), findsNothing);
-    expect(find.textContaining('hesapla eşleşmiyor'), findsOneWidget);
+    expect(
+      find.textContaining('bu e-posta adresine kayıtlı değil'),
+      findsOneWidget,
+    );
     expect(auth.closed, isTrue);
   });
 

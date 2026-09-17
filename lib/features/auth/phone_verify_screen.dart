@@ -266,7 +266,7 @@ class _PhoneVerifyScreenState extends ConsumerState<PhoneVerifyScreen> {
             .read(phoneHintRepositoryProvider)
             .write(
               email: user.email!,
-              maskedPhone: maskE164ForDisplay(verifiedPhone),
+              maskedPhone: passwordResetHintPhone(verifiedPhone),
               roles: roles,
             );
       }

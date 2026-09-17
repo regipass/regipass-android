@@ -11,6 +11,7 @@ import '../../core/app_log.dart';
 import '../../services/password_reset_auth_session.dart';
 import '../../core/input_guard.dart';
 import '../../core/password_policy.dart';
+import '../../domain/masked_phone_match.dart';
 import '../../domain/routing.dart';
 import '../../l10n/app_strings.dart';
 import '../../services/phone_hint_repository.dart';
@@ -44,6 +45,14 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
   _Stage _stage = _Stage.enterPhone;
   String? _maskedPhone;
+
+  /// İpucu sorgusuna bir kaynak yanıt verdi mi? `false` ise maske denetimi
+  /// yapılmaz — okuyamadığımız bir ipucu yüzünden kurtarma akışı kapanmaz.
+  bool _hintResolved = false;
+
+  /// Açılışta başlayan ipucu isteği. "Kod gönder"e ipucu gelmeden basılırsa
+  /// denetim yapılabilsin diye beklenir; normalde çoktan tamamlanmıştır.
+  Future<void>? _hintLoad;
   bool _obscure = true;
   bool _saving = false;
   String? _feedback;
@@ -80,7 +89,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadMaskedPhone());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _hintLoad = _loadMaskedPhone(),
+    );
   }
 
   @override
@@ -132,7 +143,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   /// kullanıcıyı yeniden telefon adımına düşürmesin.
   bool get _verified => _stage == _Stage.newPassword;
 
-  // İpucu yüklenmesi telefon girişini veya devam eden SMS adımını bekletmez.
+  // İpucu yüklenmesi telefon girişini bekletmez; yalnızca "kod gönder"
+  // anında sonucuna bakılır (bkz. [_sendCode]).
   Future<void> _loadMaskedPhone() async {
     try {
       final PasswordResetHint hint = await ref
@@ -140,12 +152,54 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
           .readHint(widget.email)
           .timeout(const Duration(seconds: 12));
       if (!mounted || _leaving) return;
-      setState(
-        () => _maskedPhone = hint.maskedPhone.isEmpty ? null : hint.maskedPhone,
-      );
+      setState(() {
+        _maskedPhone = hint.hasMask ? hint.maskedPhone : null;
+        _hintResolved = hint.resolved;
+      });
     } catch (error) {
+      // Zaman aşımı/kural hatası: ipucu yok sayılır ama "telefon yok" diye
+      // yorumlanmaz — `_hintResolved` false kalır, ön denetim atlanır.
       _logFailure('hint', error);
     }
+  }
+
+  /// SMS'ten **önce** çalışan maske denetimi.
+  ///
+  /// Elde karşılaştırılacak maske yoksa `null` döner ve akış eskisi gibi
+  /// devam eder: nihai yetki hâlâ [_applyCredential] içindeki e-posta
+  /// eşleşmesindedir, bu kapı yalnızca boşa giden SMS'i önler.
+  String? _maskPrecheckError(String typedE164) {
+    if (_hintResolved && _maskedPhone == null) {
+      // Kaynak yanıt verdi ve hesapta doğrulanmış telefon yok: kod gönderilse
+      // de doğrulama asla e-postayla eşleşemez.
+      return context.t('forgotPassword.noPhoneOnRecord');
+    }
+
+    final MaskedPhoneMismatch? mismatch = matchHintPhone(
+      hint: _maskedPhone,
+      typedE164: typedE164,
+    );
+    if (mismatch == null) return null;
+
+    final String hint = _maskedPhone ?? '';
+    return switch (mismatch) {
+      MaskedPhoneMismatch.exact => context.t(
+        'forgotPassword.phoneNotOnAccount',
+        <String, Object?>{'masked': hint},
+      ),
+      MaskedPhoneMismatch.country => context.t(
+        'forgotPassword.maskCountryMismatch',
+        <String, Object?>{'masked': hint},
+      ),
+      MaskedPhoneMismatch.length => context.t(
+        'forgotPassword.maskLengthMismatch',
+        <String, Object?>{'masked': hint},
+      ),
+      MaskedPhoneMismatch.suffix => context.t(
+        'forgotPassword.maskSuffixMismatch',
+        <String, Object?>{'masked': hint},
+      ),
+    };
   }
 
   bool _isCurrent(int attempt) => mounted && !_leaving && attempt == _attempt;
@@ -184,7 +238,46 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       return;
     }
 
+    // Maske denetimi ağ isteği değil, ama ipucunun gelmiş olmasına bağlı.
+    // Açılışta başlayan istek normalde kullanıcı numarayı yazana kadar
+    // bitiyor; bitmediyse kısa süre beklenir. Bekleme başarısız olsa bile
+    // `_hintResolved` false kaldığı için akış durmaz.
+    if (_hintLoad != null && !_hintResolved) {
+      setState(() => _stage = _Stage.sending);
+      try {
+        await _hintLoad!.timeout(const Duration(seconds: 6));
+      } catch (_) {
+        // Yok say: denetim atlanır, SMS yine gönderilir.
+      }
+      if (!mounted || _leaving) return;
+      setState(() => _stage = _Stage.enterPhone);
+    }
+
+    final String? maskError = _maskPrecheckError(typed);
+    if (maskError != null) {
+      _setFeedback(maskError);
+      return;
+    }
+
     FocusScope.of(context).unfocus();
+    // Maske yalnızca görünen haneleri denetler. SMS için tam numaranın
+    // hesaba ait olduğunu web ile aynı sunucu API'si onaylamalıdır.
+    final int checkAttempt = ++_attempt;
+    setState(() => _stage = _Stage.sending);
+    _setFeedback(null);
+    try {
+      final bool matches = await ref
+          .read(phoneHintRepositoryProvider)
+          .matchesAccountPhone(email: widget.email, phoneE164: typed)
+          .timeout(const Duration(seconds: 9));
+      if (!_isCurrent(checkAttempt)) return;
+      if (!matches) {
+        throw FirebaseAuthException(code: 'password-reset-phone-mismatch');
+      }
+    } catch (error) {
+      _failAttempt(checkAttempt, error, 'checkPhone');
+      return;
+    }
     unawaited(_resetAuth?.close());
     final PasswordResetAuthSession auth = ref.read(
       passwordResetSessionFactoryProvider,
@@ -416,7 +509,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     // numaraya uygulanan kötüye kullanım sınırı, projenin SMS bölge
     // politikası...) ve hepsi kullanıcıya aynı cümleyi gösteriyordu. Kod
     // ekranda görününce hangi kapının kapalı olduğu tek bakışta anlaşılıyor.
-    return code.isEmpty ? message : '$message\n(kod: $code)';
+    return code.isEmpty || code == 'password-reset-phone-mismatch'
+        ? message
+        : '$message\n(kod: $code)';
   }
 
   Future<void> _leave() async {

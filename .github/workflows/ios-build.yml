@@ -1,11 +1,10 @@
-# iOS derlemesi — macOS runner'da imzasiz arsiv uretir.
+# iOS derlemesi — macOS runner'da sonradan imzalanabilecek IPA uretir.
 #
 # NEDEN IMZASIZ: imzali bir .ipa uretmek dagitim sertifikasi (.p12),
 # parolasi, provisioning profile ve Team ID gerektirir; bunlar Apple
 # Developer hesabindan alinir ve depoya konamaz. Imzasiz derleme hicbir
-# sir istemez ve asil sorulan seyi yanitlar: "iOS tarafi gercekten
-# derleniyor mu?" — pod cozumlemesi, Swift/ObjC eklenti derlemesi ve
-# Xcode arsivi dahil.
+# sir istemez. Regipass-unsigned.ipa dogrudan cihaza kurulamaz veya
+# TestFlight'a yuklenemez; once uygun Apple profiliyle imzalanmalidir.
 #
 # Imzalamayi eklemek icin: asagidaki "build-signed" isini yorumdan
 # cikarin ve dort secret'i deponun Settings > Secrets bolumune girin.
@@ -19,6 +18,9 @@ on:
     branches: [main]
   # Actions sekmesinden elle de calistirilabilir.
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build-unsigned:
@@ -39,6 +41,10 @@ jobs:
           channel: stable
           cache: true
 
+      # Podfile'daki izin ve file_picker ayarlari CocoaPods gerektirir.
+      - name: CocoaPods kullanimini sec
+        run: flutter config --no-enable-swift-package-manager
+
       - name: Bagimliliklari cek
         run: flutter pub get
 
@@ -52,10 +58,10 @@ jobs:
         run: echo "MAPS_API_KEY=$MAPS_API_KEY" > ios/Flutter/Maps.xcconfig
 
       - name: Statik analiz
-        run: flutter analyze
+        run: flutter analyze --no-pub lib test
 
       - name: Testler
-        run: flutter test
+        run: flutter test --no-pub
 
       # pod install ayri bir adim: en sik burada patliyor (deployment target
       # uyusmazligi, pod cozumleme catismasi). Ayri adim olunca hata
@@ -67,6 +73,25 @@ jobs:
 
       - name: iOS derlemesi (imzasiz)
         run: flutter build ios --release --no-codesign
+
+      - name: Imzasiz IPA paketle
+        run: |
+          set -euo pipefail
+          test -d build/ios/iphoneos/Runner.app
+          mkdir -p "$RUNNER_TEMP/regipass-ipa/Payload" build/ios/ipa
+          ditto build/ios/iphoneos/Runner.app "$RUNNER_TEMP/regipass-ipa/Payload/Runner.app"
+          cd "$RUNNER_TEMP/regipass-ipa"
+          zip -qry "$GITHUB_WORKSPACE/build/ios/ipa/Regipass-unsigned.ipa" Payload
+          unzip -tq "$GITHUB_WORKSPACE/build/ios/ipa/Regipass-unsigned.ipa"
+
+      - name: IPA ciktisini yukle
+        uses: actions/upload-artifact@v4
+        with:
+          name: Regipass-ipa-unsigned
+          path: build/ios/ipa/Regipass-unsigned.ipa
+          compression-level: 0
+          retention-days: 14
+          if-no-files-found: error
 
       - name: Derleme ciktisini yukle
         uses: actions/upload-artifact@v4

@@ -1,20 +1,59 @@
 /// Yönetici duyurularının okunması ve gönderilmesi.
 ///
-/// Uygulamanın sunucu tarafı olmadığı için duyuru "push" değildir: yönetici
-/// Firestore'a yazar, hedef kitledeki istemciler dinleyiciden görür ve
-/// cihazda bildirime çevirir (bkz. lib/state/notification_providers.dart).
+/// Duyurular FCM kullanmaz: yönetici Firestore'a yazar, hedef kitledeki
+/// istemciler dinleyiciden görür ve cihazda bildirime çevirir
+/// (bkz. features/notifications/notification_sync.dart).
 /// Bunun bilinen sınırı, uygulaması tamamen kapalı olan bir kullanıcının
 /// duyuruyu ancak uygulamayı bir dahaki açışında almasıdır.
 library;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import '../data/location_data.dart';
+import '../domain/notification_targets.dart';
 import '../models/announcement.dart';
 import 'firebase_refs.dart';
 
 class AnnouncementRepository {
-  const AnnouncementRepository();
+  const AnnouncementRepository({this.firestore});
+
+  final FirebaseFirestore? firestore;
+  Col get _collection => (firestore ?? fbDb).collection('notifications');
+
+  /// Genel ve üniversite duyurularını aynı akışta okur. Eski mobil
+  /// kayıtlarında recipients bulunmadığı için üniversite filtresi korunur.
+  /// Sıralama istemcide yapılır; ek bir bileşik dizin gerekmez.
+  Stream<List<Announcement>> watchForViewer({
+    required String university,
+    required String role,
+  }) {
+    final List<String> keys = notificationViewerKeys(
+      university: university,
+      role: role,
+    );
+    if (keys.isEmpty) {
+      return Stream<List<Announcement>>.value(const <Announcement>[]);
+    }
+    final Filter targets = Filter.or(
+      Filter('recipients', arrayContainsAny: keys),
+      Filter('global', isEqualTo: true),
+    );
+    return _collection
+        .where(
+          university.trim().isEmpty
+              ? targets
+              : Filter.or(
+                  targets,
+                  Filter('university', isEqualTo: university.trim()),
+                ),
+        )
+        .snapshots()
+        .map(_mapSorted)
+        .map(
+          (List<Announcement> all) => all
+              .where((Announcement a) => a.reaches(asClub: role == 'club'))
+              .toList(),
+        );
+  }
 
   /// Bir üniversiteye gönderilmiş duyurular — canlı.
   ///
@@ -26,14 +65,14 @@ class AnnouncementRepository {
       return Stream<List<Announcement>>.value(const <Announcement>[]);
     }
 
-    return announcementsCol
+    return _collection
         .where('university', isEqualTo: university)
         .snapshots()
         .map(_mapSorted);
   }
 
   /// Yöneticinin gönderdiği son duyurular.
-  Stream<List<Announcement>> watchRecent({int limit = 30}) => announcementsCol
+  Stream<List<Announcement>> watchRecent({int limit = 30}) => _collection
       .orderBy('createdAtMs', descending: true)
       .limit(limit)
       .snapshots()
@@ -70,96 +109,76 @@ class AnnouncementRepository {
     required String university,
     required String city,
     required String senderUid,
+  }) => _send(
+    title: title,
+    body: body,
+    audience: audience,
+    university: university,
+    city: city,
+    senderUid: senderUid,
+    global: false,
+  );
+
+  Future<void> _send({
+    required String title,
+    required String body,
+    required String audience,
+    required String university,
+    required String city,
+    required String senderUid,
+    required bool global,
   }) async {
     final String cleanTitle = title.trim();
     final String cleanBody = body.trim();
+    final String cleanUniversity = university.trim();
+    if (cleanTitle.isEmpty ||
+        cleanTitle.length > 120 ||
+        cleanBody.isEmpty ||
+        cleanBody.length > 1000 ||
+        cleanUniversity.isEmpty ||
+        senderUid.trim().isEmpty ||
+        !AnnouncementAudience.isValid(audience)) {
+      throw ArgumentError('Invalid notification');
+    }
+    final List<String> recipients = notificationRecipientKeys(
+      university: cleanUniversity,
+      audience: audience,
+      global: global,
+    );
+    if (recipients.isEmpty) {
+      throw ArgumentError('Empty notification recipients');
+    }
 
-    // `message` firestore.rules'un ZORUNLU tuttuğu alan (boş olamaz, en çok
-    // 1000 karakter) ve web yöneticisinin tek metin alanı. Mobilin başlık +
-    // gövde ayrımı `title`/`body` içinde ayrıca korunur; web'den bakan
-    // yönetici yine tek parça metni görür.
-    final String message = <String>[
-      if (cleanTitle.isNotEmpty) cleanTitle,
-      if (cleanBody.isNotEmpty) cleanBody,
-    ].join('\n');
-
-    await announcementsCol.add(<String, dynamic>{
+    await _collection.add(<String, dynamic>{
       'title': cleanTitle,
       'body': cleanBody,
-      'message': message.length > 1000 ? message.substring(0, 1000) : message,
-      'audience': AnnouncementAudience.isValid(audience)
-          ? audience
-          : AnnouncementAudience.all,
-      'university': university,
-      'city': city,
+      'message': cleanBody,
+      'audience': audience,
+      'global': global,
+      'recipients': recipients,
+      'university': cleanUniversity,
+      'city': city.trim(),
       'createdAtMs': DateTime.now().millisecondsSinceEpoch,
       'createdAt': FieldValue.serverTimestamp(),
-      'createdBy': senderUid,
+      'createdBy': senderUid.trim(),
     });
   }
 
-  Future<void> delete(String id) => announcementsCol.doc(id).delete();
+  Future<void> delete(String id) => _collection.doc(id).delete();
 
-  /// Duyuruyu ÜLKEDEKİ TÜM üniversitelere gönderir ("genel duyuru").
-  ///
-  /// Gerçek bir yayın (broadcast) alanı yok: her istemci zaten yalnızca
-  /// kendi üniversitesinin duyurularını dinliyor (bkz.
-  /// `watchForUniversity` ve notification_providers.dart). Bu yüzden
-  /// "herkese gönder", [kCityUniversities]'teki her (şehir, üniversite)
-  /// çifti için ayrı bir `notifications` belgesi yazmak anlamına gelir —
-  /// [send] ile aynı şema, tek farkı hedefin döngüyle kurulması.
-  ///
-  /// Firestore tek batch'te en çok 500 yazma kabul ediyor; üniversite
-  /// sayısı bunun altında kalsa da ileride artabileceği için 450'lik
-  /// parçalara bölünüyor.
+  /// Web ile aynı tek genel kaydı yazar; üniversitesi olmayanlar da alır.
   Future<void> sendBroadcast({
     required String title,
     required String body,
     required String audience,
     required String senderUid,
-  }) async {
-    final String cleanTitle = title.trim();
-    final String cleanBody = body.trim();
-
-    final String message = <String>[
-      if (cleanTitle.isNotEmpty) cleanTitle,
-      if (cleanBody.isNotEmpty) cleanBody,
-    ].join('\n');
-    final String cleanMessage = message.length > 1000
-        ? message.substring(0, 1000)
-        : message;
-    final String cleanAudience = AnnouncementAudience.isValid(audience)
-        ? audience
-        : AnnouncementAudience.all;
-    final int nowMs = DateTime.now().millisecondsSinceEpoch;
-
-    final List<({String city, String university})> targets =
-        <({String city, String university})>[
-          for (final MapEntry<String, List<String>> entry
-              in kCityUniversities.entries)
-            for (final String university in entry.value)
-              (city: entry.key, university: university),
-        ];
-
-    const int chunkSize = 450;
-    for (int i = 0; i < targets.length; i += chunkSize) {
-      final WriteBatch batch = fbDb.batch();
-      for (final ({String city, String university}) target in targets.skip(
-        i,
-      ).take(chunkSize)) {
-        batch.set(announcementsCol.doc(), <String, dynamic>{
-          'title': cleanTitle,
-          'body': cleanBody,
-          'message': cleanMessage,
-          'audience': cleanAudience,
-          'university': target.university,
-          'city': target.city,
-          'createdAtMs': nowMs,
-          'createdAt': FieldValue.serverTimestamp(),
-          'createdBy': senderUid,
-        });
-      }
-      await batch.commit();
-    }
-  }
+  }) => _send(
+    title: title,
+    body: body,
+    audience: audience,
+    senderUid: senderUid,
+    university: globalNotificationUniversity,
+    city: '',
+    global: true,
+  );
 }

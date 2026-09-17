@@ -53,7 +53,23 @@ kExtraTranslations = <String, Map<String, String>>{
         'Kodu gönderebilmemiz için numaranı tam olarak yaz:',
     'forgotPassword.sendCode': 'Doğrulama kodu gönder',
     'forgotPassword.phoneMismatch':
-        'Bu numara girdiğin e-postaya ait hesapla eşleşmiyor. Numaranı kontrol et.',
+        'Girdiğin telefon numarası bu e-posta adresine kayıtlı değil. '
+        'Lütfen hesabına kayıtlı telefon numarasını gir.',
+    // SMS gönderilmeden önceki maske denetimi. Üç mesaj da kayıtlı maskeyi
+    // tekrar gösteriyor: kullanıcı hatayı okurken numarayı yeniden
+    // görebilsin diye (maske kartı klavye açıkken ekranda kalmayabiliyor).
+    'forgotPassword.phoneNotOnAccount':
+        'Girdiğin numara bu hesaba ait değil. Kayıtlı numara: {{masked}}',
+    'forgotPassword.maskCountryMismatch':
+        'Ülke kodu kayıtlı numaranla uyuşmuyor. Kayıtlı numara: {{masked}}',
+    'forgotPassword.maskLengthMismatch':
+        'Numaranın hane sayısı kayıtlı numaranla uyuşmuyor. '
+        'Kayıtlı numara: {{masked}}',
+    'forgotPassword.maskSuffixMismatch':
+        'Girdiğin numara kayıtlı numaranla uyuşmuyor. Kayıtlı numara: {{masked}}',
+    'forgotPassword.noPhoneOnRecord':
+        'Bu e-postaya bağlı doğrulanmış bir telefon numarası yok, bu yüzden '
+        'SMS ile kurtarma yapılamıyor. Destek ile iletişime geç.',
     'forgotPassword.tooManyAttempts':
         'Çok fazla deneme yapıldı. Biraz sonra tekrar dene.',
     'forgotPassword.newPasswordHint': 'Doğrulandı. Yeni şifreni belirle.',
@@ -965,7 +981,20 @@ kExtraTranslations = <String, Map<String, String>>{
         'Type your number in full so we can send the code:',
     'forgotPassword.sendCode': 'Send verification code',
     'forgotPassword.phoneMismatch':
-        "This number doesn't match the account for that email. Please check it.",
+        'This phone number is not registered to that email address. '
+        'Please enter the phone number registered to your account.',
+    'forgotPassword.phoneNotOnAccount':
+        'That number does not belong to this account. Saved: {{masked}}',
+    'forgotPassword.maskCountryMismatch':
+        'The country code does not match your saved number. Saved: {{masked}}',
+    'forgotPassword.maskLengthMismatch':
+        'That number has a different number of digits than your saved one. '
+        'Saved: {{masked}}',
+    'forgotPassword.maskSuffixMismatch':
+        'That number does not match your saved one. Saved: {{masked}}',
+    'forgotPassword.noPhoneOnRecord':
+        'There is no verified phone number linked to this email, so SMS '
+        'recovery is unavailable. Please contact support.',
     'forgotPassword.tooManyAttempts':
         'Too many attempts. Please try again later.',
     'forgotPassword.newPasswordHint': 'Verified. Choose your new password.',

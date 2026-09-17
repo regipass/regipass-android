@@ -1,12 +1,29 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { maskAuthPhone, createPasswordResetHintHandler } = require('./passwordResetHint');
+const { maskAuthPhone, revealAuthPhone, hintPhone, createPasswordResetHintHandler } = require('./passwordResetHint');
 
 test('Auth numarasi yalnizca son iki haneyle maskelenir', () => {
   assert.equal(maskAuthPhone('+905551234567'), '+90 XXX XXX XX 67');
   assert.equal(maskAuthPhone('+14155552671'), '+XXXXXXXXX71');
   assert.equal(maskAuthPhone('5551234567'), '');
   assert.equal(maskAuthPhone(null), '');
+});
+
+test('maskesiz kip gecerli numarayi oldugu gibi, gecersizi bos dondurur', () => {
+  // kRevealPhone acikken istemci birebir karsilastirma yapabilsin diye tam
+  // numara doner; bicim denetimi maskeli kiptekiyle ayni.
+  assert.equal(revealAuthPhone('+905551234567'), '+905551234567');
+  assert.equal(revealAuthPhone('+14155552671'), '+14155552671');
+  assert.equal(revealAuthPhone('5551234567'), '');
+  assert.equal(revealAuthPhone(null), '');
+});
+
+test('hintPhone anahtarla secilen bicimi verir; ikisi de ayni numarayi tanir', () => {
+  // Anahtarin hangi konumda oldugundan bagimsiz olarak cikti, ayni numaranin
+  // ya tam hali ya da maskesi olmali; ucuncu bir sey donmemeli.
+  const out = hintPhone('+905551234567');
+  assert.ok(out === '+905551234567' || out === '+90 XXX XXX XX 67', out);
+  assert.equal(hintPhone('bozuk'), '');
 });
 
 test('eksik ipucu icin normalize e-postanin Auth numarasi kullanilir', async () => {
@@ -20,7 +37,7 @@ test('eksik ipucu icin normalize e-postanin Auth numarasi kullanilir', async () 
     logError: () => assert.fail('unexpected error'),
   });
   assert.deepEqual(await handler({data:{email:' Test@Example.com '}}), {
-    maskedPhone:'+90 XXX XXX XX 67', roles:[],
+    maskedPhone: hintPhone('+905551234567'), roles:[],
   });
   assert.deepEqual(calls, ['test@example.com', 'test@example.com']);
 });

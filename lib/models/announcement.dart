@@ -1,11 +1,10 @@
-/// `notifications/{id}` — yöneticinin bir üniversiteye gönderdiği duyuru.
+/// `notifications/{id}` — yöneticinin genel veya üniversiteye özel duyurusu.
 ///
 /// Şema web yöneticisiyle ORTAK (js/modules/notifications/notifications.js):
 /// zorunlu alan `message`, hedef kitle `student` | `club` | `both`.
 /// firestore.rules bu alanları doğruluyor; başka bir kelime dağarcığıyla
-/// yazılan belge reddedilir. `title`/`body` yalnızca mobilin eklediği ek
-/// alanlardır — web'den gelen duyurularda bulunmaz, o yüzden okurken
-/// `message` yedeğe düşer.
+/// yazılan belge reddedilir. `title` ve `message` iki platformda ortaktır;
+/// eski mobil kayıtlardaki `body` alanı da okunmaya devam eder.
 ///
 /// Gönderim yalnızca yönetici hesabına açıktır, okuma hedef kitledeki
 /// herkese.
@@ -50,8 +49,7 @@ class Announcement {
     return Announcement(
       id: id,
       title: asString(data['title']),
-      // Web yöneticisi tek bir `message` alanı yazıyor; başlıksız gelen
-      // duyurunun metni kaybolmasın diye gövde oraya düşer.
+      // Web kaydının metni message, eski mobil kaydının metni body olabilir.
       body: asString(data['body']).isNotEmpty
           ? asString(data['body'])
           : asString(data['message']),
@@ -75,8 +73,7 @@ class Announcement {
   /// [AnnouncementAudience] değerlerinden biri.
   final String audience;
 
-  /// Hedef üniversite. Duyurular her zaman tek bir üniversiteye gönderilir —
-  /// yönetici ekranındaki liste üniversite üzerinden kuruluyor.
+  /// Hedef üniversite; genel duyuruda gösterim için TÜM ÜNİVERSİTELER yazılır.
   final String university;
 
   /// Üniversitenin şehri; yalnızca gösterim için tutulur.
