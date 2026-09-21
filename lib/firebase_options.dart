@@ -4,7 +4,8 @@ import 'package:flutter/foundation.dart'
 
 /// Firebase yapılandırması — `flutterfire configure` tarafından üretilir.
 ///
-/// Paket adı: `app.regipass.mobile` (Android applicationId ve iOS bundle ID).
+/// Android applicationId: `app.regipassapp.mobile`; iOS bundle ID:
+/// `app.regipass.mobile`.
 ///
 /// ⚠️ Google Sign-In ve Telefon (SMS) doğrulaması için bu dosya TEK BAŞINA
 /// yetmez. Firebase Console > Proje ayarları > Android uygulaması altına
@@ -47,7 +48,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyD3ql3O4j6SwnYKeM3CNUwaYOdJhw0IyJo',
-    appId: '1:738082064551:android:f9b708cfa1426e7d04b382',
+    appId: '1:738082064551:android:be8069a17d52262504b382',
     messagingSenderId: '738082064551',
     projectId: 'eventapp-604a5',
     databaseURL: 'https://eventapp-604a5-default-rtdb.firebaseio.com',

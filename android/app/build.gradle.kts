@@ -34,7 +34,7 @@ val keystoreProperties: Properties = Properties().apply {
 val hasReleaseKeystore: Boolean = keystoreProperties.getProperty("storeFile") != null
 
 android {
-    namespace = "app.regipass.mobile"
+    namespace = "app.regipassapp.mobile"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -51,7 +51,7 @@ android {
         // regipass.app alan adının ters-DNS karşılığı. Firebase'deki Android
         // uygulama kaydı da bu adla yapılmalı — ikisi eşleşmezse Google
         // Sign-In "DEVELOPER_ERROR" verir.
-        applicationId = "app.regipass.mobile"
+        applicationId = "app.regipassapp.mobile"
         // Flutter varsayılanı (API 24) firebase_auth 6.x'in istediği 23 ve
         // mobile_scanner/ML Kit'in istediği 21'in üzerinde — elle sabitlemek
         // yalnızca tavanı düşürür, bu yüzden varsayılan bırakıldı.

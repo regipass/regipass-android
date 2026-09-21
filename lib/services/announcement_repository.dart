@@ -25,6 +25,7 @@ class AnnouncementRepository {
   Stream<List<Announcement>> watchForViewer({
     required String university,
     required String role,
+    required int createdAfterMs,
   }) {
     final List<String> keys = notificationViewerKeys(
       university: university,
@@ -50,7 +51,11 @@ class AnnouncementRepository {
         .map(_mapSorted)
         .map(
           (List<Announcement> all) => all
-              .where((Announcement a) => a.reaches(asClub: role == 'club'))
+              .where(
+                (Announcement a) =>
+                    a.reaches(asClub: role == 'club') &&
+                    a.createdAtMs > createdAfterMs,
+              )
               .toList(),
         );
   }

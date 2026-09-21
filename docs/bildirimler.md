@@ -68,7 +68,9 @@ alanlardır — web'den gönderilen duyurularda bulunmazlar, o yüzden mobil
 okurken gövde `message` alanına düşer ve başlık yerine "Duyuru" yazar.
 
 İstemci kendi üniversitesinin duyurularını dinler, rolüne uymayanları eler ve
-yeni geleni cihaz bildirimine çevirir.
+yeni geleni cihaz bildirimine çevirir. Hesap açılmadan önce gönderilmiş
+duyurular, Firebase Auth hesap oluşturma zamanı esas alınarak öğrenci ve kulüp
+bildirim akışından çıkarılır; bildirim listesinde ve zil rozetinde görünmez.
 
 ## Koleksiyon adı: neden `notifications`
 

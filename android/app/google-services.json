@@ -81,6 +81,50 @@
           ]
         }
       }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:738082064551:android:be8069a17d52262504b382",
+        "android_client_info": {
+          "package_name": "app.regipassapp.mobile"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "738082064551-vrnfhp9td4j6mbrrr64k4gp0h9nplqo4.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "app.regipassapp.mobile",
+            "certificate_hash": "b6b7f1a72e4b495d4fda49ce266fb6ca32353861"
+          }
+        },
+        {
+          "client_id": "738082064551-5h5e3jab4u4ndk580og5gkkfvj5p9m0f.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD3ql3O4j6SwnYKeM3CNUwaYOdJhw0IyJo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "738082064551-5h5e3jab4u4ndk580og5gkkfvj5p9m0f.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "738082064551-8ar660fj2b8j8sukqbhhkvfn3hhv62ts.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "app.regipass.mobile"
+              }
+            }
+          ]
+        }
+      }
     }
   ],
   "configuration_version": "1"

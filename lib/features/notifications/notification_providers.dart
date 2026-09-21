@@ -59,8 +59,16 @@ final StreamProvider<List<Announcement>> myAnnouncementsProvider =
     StreamProvider<List<Announcement>>((Ref ref) {
       final ReminderAudience? audience = ref.watch(notificationAudienceProvider);
       final String university = ref.watch(notificationUniversityProvider);
+      final int? accountCreatedAtMs = ref
+          .watch(sessionProvider)
+          .user
+          ?.metadata
+          .creationTime
+          ?.millisecondsSinceEpoch;
 
-      if (audience == null) {
+      // Hesap açılmadan önce gönderilmiş duyuruları liste, rozet ve cihaz
+      // bildiriminin kullandığı ortak akışa dahil etme.
+      if (audience == null || accountCreatedAtMs == null) {
         return Stream<List<Announcement>>.value(const <Announcement>[]);
       }
 
@@ -71,6 +79,7 @@ final StreamProvider<List<Announcement>> myAnnouncementsProvider =
           .watchForViewer(
             university: university,
             role: asClub ? 'club' : 'student',
+            createdAfterMs: accountCreatedAtMs,
           );
     });
 

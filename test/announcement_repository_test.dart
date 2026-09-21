@@ -191,9 +191,11 @@ void main() {
         () async {
           final db = _Firestore();
           addTearDown(db.notifications.controller.close);
-          final stream = AnnouncementRepository(
-            firestore: db,
-          ).watchForViewer(university: university, role: role);
+          final stream = AnnouncementRepository(firestore: db).watchForViewer(
+            university: university,
+            role: role,
+            createdAfterMs: 0,
+          );
           final future = stream.first;
           exported.add({
             'kind': 'query',
@@ -228,5 +230,48 @@ void main() {
         },
       );
     }
+  }
+
+  for (final role in ['student', 'club']) {
+    test('$role only receives announcements after account creation', () async {
+      final db = _Firestore();
+      addTearDown(db.notifications.controller.close);
+      final future = AnnouncementRepository(firestore: db)
+          .watchForViewer(
+            university: 'ÇUKUROVA ÜNİVERSİTESİ',
+            role: role,
+            createdAfterMs: 2000,
+          )
+          .first;
+      db.notifications.controller.add(
+        _Snapshot([
+          _SnapshotDocument('old-global', {
+            'audience': 'both',
+            'global': true,
+            'message': 'Old',
+            'createdAtMs': 1000,
+          }),
+          _SnapshotDocument('at-creation', {
+            'audience': 'both',
+            'global': true,
+            'message': 'Same instant',
+            'createdAtMs': 2000,
+          }),
+          _SnapshotDocument('new-global', {
+            'audience': 'both',
+            'global': true,
+            'message': 'New',
+            'createdAtMs': 3000,
+          }),
+          _SnapshotDocument('new-other-role', {
+            'audience': role == 'club' ? 'student' : 'club',
+            'global': true,
+            'message': 'Other',
+            'createdAtMs': 4000,
+          }),
+        ]),
+      );
+      expect((await future).map((a) => a.id), ['new-global']);
+    });
   }
 }
