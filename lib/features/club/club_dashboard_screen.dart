@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
 import '../../domain/event_utils.dart';
+import '../../domain/routing.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/event.dart';
 import '../../models/profiles.dart';
@@ -18,14 +20,40 @@ import 'club_shell.dart';
 /// etkinliklerini yönettiği yer "Etkinliklerim" sekmesi. Sıralama öğrenci
 /// keşfiyle aynı algoritmayı kullanır: kulübün üniversitesi ve alanı,
 /// öğrencinin üniversite/bölümünün yerine geçer.
-class ClubDashboardScreen extends ConsumerWidget {
-  const ClubDashboardScreen({super.key});
+class ClubDashboardScreen extends ConsumerStatefulWidget {
+  const ClubDashboardScreen({this.openEventId, super.key});
+
+  final String? openEventId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ClubDashboardScreen> createState() => _ClubDashboardScreenState();
+}
+
+class _ClubDashboardScreenState extends ConsumerState<ClubDashboardScreen> {
+  String? _openedEventId;
+
+  @override
+  Widget build(BuildContext context) {
     final ClubProfile? club = ref.watch(sessionProvider).clubProfile;
     final AsyncValue<List<AppEvent>> events =
         ref.watch(clubDiscoverEventsProvider);
+
+    final String? requestedId = widget.openEventId;
+    if (requestedId != null && requestedId.isNotEmpty &&
+        requestedId != _openedEventId) {
+      final AppEvent? requested = ref.watch(eventByIdProvider(requestedId)).value;
+      if (requested != null) {
+        _openedEventId = requestedId;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          if (requested.clubId == ref.read(currentUidProvider)) {
+            context.go('${Routes.clubEventDetail}?eventId=${Uri.encodeComponent(requestedId)}');
+          } else {
+            showEventDetailSheet(context, event: requested);
+          }
+        });
+      }
+    }
 
     final String name = (club?.clubName ?? '').isNotEmpty
         ? club!.clubName

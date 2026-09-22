@@ -28,6 +28,10 @@ void main() {
     expect(destination.path, Routes.studentHome);
     expect(destination.queryParameters['openEventId'], 'event-42');
     expect(destination.queryParameters['qr'], link.token);
+
+    final Uri clubDestination = Uri.parse(link.clubDestination());
+    expect(clubDestination.path, Routes.clubHome);
+    expect(clubDestination.queryParameters['openEventId'], 'event-42');
   });
 
   test('oturum QR bağlantısı session alanı olmadan dış rota kabul edilmez', () {

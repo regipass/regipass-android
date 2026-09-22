@@ -8,7 +8,7 @@
 /// Kulübün ekrana bastığı kodların (kapı girişi ve oturum yoklaması) içeriği
 /// ham token değil şu adrestir:
 ///
-///     https://regipass.com/qr.html?t=EVAPPQR1:...
+///     https://eventapp-604a5.web.app/qr.html?t=EVAPPQR1:...
 ///
 /// Sebebi: öğrenci telefonunun **kendi kamera uygulaması** ham metni okuyunca
 /// yapacak bir şey bulamaz, yalnızca düz yazı gösterir. Adres olduğunda ise
@@ -29,7 +29,7 @@ const String kQrEntryPath = 'qr.html';
 const String kQrTokenParam = 't';
 
 /// Mobilde `window.location` yoktur; adres her zaman yayındaki siteye kurulur.
-const String kQrPublicBaseUrl = 'https://regipass.com/';
+const String kQrPublicBaseUrl = 'https://eventapp-604a5.web.app/';
 
 String _toBase64Url(String text) => base64Url
     .encode(utf8.encode(text))

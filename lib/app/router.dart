@@ -193,7 +193,10 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
         routes: <RouteBase>[
           GoRoute(
             path: Routes.clubHome,
-            builder: (_, _) => const ClubDashboardScreen(),
+            builder: (BuildContext context, GoRouterState state) =>
+                ClubDashboardScreen(
+                  openEventId: state.uri.queryParameters['openEventId'],
+                ),
           ),
           GoRoute(
             path: Routes.clubEvents,

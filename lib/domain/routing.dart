@@ -138,8 +138,8 @@ class CheckinQrDeepLink {
   ).toString();
 
   String clubDestination() => Uri(
-    path: Routes.clubEventDetail,
-    queryParameters: <String, String>{'eventId': eventId},
+    path: Routes.clubHome,
+    queryParameters: <String, String>{'openEventId': eventId},
   ).toString();
 }
 

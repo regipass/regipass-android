@@ -33,6 +33,22 @@ Session _studentSession({required bool phoneVerified}) => Session(
   activeRole: UserRole.student,
 );
 
+Session _clubSession() => Session(
+  isLoading: false,
+  user: _FakeUser(),
+  appUser: AppUser.fromMap('student-1', <String, dynamic>{
+    'role': UserRole.club,
+    'lastRole': UserRole.club,
+  }),
+  studentProfile: null,
+  clubProfile: ClubProfile.fromMap('student-1', <String, dynamic>{
+    'onboardingCompleted': true,
+    'phoneVerified': true,
+    'clubStatus': ClubStatus.approved,
+  }),
+  activeRole: UserRole.club,
+);
+
 Uri _entryUri() => Uri(
   path: Routes.qrEntry,
   queryParameters: <String, String>{
@@ -55,6 +71,15 @@ void main() {
     expect(destination.path, Routes.studentHome);
     expect(destination.queryParameters['openEventId'], 'event-42');
     expect(destination.queryParameters['qr'], isNotEmpty);
+  });
+
+  test('onaylı kulüp dış QR ile etkinlik sahipliği kontrolüne yönelir', () {
+    final Uri destination = Uri.parse(
+      resolveRedirectUriForTest(_clubSession(), _entryUri())!,
+    );
+
+    expect(destination.path, Routes.clubHome);
+    expect(destination.queryParameters['openEventId'], 'event-42');
   });
 
   test('telefon doğrulaması QR niyetini korur ve sonra etkinliğe döner', () {
