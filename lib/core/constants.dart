@@ -168,4 +168,6 @@ bool isAutoCoverUrl(String url) =>
 /// Sunucu tarafında karşılığı: `functions/passwordResetHint.js#kRevealPhone`.
 /// İkisi birlikte açılmalı — Cloud Function maskeli dönerse istemci birebir
 /// karşılaştırma yapamaz, maskeli denetime düşer.
-const bool kRevealPasswordResetPhone = true;
+// İP-0b: test bitti, kapatıldı. Açıkken e-postayı bilen herkes hesabın tam
+// numarasını öğrenebiliyordu.
+const bool kRevealPasswordResetPhone = false;

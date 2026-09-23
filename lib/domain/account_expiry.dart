@@ -11,7 +11,9 @@
 library;
 
 /// Doğrulama için tanınan süre.
-const Duration kPhoneVerifyGrace = Duration(minutes: 3);
+/// İP-0b: 3 dakikadan 15 dakikaya çıkarıldı — form + SMS 3 dakikaya sığmıyor,
+/// SMS gecikince hesap formun ortasında siliniyordu.
+const Duration kPhoneVerifyGrace = Duration(minutes: 15);
 
 /// Doğrulanmamış kaydın silinme zamanı geldi mi?
 ///

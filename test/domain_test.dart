@@ -889,9 +889,9 @@ void main() {
     );
 
     test('süre dolmadan silinmez, dolduktan sonra silinir', () {
-      expect(expiredAt(signedUpAt.add(const Duration(minutes: 3))), isFalse);
+      expect(expiredAt(signedUpAt.add(const Duration(minutes: 15))), isFalse);
       expect(
-        expiredAt(signedUpAt.add(const Duration(minutes: 3, seconds: 1))),
+        expiredAt(signedUpAt.add(const Duration(minutes: 15, seconds: 1))),
         isTrue,
       );
     });

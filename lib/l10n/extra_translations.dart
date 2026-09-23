@@ -37,7 +37,7 @@ kExtraTranslations = <String, Map<String, String>>{
     // Doğrulama ekranındaki süre uyarısı — süre domain/account_expiry.dart
     // içindeki kPhoneVerifyGrace ile aynı olmalı.
     'phoneVerify.deleteWarning':
-        'Telefon numaranı 3 dakika içinde doğrulamazsan hesabın silinir.',
+        'Telefon numaranı 15 dakika içinde doğrulamazsan hesabın silinir.',
 
     // Giriş ekranı (yeniden tasarım) ve Keşfet
     'nav.explore': 'Keşfet',
@@ -966,7 +966,7 @@ kExtraTranslations = <String, Map<String, String>>{
         'Your account was deleted because it was not verified within the '
         'given time. You can sign up again.',
     'phoneVerify.deleteWarning':
-        'If you do not verify your phone number within 3 minutes, your '
+        'If you do not verify your phone number within 15 minutes, your '
         'account will be deleted.',
 
     'nav.explore': 'Explore',

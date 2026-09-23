@@ -4,7 +4,8 @@ const { HttpsError } = require('firebase-functions/v2/https');
 // ile BIRLIKTE acilip kapatilmali. Acikken bu fonksiyon tam numarayi
 // donduruyor: e-posta adresini bilen herkes hesabin numarasini ogrenebilir
 // (cagri oturum istemiyor, yalnizca hiz siniri var). Kapatmak icin false.
-const kRevealPhone = true;
+// IP-0b: test bitti, kapatildi.
+const kRevealPhone = false;
 
 function maskAuthPhone(phone) {
   if (typeof phone !== 'string' || !/^\+[1-9]\d{6,14}$/.test(phone)) return '';

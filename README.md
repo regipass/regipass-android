@@ -6,8 +6,9 @@ koleksiyonlarını** kullanır; web ve mobil aynı veriyi okur/yazar.
 
 ## Kurulum
 
-Paket adı her platformda **`app.regipass.mobile`**; Firebase kayıtları da bu
-adla yapılmış ve `lib/firebase_options.dart` gerçek değerleri taşıyor.
+Paket adı Android'de **`app.regipassapp.mobile`** (Google Play'deki uygulama),
+iOS'ta **`app.regipass.mobile`** (Team `64G83H5LB2`); Firebase kayıtları da bu
+adlarla yapılmış ve `lib/firebase_options.dart` gerçek değerleri taşıyor.
 Yeniden üretmek gerekirse:
 
 ```bash

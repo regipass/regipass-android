@@ -35,7 +35,7 @@ göstermelidir.
 
 ## Web yayını için ilişki dosyaları
 
-Mobil proje Android paket adını `app.regipass.mobile` kullanır. Android App
+Mobil proje Android paket adını `app.regipassapp.mobile` kullanır (Google Play'deki uygulama). Android App
 Link doğrulaması için web sunucusunda şu dosya HTTPS ile, yönlendirme olmadan
 yayınlanmalıdır:
 
@@ -47,9 +47,12 @@ Dosyadaki `sha256_cert_fingerprints` değeri **Play Console > App integrity >
 App signing key certificate** ekranındaki SHA-256 olmalıdır. Yerel debug veya
 `google-services.json` içindeki SHA-1 bu değer değildir.
 
-8 Eylül 2026'da canlı alan adı kontrol edildi: dosya `application/json` ile
-200 dönüyor, paket adı doğru ve aşağıdaki iki yayın imzası yer alıyor. Yeni
-Play imzasına geçilirse bu iki değer silinmeden yenisi eklenmelidir.
+23 Eylül 2026 (İP-0b): Play'deki paket `app.regipassapp.mobile` olduğu için
+dosyaya bu paket için yeni bir kayıt eklendi. Kayıtta Play Console'daki imzalar
+(uygulama imzalama anahtarı, upload anahtarı) ve yerel release/debug imzaları
+var. Eski `app.regipass.mobile` kaydı zarar vermediği için ikinci sırada
+duruyor. Dosya web reposunda `scripts/generate-app-link-associations.mjs` ile
+üretilir; yeni imza eklenirse eskiler silinmeden eklenmelidir.
 
 ```json
 [
@@ -57,11 +60,8 @@ Play imzasına geçilirse bu iki değer silinmeden yenisi eklenmelidir.
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "app.regipass.mobile",
-      "sha256_cert_fingerprints": [
-        "7D:AC:A7:72:66:DA:72:DB:63:B0:2B:84:B4:18:CF:CF:0C:FC:77:1C:C3:7A:6B:30:D6:47:AB:08:E7:F8:3B:57",
-        "3B:5C:16:48:4F:0C:85:28:E1:25:A7:F8:2C:4E:EC:B4:04:9A:39:48:B5:8F:6E:1C:1F:32:40:9B:6D:00:70:A8"
-      ]
+      "package_name": "app.regipassapp.mobile",
+      "sha256_cert_fingerprints": ["<Play uygulama imzalama SHA-256>", "<upload SHA-256>", "..."]
     }
   }
 ]

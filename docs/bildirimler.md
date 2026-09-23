@@ -7,9 +7,11 @@ Uygulamada iki tür bildirim var ve ikisi de **cihazda** üretiliyor:
 | Etkinlik hatırlatmaları | Cihaza kurulan alarm (`zonedSchedule`) | **Çalışır** |
 | Yönetici duyuruları | Firestore dinleyicisi + anlık bildirim | Çalışmaz (bkz. [Bilinen sınır](#bilinen-sınır)) |
 
-Sunucu tarafı (Cloud Functions) olmadığı için FCM kullanılmıyor: bir konuya
-(topic) push göndermek sunucu anahtarı ister, o anahtar da istemci paketine
-konulamaz.
+FCM henüz kullanılmıyor. Projede artık Cloud Functions var (`europe-west1`,
+bkz. `functions/`), ama bildirim gönderen bir fonksiyon yazılmadı. Konuya
+(topic) push göndermek sunucu anahtarı ister ve o anahtar istemci paketine
+konulamaz; bu yüzden anlık bildirimler bir Cloud Function ile yapılacak
+(bildirim iş paketi).
 
 ## Etkinlik hatırlatmaları
 
