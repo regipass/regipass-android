@@ -6,11 +6,12 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
 import '../../domain/checkin_qr.dart';
-import '../../domain/session_qr_window.dart';
+import '../../domain/qr_signing.dart';
 import '../../domain/event_utils.dart';
 import '../../domain/routing.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/event.dart';
+import '../../services/attendance_service.dart';
 import '../../state/providers.dart';
 import '../shared/common_widgets.dart';
 import '../shared/event_widgets.dart';
@@ -348,7 +349,12 @@ Future<void> showSessionQrDialog(
           'session': session,
         }),
       ),
-      content: _RotatingSessionQr(event: event, session: session),
+      content: _RotatingSignedQr(
+        event: event,
+        type: 'session-checkin',
+        session: session,
+        service: ref.read(attendanceServiceProvider),
+      ),
       actions: <Widget>[
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(),
@@ -384,55 +390,79 @@ Future<AppEvent?> _publishQr(
   }
 }
 
-/// Yenilemeyi dilim **sınırına** hizalar: ilk bekleme, içinde bulunulan 20
-/// saniyelik dilimin bitişine kadardır. Böylece ekrandaki kod ile öğrencinin
-/// cihazındaki dilim hesabı aynı anda döner ve tolerans penceresi boşa
-/// harcanmaz (club-events.js#scheduleSessionQrRotation ile aynı).
-class _RotatingSessionQr extends StatefulWidget {
-  const _RotatingSessionQr({required this.event, required this.session});
+/// Kapı ve oturum QR'ı: **imzalı ve 20 saniyede bir yenilenir** (İP-Y).
+///
+/// Etkinliğin gizli anahtarı açılışta bir kez sunucudan alınır
+/// (getCheckinQrKey); her dilimin imzası cihazda üretilir. Öğrencinin
+/// okuttuğu kodu sunucu doğrular: ekran görüntüsü ~40 saniye sonra işe
+/// yaramaz. Dilim sunucu saatine göre hesaplanır.
+///
+/// Yenileme dilim **sınırına** hizalıdır: ilk bekleme içinde bulunulan
+/// dilimin bitişine kadar sürer (club-events.js#scheduleQrRotation ile aynı).
+class _RotatingSignedQr extends StatefulWidget {
+  const _RotatingSignedQr({
+    required this.event,
+    required this.type,
+    required this.service,
+    this.session = 0,
+  });
 
   final AppEvent event;
+
+  /// `session-checkin` ya da `event-entry`.
+  final String type;
   final int session;
+  final AttendanceService service;
 
   @override
-  State<_RotatingSessionQr> createState() => _RotatingSessionQrState();
+  State<_RotatingSignedQr> createState() => _RotatingSignedQrState();
 }
 
-class _RotatingSessionQrState extends State<_RotatingSessionQr> {
+class _RotatingSignedQrState extends State<_RotatingSignedQr> {
+  QrSigner? _signer;
+  bool _failed = false;
   Timer? _rotation;
   Timer? _countdown;
-  late int _slot;
-  late int _secondsLeft;
+  int _slot = 0;
+  int _secondsLeft = 20;
 
   @override
   void initState() {
     super.initState();
-    _slot = currentSessionQrSlot();
-    _secondsLeft = _remainingSeconds();
-
-    // Saniye sayacı yalnızca ipucu satırını tazeler; kodu döndüren ayrı bir
-    // zamanlayıcıdır ve dilim sınırına hizalıdır.
-    _countdown = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() => _secondsLeft = _remainingSeconds());
-    });
-    _scheduleRotation();
+    _load();
   }
 
-  int _remainingSeconds() =>
-      (msUntilNextSessionQrSlot() / 1000).ceil().clamp(1, 20);
-
-  void _scheduleRotation() {
-    _rotation?.cancel();
-    _rotation = Timer(Duration(milliseconds: msUntilNextSessionQrSlot()), () {
+  Future<void> _load() async {
+    try {
+      final QrSigner signer = await widget.service.fetchQrSigner(widget.event.id);
       if (!mounted) return;
-      setState(() => _slot = currentSessionQrSlot());
-      // Sınırdan sonrası tam pencere aralıklıdır.
-      _rotation = Timer.periodic(
-        const Duration(milliseconds: kSessionQrWindowMs),
-        (_) {
-          if (mounted) setState(() => _slot = currentSessionQrSlot());
-        },
-      );
+      setState(() {
+        _signer = signer;
+        _failed = false;
+        _slot = signer.slot();
+        _secondsLeft = _remainingSeconds(signer);
+      });
+      // Saniye sayacı yalnızca ipucu satırını tazeler; kodu döndüren ayrı bir
+      // zamanlayıcıdır ve dilim sınırına hizalıdır.
+      _countdown = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) setState(() => _secondsLeft = _remainingSeconds(signer));
+      });
+      _scheduleRotation(signer);
+    } catch (_) {
+      if (mounted) setState(() => _failed = true);
+    }
+  }
+
+  int _remainingSeconds(QrSigner signer) => (signer.msUntilNextSlot() / 1000)
+      .ceil()
+      .clamp(1, signer.windowMs ~/ 1000);
+
+  void _scheduleRotation(QrSigner signer) {
+    _rotation?.cancel();
+    _rotation = Timer(Duration(milliseconds: signer.msUntilNextSlot() + 50), () {
+      if (!mounted) return;
+      setState(() => _slot = signer.slot());
+      _scheduleRotation(signer);
     });
   }
 
@@ -445,16 +475,50 @@ class _RotatingSessionQrState extends State<_RotatingSessionQr> {
 
   @override
   Widget build(BuildContext context) {
-    final String token = createCheckinQrToken(
-      buildSessionCheckinPayload(
+    final QrSigner? signer = _signer;
+    if (signer == null) {
+      return SizedBox(
+        width: 296,
+        height: 296,
+        child: Center(
+          child: _failed
+              ? Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Text(
+                      context.t('attendance.qrKeyError'),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: () {
+                        setState(() => _failed = false);
+                        _load();
+                      },
+                      child: Text(context.t('common.retry')),
+                    ),
+                  ],
+                )
+              : const CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    final Map<String, dynamic> payload = <String, dynamic>{
+      ...signer.sign(
+        type: widget.type,
         eventId: widget.event.id,
         session: widget.session,
-        slot: _slot,
-        locationLat: widget.event.locationLat,
-        locationLng: widget.event.locationLng,
-        locationRadius: widget.event.effectiveRadius,
+        slotOverride: _slot,
       ),
-    );
+      // Konum yalnızca bilgi; mesafe sunucuda etkinlik belgesinden hesaplanır.
+      if (widget.event.locationLat != null && widget.event.locationLng != null) ...<String, dynamic>{
+        'locationLat': widget.event.locationLat,
+        'locationLng': widget.event.locationLng,
+        'locationRadius': widget.event.effectiveRadius,
+      },
+    };
+    final String token = createCheckinQrToken(payload);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -465,9 +529,12 @@ class _RotatingSessionQrState extends State<_RotatingSessionQr> {
         _QrImage(data: buildCheckinQrUrl(token)),
         const SizedBox(height: 12),
         Text(
-          context.t('clubEvents.session.qrRotatingHint', <String, Object?>{
-            'seconds': _secondsLeft,
-          }),
+          context.t(
+            widget.type == 'event-entry'
+                ? 'attendance.entryRotatingHint'
+                : 'clubEvents.session.qrRotatingHint',
+            <String, Object?>{'seconds': _secondsLeft},
+          ),
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.bodySmall,
         ),
@@ -476,11 +543,10 @@ class _RotatingSessionQrState extends State<_RotatingSessionQr> {
   }
 }
 
-/// Kapıda gösterilen ortak giriş QR'ı.
+/// Kapıda gösterilen ortak giriş QR'ı (İP-Y: o da imzalı ve döner).
 ///
-/// Oturum QR'ından farklı olarak **yenilenmez**: kapı kodunun sınırı tazelik
-/// değil, kulübün kapıyı açık tutmasıdır (`events.entryOpen`). Görevli girişi
-/// bitirdiğinde ekran görüntüsü de dahil hiçbir kod işe yaramaz.
+/// Kapının sınırı kulübün girişi açık tutmasıdır (`events.entryOpen`); buna ek
+/// olarak kod 20 saniyede bir değişir, kapının fotoğrafı evden işe yaramaz.
 Future<void> showDoorCheckinQrDialog(
   BuildContext context,
   WidgetRef ref,
@@ -488,30 +554,15 @@ Future<void> showDoorCheckinQrDialog(
 ) async {
   final AppEvent? event = await _publishQr(context, ref, eventId);
   if (event == null || !context.mounted) return;
-  final String token = createCheckinQrToken(
-    buildEventEntryPayload(
-      eventId: eventId,
-      locationLat: event.locationLat,
-      locationLng: event.locationLng,
-      locationRadius: event.effectiveRadius,
-    ),
-  );
 
   return showDialog<void>(
     context: context,
     builder: (BuildContext dialogContext) => AlertDialog(
       title: Text(dialogContext.t('clubEvents.entry.qrTitle')),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          _QrImage(data: buildCheckinQrUrl(token)),
-          const SizedBox(height: 12),
-          Text(
-            dialogContext.t('clubEvents.entry.qrHint'),
-            textAlign: TextAlign.center,
-            style: Theme.of(dialogContext).textTheme.bodySmall,
-          ),
-        ],
+      content: _RotatingSignedQr(
+        event: event,
+        type: 'event-entry',
+        service: ref.read(attendanceServiceProvider),
       ),
       actions: <Widget>[
         TextButton(

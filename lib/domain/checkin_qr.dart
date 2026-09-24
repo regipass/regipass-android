@@ -113,16 +113,21 @@ String buildCheckinQrImageUrl(String data, {int size = 280}) {
 /// taşınır. Konum **taşınmaz** — QR'ı okutan taraf görevlidir, öğrenci zaten
 /// karşısında durmaktadır. Konum yalnızca salondaki oturum QR'ında anlamlıdır,
 /// çünkü onu öğrenci kendi telefonuyla okutur.
+///
+/// [ticketCode] (İP-Y): sunucunun ürettiği bilet kodu, `c` alanında taşınır;
+/// kulüp okuttuğunda kayıttakiyle karşılaştırılır.
 Map<String, dynamic> buildStudentCheckinPayload({
   required String registrationId,
   required String eventId,
   required String studentId,
+  String ticketCode = '',
 }) => <String, dynamic>{
   'v': 1,
   'type': 'event-checkin',
   'registrationId': registrationId,
   'eventId': eventId,
   'studentId': studentId,
+  if (ticketCode.isNotEmpty) 'c': ticketCode,
 };
 
 /// Kulübün ekrana bastığı, öğrencilerin okuttuğu paylaşılan oturum QR yükü.

@@ -262,49 +262,10 @@ class EventRepository {
     'updatedAt': FieldValue.serverTimestamp(),
   });
 
-  /// Öğrencinin, kulübün ekrana bastığı oturum QR'ını okutmasıyla giriş
-  /// (student-qr-checkin.js). `checkedInByClubId` bu yoldan YAZILMAZ —
-  /// firestore.rules kulüp doğrulaması ile öğrencinin kendi bildirimini
-  /// bu alana bakarak ayırt eder.
-  Future<void> markOwnSessionCheckIn({
-    required String eventId,
-    required String studentId,
-    required EventRegistration registration,
-    required int currentSession,
-  }) async {
-    final int nowMs = DateTime.now().millisecondsSinceEpoch;
-
-    await registrationDoc(eventId, studentId).update(<String, dynamic>{
-      'checkedInAtMs': registration.checkedInAtMs ?? nowMs,
-      'checkedInAt': FieldValue.serverTimestamp(),
-      'sessionsAttended': registration.sessionsAttended + 1,
-      'lastSessionCheckInAtMs': nowMs,
-      'lastAttendedSession': currentSession,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-  }
-
-  /// Öğrencinin kapıdaki ortak QR'ı okutmasıyla yazılan ilk giriş damgası.
-  /// Oturum sayacı bilerek değişmez; Check-in + Yoklama modunda sayım ancak
-  /// ilgili oturum QR'ı okutulduğunda artar.
-  Future<void> markOwnDoorCheckin({
-    required String eventId,
-    required String studentId,
-  }) async {
-    final int nowMs = DateTime.now().millisecondsSinceEpoch;
-    await registrationDoc(eventId, studentId).update(<String, dynamic>{
-      'checkedInAtMs': nowMs,
-      'checkedInAt': FieldValue.serverTimestamp(),
-      // `checkedInVia` ZORUNLU: firestore.rules >
-      // studentCanMarkOwnEventCheckIn hem bu alanın "self-qr" olmasını hem de
-      // yazılan alanların yalnızca bu dördü olmasını şart koşuyor. Alan
-      // yazılmazsa kural girişi permission-denied ile reddeder.
-      // `checkedInByClubId` bu yoldan yazılmaz: girişin kulüp doğrulamasıyla
-      // mı öğrencinin kendisi tarafından mı yapıldığı buradan ayırt edilir.
-      'checkedInVia': 'self-qr',
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-  }
+  // İP-Y: öğrencinin kendi kapı girişi ve oturum yoklaması artık sunucuda
+  // yazılıyor (AttendanceService.checkInWithQr → functions/attendance.js).
+  // Buradaki doğrudan yazma yolları (markOwnSessionCheckIn /
+  // markOwnDoorCheckin) kaldırıldı; kurallardaki eski yol aşama 2'de kapanır.
 
   /// Kapıyı açar/kapatır. Öğrenci verisine hiçbir aşamada dokunulmaz.
   ///

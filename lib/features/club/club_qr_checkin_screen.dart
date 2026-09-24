@@ -8,6 +8,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../app/theme.dart';
 import '../../domain/checkin_qr.dart';
 import '../../domain/event_utils.dart';
+import '../../domain/qr_signing.dart';
 import '../../domain/routing.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/event.dart';
@@ -95,13 +96,21 @@ class _ClubQrCheckinScreenState extends ConsumerState<ClubQrCheckinScreen> {
 
     setState(() => _busy = true);
     try {
-      await _process(eventId, studentId);
+      await _process(
+        eventId,
+        studentId,
+        payload['c'] is String ? payload['c'] as String : null,
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
-  Future<void> _process(String eventId, String studentId) async {
+  Future<void> _process(
+    String eventId,
+    String studentId,
+    String? ticketCode,
+  ) async {
     final String? clubId = ref.read(sessionProvider).user?.uid;
     if (clubId == null) return;
 
@@ -161,6 +170,19 @@ class _ClubQrCheckinScreenState extends ConsumerState<ClubQrCheckinScreen> {
       return;
     }
 
+    // ── Bilet kodu (İP-Y) ────────────────────────────────────────────
+    // Biletin içindeki kod kayıttakiyle karşılaştırılır; uid'i bilinen
+    // birinin bileti taklit edilemez. Eski sürümün kodsuz bileti aşama 1'de
+    // uyarıyla kabul edilir.
+    final ({bool ok, bool legacy}) ticket = verifyTicketCode(
+      given: ticketCode,
+      expected: registration.ticketCode,
+    );
+    if (!ticket.ok) {
+      _show(false, context.t('clubScan.ticketMismatch'));
+      return;
+    }
+
     // ── Konum ────────────────────────────────────────────────────────
     // Kapıda konum DOĞRULANMAZ: QR'ı okutan kişi kulüp görevlisidir, öğrenci
     // fiziksel olarak kapıda durmaktadır. Bu yüzden bilet yükü de koordinat
@@ -186,11 +208,12 @@ class _ClubQrCheckinScreenState extends ConsumerState<ClubQrCheckinScreen> {
     }
 
     if (!mounted) return;
+    final String success = context.t('clubScan.success', <String, Object?>{
+      'name': registration.displayName,
+    });
     _show(
       true,
-      context.t('clubScan.success', <String, Object?>{
-        'name': registration.displayName,
-      }),
+      ticket.legacy ? '$success ${context.t('clubScan.ticketLegacy')}' : success,
     );
     _returnToEvent(event);
   }

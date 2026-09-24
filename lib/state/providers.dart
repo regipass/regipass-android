@@ -15,6 +15,7 @@ import '../models/profiles.dart';
 import '../services/account_cleanup_repository.dart';
 import '../services/admin_repository.dart';
 import '../services/announcement_repository.dart';
+import '../services/attendance_service.dart';
 import '../services/auth_repository.dart';
 import '../services/event_reminder_scheduler.dart';
 import '../services/event_repository.dart';
@@ -89,6 +90,10 @@ final Provider<AnnouncementRepository> announcementRepositoryProvider =
     Provider<AnnouncementRepository>(
       (Ref ref) => const AnnouncementRepository(),
     );
+
+/// Yoklama ve giriş sunucuda (İP-Y).
+final Provider<AttendanceService> attendanceServiceProvider =
+    Provider<AttendanceService>((Ref ref) => const AttendanceService());
 
 /// Kişiye özel gelen kutusu (İP-6).
 final Provider<InboxRepository> inboxRepositoryProvider =

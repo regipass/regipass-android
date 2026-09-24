@@ -249,6 +249,28 @@ kExtraTranslations = <String, Map<String, String>>{
     'common.save': 'Kaydet',
     'common.cancel': 'İptal',
     'common.retry': 'Tekrar dene',
+    // İP-Y: yoklama ve giriş sunucuda
+    'attendance.flag.edge': 'alanın kenarında',
+    'attendance.flag.lowAccuracy': 'konum doğruluğu düşük',
+    'attendance.flag.unsignedQr': 'eski uygulama QR\'ı',
+    'attendance.flag.delayed': 'gecikmeli işlendi',
+    'attendance.flag.unverified': 'sunucuda doğrulanmadı',
+    'attendance.stage.door': 'Kapı',
+    'attendance.stage.session': '{{n}}. oturum',
+    'attendance.suspicious.title': 'Şüpheli',
+    'attendance.error.alreadyCheckedIn':
+        'Bu etkinlik için girişin daha önce onaylandı.',
+    'attendance.error.sessionNotStarted':
+        'Oturum henüz başlatılmadı. Kulüp oturumu başlattığında QR\'ı tekrar okut.',
+    'attendance.error.banned': 'Hesabın kısıtlandığı için giriş yapılamıyor.',
+    'attendance.qrKeyError':
+        'QR oluşturulamadı. İnternet bağlantısını kontrol edip tekrar dene.',
+    'attendance.entryRotatingHint':
+        'Öğrenciler bu kodu kendi telefonlarıyla okutur. Kod {{seconds}} sn sonra yenilenecek.',
+    'clubScan.ticketMismatch':
+        'Bilet kodu kayıtla eşleşmiyor (eski ya da taklit bilet). Öğrenci bileti uygulamadan yeniden açsın.',
+    'clubScan.ticketLegacy':
+        'Eski uygulama bileti (kodsuz) — kimliği kontrol edin.',
     'common.loading': 'Yükleniyor...',
     'common.logout': 'Çıkış Yap',
     'common.select': 'Seçiniz',
@@ -1125,6 +1147,28 @@ kExtraTranslations = <String, Map<String, String>>{
     'common.save': 'Save',
     'common.cancel': 'Cancel',
     'common.retry': 'Retry',
+    // İP-Y: attendance on the server
+    'attendance.flag.edge': 'at the edge of the area',
+    'attendance.flag.lowAccuracy': 'low location accuracy',
+    'attendance.flag.unsignedQr': 'old app QR',
+    'attendance.flag.delayed': 'processed late',
+    'attendance.flag.unverified': 'not verified by the server',
+    'attendance.stage.door': 'Door',
+    'attendance.stage.session': 'Session {{n}}',
+    'attendance.suspicious.title': 'Suspicious',
+    'attendance.error.alreadyCheckedIn':
+        'Your entry for this event was already confirmed.',
+    'attendance.error.sessionNotStarted':
+        'The session has not started yet. Scan the QR again once the club starts it.',
+    'attendance.error.banned': 'Your account is restricted, so you cannot check in.',
+    'attendance.qrKeyError':
+        'Could not create the QR. Check your internet connection and try again.',
+    'attendance.entryRotatingHint':
+        'Students scan this code with their own phones. It refreshes in {{seconds}} s.',
+    'clubScan.ticketMismatch':
+        'The ticket code does not match the registration (old or forged ticket). Ask the student to reopen the ticket in the app.',
+    'clubScan.ticketLegacy':
+        'Old app ticket (no code) — check their ID.',
     'common.loading': 'Loading...',
     'common.logout': 'Log out',
     'common.select': 'Select',

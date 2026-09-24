@@ -7,6 +7,7 @@ import '../../domain/checkin_qr.dart';
 import '../../domain/event_utils.dart';
 import '../../domain/routing.dart';
 import '../../l10n/app_strings.dart';
+import '../../state/providers.dart';
 import '../shared/common_widgets.dart';
 import '../shared/event_widgets.dart';
 import 'student_providers.dart';
@@ -100,11 +101,27 @@ class _AppointmentDetailSheetState
     // Bilet ADRESE de sarılmaz (buildCheckinQrUrl kullanılmaz): bunu telefon
     // kamerası değil görevlinin uygulaması okur; ham token en küçük ve en
     // hızlı okunan biçimdir.
+    // İP-Y: bilete sunucunun ürettiği kod girer; kapıda kayıtla
+    // karşılaştırılır. Kod alınamazsa (bağlantı yok) bilet kodsuz çizilir;
+    // aşama 1'de kulüp uyarıyla kabul eder.
+    String ticketCode = item.registration.ticketCode;
+    if (ticketCode.isEmpty) {
+      try {
+        ticketCode = await ref
+            .read(attendanceServiceProvider)
+            .ensureTicketCode(item.registration.id);
+      } catch (_) {
+        ticketCode = '';
+      }
+      if (!mounted) return;
+    }
+
     final String token = createCheckinQrToken(
       buildStudentCheckinPayload(
         registrationId: item.registration.id,
         eventId: item.registration.eventId,
         studentId: item.registration.studentId,
+        ticketCode: ticketCode,
       ),
     );
 

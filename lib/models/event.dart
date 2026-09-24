@@ -515,6 +515,10 @@ class EventRegistration {
     required this.lastAttendedSession,
     required this.lastSessionCheckInAtMs,
     this.studentConsentLog,
+    this.checkedInVia = '',
+    this.ticketCode = '',
+    this.attendanceFlags = const <String>[],
+    this.attendanceVerified = const <String, int>{},
   });
 
   factory EventRegistration.fromMap(String id, Map<String, dynamic> data) {
@@ -548,6 +552,19 @@ class EventRegistration {
         data,
         role: PaidEventConsentRole.student,
       ),
+      checkedInVia: asString(data['checkedInVia']),
+      // İP-Y: aşağıdakileri yalnızca sunucu yazar (functions/attendance.js).
+      ticketCode: asString(data['ticketCode']),
+      attendanceFlags: data['attendanceFlags'] is List
+          ? (data['attendanceFlags'] as List<dynamic>).whereType<String>().toList()
+          : const <String>[],
+      attendanceVerified: data['attendanceVerified'] is Map
+          ? <String, int>{
+              for (final MapEntry<dynamic, dynamic> e
+                  in (data['attendanceVerified'] as Map<dynamic, dynamic>).entries)
+                if (e.key is String && e.value is num) e.key as String: (e.value as num).toInt(),
+            }
+          : const <String, int>{},
     );
   }
 
@@ -581,6 +598,18 @@ class EventRegistration {
 
   /// Ücretli etkinlikte öğrencinin onay logu; yoksa `null`.
   final PaidEventConsentLog? studentConsentLog;
+
+  /// Öğrencinin kendi kapı QR'ı ile girişinde `self-qr`.
+  final String checkedInVia;
+
+  /// Sunucunun ürettiği bilet kodu (İP-Y); kapıda kayıtla karşılaştırılır.
+  final String ticketCode;
+
+  /// Sunucunun koyduğu şüphe işaretleri: `door:edge`, `session:2:low-accuracy`.
+  final List<String> attendanceFlags;
+
+  /// Sunucudan geçen adımlar: `door`, `s1`, `s2` ... → zaman (ms).
+  final Map<String, int> attendanceVerified;
 
   bool get isCheckedIn => checkedInAtMs != null && checkedInAtMs! > 0;
 

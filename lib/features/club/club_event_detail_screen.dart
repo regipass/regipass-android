@@ -14,6 +14,7 @@ import '../../core/input_guard.dart';
 import '../../domain/checkin_mode.dart';
 import '../../domain/registration_capacity.dart';
 import '../../domain/event_utils.dart';
+import '../../domain/qr_signing.dart';
 import '../../domain/paid_event_consent.dart';
 import '../../domain/routing.dart';
 import '../../l10n/app_strings.dart';
@@ -2689,6 +2690,20 @@ class _StudentTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool checkedIn = registration.isCheckedIn;
 
+    // İP-Y: şüpheli yoklama (sunucu işaretleri + eski sürümden, sunucudan
+    // geçmeden yazılmış giriş/yoklama).
+    final String suspicious = attendanceSuspicions(
+      flags: registration.attendanceFlags,
+      verified: registration.attendanceVerified,
+      checkedInVia: registration.checkedInVia,
+      lastAttendedSession: registration.lastAttendedSession,
+    )
+        .map(
+          (({int stage, String key}) s) =>
+              '${s.stage == 0 ? context.t('attendance.stage.door') : context.t('attendance.stage.session', <String, Object?>{'n': s.stage})}: ${context.t(s.key)}',
+        )
+        .join(' · ');
+
     final bool hasCertificate = event.isMultiSession &&
         event.certificateThresholdPercent != null &&
         (registration.sessionsAttended / event.sessionCount) * 100 >=
@@ -2753,6 +2768,30 @@ class _StudentTile extends StatelessWidget {
               locale: context.lang,
             ),
           ),
+          if (suspicious.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  const Icon(
+                    Icons.warning_amber_rounded,
+                    size: 16,
+                    color: BrandColors.danger,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      '${context.t('attendance.suspicious.title')}: $suspicious',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: BrandColors.danger,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );

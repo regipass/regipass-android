@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
@@ -8,9 +9,9 @@ import '../../core/geo.dart';
 import '../../domain/checkin_qr.dart';
 import '../../domain/event_utils.dart';
 import '../../domain/routing.dart';
-import '../../domain/session_qr_window.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/event.dart';
+import '../../services/attendance_service.dart';
 import '../../services/geo_fence_service.dart';
 import '../../state/providers.dart';
 import '../shared/common_widgets.dart';
@@ -141,12 +142,15 @@ class _StudentQrCheckinScreenState
     _lastProcessedKey = dedupeKey;
     _lastProcessedAtMs = now;
 
+    // Sunucuya giden, okunan kodun kendisi (imzası ve dilimi orada denetlenir).
+    final String token = extractCheckinQrToken(raw) ?? raw;
+
     setState(() => _busy = true);
     try {
       if (type == 'event-entry') {
-        await _processDoor(eventId);
+        await _processDoor(eventId, token);
       } else {
-        await _processSession(eventId, session!, payload['slot']);
+        await _processSession(eventId, session!, token);
       }
     } catch (_) {
       if (mounted) _show(false, context.t('scan.checkinSaveFailed'));
@@ -168,7 +172,7 @@ class _StudentQrCheckinScreenState
   Future<void> _processSession(
     String eventId,
     int session,
-    Object? slot,
+    String token,
   ) async {
     final String? uid = ref.read(sessionProvider).user?.uid;
     if (uid == null) return;
@@ -196,18 +200,8 @@ class _StudentQrCheckinScreenState
       return;
     }
 
-    // Ekrandaki kod 20 saniyede bir yenilenir; başkasının gönderdiği ekran
-    // görüntüsü buraya ulaştığında dilim çoktan değişmiş olur.
-    //
-    // Web'de bu kontrol yalnızca `tokenCameFromScan` iken yapılır: orada token
-    // giriş/kayıt adımlarından sonra beklemeden de gelebiliyor ve o adımlar
-    // dakikalar sürebiliyordu. Mobilde bu ekrandaki her token DOĞRUDAN
-    // kameradan gelir, yani koşul her zaman sağlanır ve kontrol her okumada
-    // uygulanır (bkz. domain/session_qr_window.dart).
-    if (!isSessionQrSlotFresh(slot)) {
-      _show(false, context.t('scan.qrSlotExpired'));
-      return;
-    }
+    // Ekrandaki kod 20 saniyede bir yenilenir; imza ve tazelik artık
+    // sunucuda denetlenir (İP-Y, checkInWithQr).
 
     final EventRegistration? registration = await repo.fetchRegistration(
       eventId,
@@ -237,40 +231,22 @@ class _StudentQrCheckinScreenState
       return;
     }
 
-    if (!await _verifyLocation(event)) return;
-
-    try {
-      await repo.markOwnSessionCheckIn(
-        eventId: eventId,
-        studentId: uid,
-        registration: registration,
-        currentSession: event.currentSession,
-      );
-    } catch (error) {
-      if (!mounted) return;
-      final bool denied = '$error'.contains('permission-denied');
-      _show(
-        false,
-        denied
-            ? context.t('scan.permissionError')
-            : context.t('scan.checkinSaveFailed'),
-      );
-      return;
-    }
-
-    if (!mounted) return;
+    final CheckInResult? result = await _submit(event, token);
+    if (result == null || !mounted) return;
     _show(
       true,
       context.t('scan.sessionSuccess', <String, Object?>{
         'current': event.currentSession,
-        'attended': registration.sessionsAttended + 1,
+        'attended': result.sessionsAttended > 0
+            ? result.sessionsAttended
+            : registration.sessionsAttended + 1,
         'total': event.sessionCount,
       }),
     );
     _returnToAppointment(registration.id);
   }
 
-  Future<void> _processDoor(String eventId) async {
+  Future<void> _processDoor(String eventId, String token) async {
     final String? uid = ref.read(sessionProvider).user?.uid;
     if (uid == null) return;
 
@@ -314,21 +290,8 @@ class _StudentQrCheckinScreenState
       return;
     }
 
-    if (!await _verifyLocation(event)) return;
-
-    try {
-      await repo.markOwnDoorCheckin(eventId: eventId, studentId: uid);
-    } catch (error) {
-      if (!mounted) return;
-      _show(
-        false,
-        '$error'.contains('permission-denied')
-            ? context.t('scan.permissionError')
-            : context.t('scan.checkinSaveFailed'),
-      );
-      return;
-    }
-    if (!mounted) return;
+    final CheckInResult? result = await _submit(event, token);
+    if (result == null || !mounted) return;
     _show(
       true,
       context.t(
@@ -338,22 +301,49 @@ class _StudentQrCheckinScreenState
     _returnToAppointment(registration.id);
   }
 
-  /// QR içeriği değiştirilebilir; karşılaştırmanın merkezi sunucudaki
-  /// etkinlik konumudur. Her taramada cihazdan güncel konum alınır.
-  Future<bool> _verifyLocation(AppEvent event) async {
-    final GeoFenceResult fence = await const GeoFenceService().verify(event);
-    if (!mounted) return false;
-    if (fence.ok) return true;
-    _show(
-      false,
-      fence.outcome == GeoFenceOutcome.tooFar
-          ? context.t('scan.tooFar', <String, Object?>{
-              'distance': formatDistance(fence.distanceM!),
-              'radius': event.effectiveRadius,
-            })
-          : context.t('scan.locationRequired'),
-    );
-    return false;
+  /// Kodu ve (etkinliğin konumu varsa) cihazın güncel konumunu sunucuya
+  /// gönderir (İP-Y). İmza, 20 sn tazelik, mesafe ve kural koşulları
+  /// sunucuda denetlenir, kaydı sunucu yazar. Hata olursa mesajı gösterip
+  /// `null` döner.
+  Future<CheckInResult?> _submit(AppEvent event, String token) async {
+    ({double lat, double lng, double? accuracyM})? location;
+    if (!event.hasNoLocationCheck) {
+      final Position? position = await const GeoFenceService()
+          .currentPosition();
+      if (!mounted) return null;
+      if (position == null ||
+          !position.latitude.isFinite ||
+          !position.longitude.isFinite) {
+        _show(false, context.t('scan.locationRequired'));
+        _lastProcessedKey = null; // izin verildikten sonra aynı kod denenebilsin
+        return null;
+      }
+      location = (
+        lat: position.latitude,
+        lng: position.longitude,
+        accuracyM: position.accuracy.isFinite ? position.accuracy : null,
+      );
+    }
+
+    try {
+      return await ref
+          .read(attendanceServiceProvider)
+          .checkInWithQr(token: token, location: location);
+    } on AttendanceFailure catch (failure) {
+      if (!mounted) return null;
+      if (failure.reason == 'too-far' ||
+          failure.reason == 'location-required' ||
+          failure.reason == 'network') {
+        _lastProcessedKey = null;
+      }
+      _show(false, attendanceFailureMessage(context, failure, event));
+      return null;
+    } catch (_) {
+      if (!mounted) return null;
+      _lastProcessedKey = null;
+      _show(false, context.t('scan.checkinSaveFailed'));
+      return null;
+    }
   }
 
   /// Onaydan sonra etkinlik penceresine dönüş.
@@ -507,25 +497,40 @@ class EventRepositoryAccess {
     String eventId,
     String studentId,
   ) => _ref.read(eventRepositoryProvider).fetchRegistration(eventId, studentId);
-
-  Future<void> markOwnSessionCheckIn({
-    required String eventId,
-    required String studentId,
-    required EventRegistration registration,
-    required int currentSession,
-  }) => _ref
-      .read(eventRepositoryProvider)
-      .markOwnSessionCheckIn(
-        eventId: eventId,
-        studentId: studentId,
-        registration: registration,
-        currentSession: currentSession,
-      );
-
-  Future<void> markOwnDoorCheckin({
-    required String eventId,
-    required String studentId,
-  }) => _ref
-      .read(eventRepositoryProvider)
-      .markOwnDoorCheckin(eventId: eventId, studentId: studentId);
 }
+
+/// Sunucunun ret nedenini ekrandaki cümleye çevirir.
+String attendanceFailureMessage(
+  BuildContext context,
+  AttendanceFailure failure,
+  AppEvent event,
+) => switch (failure.reason) {
+  'expired' => context.t('scan.qrSlotExpired'),
+  'bad-signature' ||
+  'invalid-token' ||
+  'unsigned' => context.t('scan.notRegipassQr'),
+  'entry-closed' => context.t('scan.doorClosed'),
+  'already-checked-in' => context.t('attendance.error.alreadyCheckedIn'),
+  'already-attended' => context.t(
+    'scan.alreadyCheckedInSession',
+    <String, Object?>{
+      'current': failure.session ?? event.currentSession,
+      'total': event.sessionCount,
+    },
+  ),
+  'session-mismatch' => context.t('scan.qrExpired'),
+  'session-not-started' => context.t('attendance.error.sessionNotStarted'),
+  'sessions-completed' => context.t('scan.sessionsCompleted'),
+  'needs-door-checkin' => context.t('scan.needsDoorCheckin'),
+  'no-door-checkin' => context.t('scan.notDoorQr'),
+  'no-sessions' => context.t('scan.notSessionBased'),
+  'location-required' => context.t('scan.locationRequired'),
+  'too-far' => context.t('scan.tooFar', <String, Object?>{
+    'distance': formatDistance((failure.distanceM ?? 0).toDouble()),
+    'radius': failure.radiusM ?? event.effectiveRadius,
+  }),
+  'not-registered' => context.t('scan.notRegistered'),
+  'event-not-found' => context.t('scan.eventNotFound'),
+  'banned' => context.t('attendance.error.banned'),
+  _ => context.t('scan.checkinSaveFailed'),
+};
