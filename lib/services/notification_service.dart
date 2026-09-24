@@ -1,14 +1,15 @@
 /// Cihaz bildirimleri — tek noktadan erişim.
 ///
-/// Uygulamanın bir sunucu tarafı (Cloud Functions) yok; bu yüzden bildirimler
-/// FCM ile değil, **cihaz üzerinde** üretilir:
+/// Üç yol var:
 ///
 ///   • Etkinlik hatırlatmaları (`zonedSchedule`) uygulama kapalıyken de
 ///     çalışır — işletim sistemi alarmı tutar.
 ///   • Yönetici duyuruları Firestore'a yazılır; istemci dinleyicisi yeni
 ///     duyuruyu gördüğü anda [show] ile cihaz bildirimine çevirir.
+///   • Kişiye özel olaylar (İP-6) sunucudan FCM ile gelir; bkz.
+///     push_service.dart. Uygulama açıkken Android'de burada gösterilir.
 ///
-/// Her iki yol da aynı kanalları kullanır: sesli + titreşimli ve
+/// Hepsi aynı ayarları kullanır: sesli + titreşimli ve
 /// `Importance.max` (Android'de ekranın üstünde beliren "heads-up" uyarı).
 library;
 
@@ -29,12 +30,21 @@ import 'package:timezone/timezone.dart' as tz;
 class NotificationChannels {
   static const String eventReminders = 'regipass_event_reminders_v1';
   static const String announcements = 'regipass_announcements_v1';
+
+  /// Sunucudan gelen kişisel bildirimler (İP-6). Sunucudaki
+  /// functions/userNotifications.js#ANDROID_CHANNEL ile AYNI olmalı;
+  /// AndroidManifest'te FCM'in varsayılan kanalı olarak da tanımlı.
+  static const String personal = 'regipass_personal_v1';
+  static const String personalName = 'Sana özel';
 }
 
 /// Bildirime dokunulduğunda taşınan yük türleri.
 class NotificationPayloads {
   static const String announcement = 'announcement';
   static const String eventReminder = 'event';
+
+  /// `personal:<rota>` — bkz. push_service.dart#personalPayload.
+  static const String personal = 'personal';
 }
 
 /// Titreşim deseni: bekle-titre-bekle-titre (ms).
@@ -147,6 +157,20 @@ class NotificationService {
         NotificationChannels.announcements,
         'Duyurular',
         description: 'Regipass yönetiminden gelen duyurular.',
+        importance: Importance.max,
+        playSound: true,
+        enableVibration: true,
+        vibrationPattern: _vibrationPattern,
+      ),
+    );
+
+    await android.createNotificationChannel(
+      AndroidNotificationChannel(
+        NotificationChannels.personal,
+        NotificationChannels.personalName,
+        description:
+            'Belgen geldiğinde, kaydın ya da etkinliğin değiştiğinde '
+            'gönderilen bildirimler.',
         importance: Importance.max,
         playSound: true,
         enableVibration: true,

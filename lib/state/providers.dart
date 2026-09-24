@@ -18,6 +18,7 @@ import '../services/announcement_repository.dart';
 import '../services/auth_repository.dart';
 import '../services/event_reminder_scheduler.dart';
 import '../services/event_repository.dart';
+import '../services/inbox_repository.dart';
 import '../services/notification_read_store.dart';
 import '../services/notification_service.dart';
 import '../services/phone_directory_repository.dart';
@@ -88,6 +89,10 @@ final Provider<AnnouncementRepository> announcementRepositoryProvider =
     Provider<AnnouncementRepository>(
       (Ref ref) => const AnnouncementRepository(),
     );
+
+/// Kişiye özel gelen kutusu (İP-6).
+final Provider<InboxRepository> inboxRepositoryProvider =
+    Provider<InboxRepository>((Ref ref) => const InboxRepository());
 
 final Provider<AccountCleanupRepository> accountCleanupRepositoryProvider =
     Provider<AccountCleanupRepository>(

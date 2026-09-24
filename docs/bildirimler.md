@@ -1,17 +1,40 @@
 # Bildirimler
 
-Uygulamada iki tür bildirim var ve ikisi de **cihazda** üretiliyor:
+Uygulamada üç tür bildirim var:
 
 | Tür | Kaynak | Uygulama kapalıyken |
 |---|---|---|
 | Etkinlik hatırlatmaları | Cihaza kurulan alarm (`zonedSchedule`) | **Çalışır** |
 | Yönetici duyuruları | Firestore dinleyicisi + anlık bildirim | Çalışmaz (bkz. [Bilinen sınır](#bilinen-sınır)) |
+| Kişiye özel bildirimler (İP-6) | Sunucu (Cloud Function) → gelen kutusu + FCM push | **Çalışır** |
 
-FCM henüz kullanılmıyor. Projede artık Cloud Functions var (`europe-west1`,
-bkz. `functions/`), ama bildirim gönderen bir fonksiyon yazılmadı. Konuya
-(topic) push göndermek sunucu anahtarı ister ve o anahtar istemci paketine
-konulamaz; bu yüzden anlık bildirimler bir Cloud Function ile yapılacak
-(bildirim iş paketi).
+## Kişiye özel bildirimler (İP-6)
+
+Belge geldi, belge iptal edildi, kaydın kulüp tarafından iptal edildi gibi
+olayları sunucu üretir (Regipass-Web `functions/userNotifications.js`):
+
+1. `users/{uid}/inbox/{id}` gelen kutusuna kayıt yazılır. Başlık ve metin iki
+   dillidir (`{tr, en}`); uygulama arayüz diline göre seçer. Kayıt bildirimler
+   sayfasında duyurular ve hatırlatmalarla aynı listede görünür.
+2. Kullanıcının cihazlarına FCM ile push gider (Android kanalı
+   `regipass_personal_v1`). Uygulama kapalıyken bildirimi sistem gösterir;
+   açıkken Android'de yerel bildirime çevrilir, iOS'ta sistem banner'ı çıkar.
+3. Bildirime dokununca kayıttaki `route` açılır (yalnızca `/student/...` ya
+   da `/club/...`).
+
+Cihaz kaydı: kullanıcı panele girip bildirim iznini verince FCM jetonu
+`users/{uid}/devices/{kurulumKimliği}` belgesine yazılır (`push_service.dart`).
+Çıkışta belge silinir ve jeton iptal edilir. Sunucu, FCM'in geçersiz dediği
+jetonları kendisi temizler; hesap silinince iki alt koleksiyon da silinir
+(`cleanupUserNotifications`).
+
+Okundu bilgisi: bildirimler sayfası açılınca kişisel kayıtların `readAtMs`
+alanı doldurulur; web zilinde okunan kayıt telefonda da okunmuş görünür.
+Kurallar istemcinin yalnızca bu alanı değiştirmesine izin verir; kayıt
+oluşturmak yalnızca sunucuya açıktır.
+
+Deneme: yönetici hesabıyla `sendTestNotification` fonksiyonu çağrılırsa
+kendi cihazlarına ve web ziline "Regipass test bildirimi" düşer.
 
 ## Etkinlik hatırlatmaları
 
@@ -146,7 +169,7 @@ Duyurular ancak uygulama **çalışırken** (ön planda ya da arka planda canlı
 cihaz bildirimine dönüşür. Uygulaması tamamen kapalı olan kullanıcı duyuruyu
 bir dahaki açılışta bildirimler sayfasında görür, ama o an telefonu titremez.
 
-Bunu tam çözmek için sunucu tarafı gerekiyor: `notifications` koleksiyonuna
-yazıldığında tetiklenen bir Cloud Function + FCM topic push
-(`university_<ad>_students` gibi). Etkinlik hatırlatmaları bu sınırdan
+Push altyapısı İP-6 ile kuruldu (cihaz jetonları + FCM); duyuruları da
+push'a çevirmek için `notifications` koleksiyonuna yazıldığında tetiklenen bir
+fonksiyonun hedef kitledeki cihazlara göndermesi yeterli. Henüz yapılmadı. Etkinlik hatırlatmaları bu sınırdan
 etkilenmez, onlar işletim sistemi alarmı olarak kurulu.

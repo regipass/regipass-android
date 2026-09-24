@@ -1,9 +1,11 @@
 /// Uygulama ağacının tepesinde duran, görünmeyen köprü.
 ///
-/// Üç işi yapar:
-///   1. Kullanıcı bir panele girdiğinde bildirim iznini bir kez ister,
+/// Dört işi yapar:
+///   1. Kullanıcı bir panele girdiğinde bildirim iznini bir kez ister ve
+///      cihazı sunucu bildirimleri (FCM) için kaydeder (İP-6),
 ///   2. Etkinlik listesi değiştikçe hatırlatma alarmlarını günceller,
-///   3. Yeni bir duyuru geldiğinde onu cihaz bildirimine çevirir.
+///   3. Yeni bir duyuru geldiğinde onu cihaz bildirimine çevirir,
+///   4. Bildirime dokunulunca ilgili sayfayı açar.
 ///
 /// Widget olması bilinçli: Riverpod dinleyicilerinin ömrü ağaca bağlı ve
 /// bildirime dokununca sayfayı açmak yönlendiriciye erişim istiyor.
@@ -21,6 +23,7 @@ import '../../l10n/app_strings.dart';
 import '../../models/announcement.dart';
 import '../../models/event.dart';
 import '../../services/notification_service.dart';
+import '../../services/push_service.dart';
 import '../../state/providers.dart';
 import 'notification_providers.dart';
 
@@ -46,6 +49,10 @@ class _NotificationSyncState extends ConsumerState<NotificationSync> {
   void initState() {
     super.initState();
     NotificationService.instance.tappedPayload.addListener(_onNotificationTap);
+    // Uygulama bildirime dokunularak açıldıysa yük bu widget kurulmadan önce
+    // yazılmış olabilir; dinleyici yalnızca değişimde çalıştığı için ilk
+    // kareden sonra bir kez de elle bakılır.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onNotificationTap());
   }
 
   @override
@@ -67,6 +74,18 @@ class _NotificationSyncState extends ConsumerState<NotificationSync> {
     final ReminderAudience? audience = ref.read(notificationAudienceProvider);
     if (audience == null) return;
 
+    // Kişisel bildirim (İP-6): gideceği sayfa belliyse doğrudan oraya.
+    // Rota rolle uyuşmuyorsa (öğrenci rotası kulüp oturumunda) bildirimler
+    // listesi açılır.
+    final String? route = routeFromPersonalPayload(payload);
+    final String rolePrefix = audience == ReminderAudience.club
+        ? '/club'
+        : '/student';
+    if (route != null && route.startsWith(rolePrefix)) {
+      ref.read(routerProvider).push(route);
+      return;
+    }
+
     ref
         .read(routerProvider)
         .push(
@@ -80,7 +99,19 @@ class _NotificationSyncState extends ConsumerState<NotificationSync> {
   void _ensurePermission(String? uid, ReminderAudience? audience) {
     if (uid == null || audience == null || _permissionAskedFor == uid) return;
     _permissionAskedFor = uid;
-    unawaited(NotificationService.instance.requestPermission());
+    unawaited(_askAndRegister(uid));
+  }
+
+  /// Önce yerel bildirim izni (Android 13+ / iOS), ardından FCM kaydı.
+  /// iOS'ta iki eklenti aynı sistem iznini ister; ikinci istek kutu
+  /// göstermeden ilk cevabı döndürür.
+  Future<void> _askAndRegister(String uid) async {
+    await NotificationService.instance.requestPermission();
+    if (!mounted) return;
+    await PushService.instance.register(
+      uid: uid,
+      language: ref.read(languageProvider),
+    );
   }
 
   /// Alarm kurulumunu tetikleyen veri değişti mi?
@@ -187,6 +218,14 @@ class _NotificationSyncState extends ConsumerState<NotificationSync> {
     // ── Hesap değişimi ──────────────────────────────────────────────
     // Önceki kullanıcının etkinlikleri için kurulmuş alarmlar yenisine
     // gitmemeli.
+    // Push metni cihaz kaydındaki dille gider; dil değişince kayıt güncellenir.
+    ref.listen<String>(languageProvider, (String? previous, String next) {
+      final String? currentUid = ref.read(currentUidProvider);
+      if (previous == next || currentUid == null) return;
+      if (_permissionAskedFor != currentUid) return;
+      unawaited(PushService.instance.register(uid: currentUid, language: next));
+    });
+
     ref.listen<String?>(currentUidProvider, (String? previous, String? next) {
       if (previous == null || previous == next) return;
       _permissionAskedFor = null;

@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:regipass/core/constants.dart';
 import 'package:regipass/domain/masked_phone_match.dart';
 import 'package:regipass/features/shared/phone_field.dart';
 
@@ -337,6 +338,11 @@ void main() {
         ),
         isNull,
       );
-    });
+    },
+        // İP-0b'den beri anahtar kapalı (ipucu maskeli); bu test yalnızca
+        // anahtar açıldığında anlamlı.
+        skip: kRevealPasswordResetPhone
+            ? false
+            : 'kRevealPasswordResetPhone kapalı: ipucu maskeli üretiliyor');
   });
 }

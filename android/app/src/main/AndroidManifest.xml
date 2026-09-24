@@ -90,6 +90,16 @@
             android:name="com.google.android.geo.API_KEY"
             android:value="${MAPS_API_KEY}" />
 
+        <!-- Sunucudan gelen push bildirimleri (FCM, İP-6). Uygulama kapalıyken
+             bildirimi sistem gösterir; kanal/simge/renk buradan gelir. Kanal
+             NotificationService'te oluşturuluyor (regipass_personal_v1). -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="regipass_personal_v1" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_notification" />
+
         <!-- Zamanlanmış bildirimleri gösteren alıcı. Bu kayıt olmadan
              `zonedSchedule` sessizce hiçbir şey göstermez. -->
         <receiver

@@ -50,7 +50,14 @@ class _NotificationListViewState extends ConsumerState<NotificationListView> {
     final List<NotificationItem> feed = ref.read(notificationFeedProvider);
     if (feed.isEmpty) return;
     ref.read(notificationSeenProvider.notifier).markSeen(feed.first.atMs);
+    // Kişisel bildirimler sunucuda da okundu sayılsın (İP-6). Vurgular
+    // [_entryUnreadPersonal]'dan çizilir, işaret gelince hemen sönmez.
+    ref.read(markPersonalReadProvider)(feed);
   }
+
+  /// Bu sayfa açıkken okunmamış görülen kişisel bildirimler. Sunucu işareti
+  /// gelince de sayfa kapanana kadar vurgulu kalırlar (bkz. [build]).
+  final Set<String> _entryUnreadPersonal = <String>{};
 
   Future<void> _checkSystemSetting() async {
     final bool enabled = await NotificationService.instance.areEnabled();
@@ -61,6 +68,11 @@ class _NotificationListViewState extends ConsumerState<NotificationListView> {
   Widget build(BuildContext context) {
     final List<NotificationItem> items = ref.watch(notificationFeedProvider);
     final Set<String> opened = ref.watch(notificationOpenedProvider);
+    for (final NotificationItem item in items) {
+      if (item.isPersonal && !item.readElsewhere) {
+        _entryUnreadPersonal.add(item.id);
+      }
+    }
 
     // Liste sonradan dolduysa (duyuru akışı geç geldi) damgayı ilerlet.
     if (items.isNotEmpty) {
@@ -100,7 +112,14 @@ class _NotificationListViewState extends ConsumerState<NotificationListView> {
           item: item,
           // İşaret iki koşula birden bağlı: sayfa açılmadan önce gelmiş
           // olacak VE kullanıcı henüz o bildirime dokunmamış olacak.
-          unread: item.atMs > _entrySeenAt && !opened.contains(item.id),
+          unread: item.isPersonal
+              ? _entryUnreadPersonal.contains(item.id) &&
+                    !opened.contains(item.id)
+              : isUnreadNotification(
+                  item,
+                  seenAtMs: _entrySeenAt,
+                  opened: opened,
+                ),
           onTap: () => _open(item),
         );
       },
@@ -157,6 +176,10 @@ class _NotificationCard extends StatelessWidget {
     NotificationItemKind.announcement => (
       icon: Icons.campaign_outlined,
       color: BrandColors.info,
+    ),
+    NotificationItemKind.personal => (
+      icon: Icons.workspace_premium_outlined,
+      color: BrandColors.red,
     ),
     NotificationItemKind.upcoming => (
       icon: Icons.schedule_rounded,

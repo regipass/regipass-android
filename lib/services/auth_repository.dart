@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import 'firebase_refs.dart';
+import 'push_service.dart';
 
 /// Kimlik doğrulama akışları — js/modules/auth/login-modal.js ve
 /// js/pages/register.js karşılığı.
@@ -145,6 +146,14 @@ class AuthRepository {
   }
 
   Future<void> signOut() async {
+    // Bu cihaz çıkış yapan hesabın push bildirimlerini almaya devam etmesin
+    // (İP-6). Oturum kapanmadan önce: kural silme için oturum istiyor.
+    // Ağ yoksa çıkışı bekletmez; sunucu geçersiz jetonu zamanla temizler.
+    try {
+      await PushService.instance.unregister().timeout(
+        const Duration(seconds: 4),
+      );
+    } catch (_) {}
     try {
       await GoogleSignIn.instance.signOut();
     } catch (_) {

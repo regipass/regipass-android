@@ -11,8 +11,9 @@
 	</array>
 
 	<!-- ── Push Notifications ────────────────────────────────────────────
-	     Uygulama FCM kullanmıyor; bu yetenek TELEFON DOĞRULAMASI için
-	     gerekli. Firebase, SMS göndermeden önce isteğin gerçek cihazdan
+	     İki iş için gerekli: (1) sunucudan gelen kişisel bildirimler
+	     (FCM → APNs, İP-6; bkz. lib/services/push_service.dart) ve
+	     (2) TELEFON DOĞRULAMASI. Firebase, SMS göndermeden önce isteğin gerçek cihazdan
 	     geldiğini sessiz bir APNs bildirimiyle doğrular (Android'deki Play
 	     Integrity'nin iOS karşılığı). Bu yetki ve Firebase Console'a
 	     yüklenmiş APNs anahtarı yoksa `verifyPhoneNumber` reCAPTCHA

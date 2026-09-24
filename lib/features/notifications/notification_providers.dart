@@ -1,11 +1,13 @@
 /// Bildirim akışının kaynakları.
 ///
-/// İki kaynak birleştirilir:
+/// Üç kaynak birleştirilir:
 ///   1. Yönetici duyuruları (Firestore `notifications`),
-///   2. Kullanıcının etkinliklerinden türeyen ve zamanı gelmiş hatırlatmalar
+///   2. Kişiye özel sunucu bildirimleri (`users/{uid}/inbox`, İP-6: belge
+///      geldi, kaydın iptal edildi ...),
+///   3. Kullanıcının etkinliklerinden türeyen ve zamanı gelmiş hatırlatmalar
 ///      (yaklaşıyor / başladı / başvurular kapandı).
 ///
-/// İkincisi Firestore'da tutulmaz: aynı bilgi zaten etkinlik dokümanında var,
+/// Üçüncüsü Firestore'da tutulmaz: aynı bilgi zaten etkinlik dokümanında var,
 /// her kullanıcı için ayrıca bildirim belgesi yazmak veriyi kopyalamak olurdu.
 library;
 
@@ -17,6 +19,7 @@ import '../../domain/routing.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/announcement.dart';
 import '../../models/event.dart';
+import '../../models/inbox_entry.dart';
 import '../../models/profiles.dart';
 import '../../state/providers.dart';
 import '../club/club_providers.dart';
@@ -83,6 +86,17 @@ final StreamProvider<List<Announcement>> myAnnouncementsProvider =
           );
     });
 
+/// Kişiye özel gelen kutusu — canlı (İP-6). Yönetici için boş.
+final StreamProvider<List<InboxEntry>> myInboxProvider =
+    StreamProvider<List<InboxEntry>>((Ref ref) {
+      final ReminderAudience? audience = ref.watch(notificationAudienceProvider);
+      final String? uid = ref.watch(currentUidProvider);
+      if (audience == null || uid == null) {
+        return Stream<List<InboxEntry>>.value(const <InboxEntry>[]);
+      }
+      return ref.watch(inboxRepositoryProvider).watch(uid);
+    });
+
 /// Hatırlatmaların üretileceği etkinlikler.
 ///
 ///   • Öğrenci: **kayıt olduğu** etkinlikler. Keşfetteki her etkinlik için
@@ -109,7 +123,7 @@ final Provider<List<AppEvent>> reminderSourceEventsProvider =
 
 // ── Bildirim listesi ──────────────────────────────────────────────────
 
-enum NotificationItemKind { announcement, upcoming, started, deadline }
+enum NotificationItemKind { announcement, personal, upcoming, started, deadline }
 
 /// Listede çizilecek tek satır. Metinler burada çözülür; ekran yalnızca
 /// gösterir.
@@ -121,6 +135,7 @@ class NotificationItem {
     required this.body,
     required this.atMs,
     this.route = '',
+    this.readElsewhere = false,
   });
 
   final String id;
@@ -137,9 +152,18 @@ class NotificationItem {
   /// Duyurularda gidilecek bir sayfa yok; orada boş kalır.
   final String route;
 
+  /// Kişisel bildirim başka bir yerde (web zili, başka cihaz ya da bu
+  /// sayfanın önceki açılışı) okundu işaretlenmiş. Okunmamış sayılmaz.
+  final bool readElsewhere;
+
   bool get hasRoute => route.isNotEmpty;
 
   bool get isAnnouncement => kind == NotificationItemKind.announcement;
+
+  bool get isPersonal => kind == NotificationItemKind.personal;
+
+  /// Gelen kutusu belge kimliği (yalnızca kişisel bildirimde).
+  String get inboxId => isPersonal ? id.substring('inbox:'.length) : '';
 }
 
 NotificationItemKind _kindOf(EventReminderKind kind) => switch (kind) {
@@ -158,6 +182,9 @@ final Provider<List<NotificationItem>> notificationFeedProvider =
 
       final List<Announcement> announcements =
           ref.watch(myAnnouncementsProvider).value ?? const <Announcement>[];
+
+      final List<InboxEntry> inbox =
+          ref.watch(myInboxProvider).value ?? const <InboxEntry>[];
 
       final List<EventReminder> fired = firedRemindersForEvents(
         ref.watch(reminderSourceEventsProvider),
@@ -205,6 +232,16 @@ final Provider<List<NotificationItem>> notificationFeedProvider =
                 : translate('notifications.announcement', language: language),
             body: a.body,
             atMs: a.createdAtMs,
+          ),
+        for (final InboxEntry e in inbox)
+          NotificationItem(
+            id: 'inbox:${e.id}',
+            kind: NotificationItemKind.personal,
+            title: e.titleIn(language),
+            body: e.bodyIn(language),
+            atMs: e.createdAtMs,
+            route: e.route,
+            readElsewhere: e.isRead,
           ),
         for (final EventReminder r in fired)
           NotificationItem(
@@ -298,7 +335,42 @@ final Provider<int> unreadNotificationCountProvider = Provider<int>((Ref ref) {
       .watch(notificationFeedProvider)
       .where(
         (NotificationItem item) =>
-            item.atMs > lastSeen && !opened.contains(item.id),
+            isUnreadNotification(item, seenAtMs: lastSeen, opened: opened),
       )
       .length;
+});
+
+/// Bildirim okunmamış mı? Rozet ve liste aynı ölçüyü kullanır.
+///
+/// Kişisel bildirimde sunucudaki okundu bilgisi de sayılır: web'de açılmış
+/// bir bildirim telefonda tekrar "yeni" görünmesin.
+bool isUnreadNotification(
+  NotificationItem item, {
+  required int seenAtMs,
+  required Set<String> opened,
+}) {
+  if (opened.contains(item.id)) return false;
+  if (item.isPersonal && item.readElsewhere) return false;
+  return item.atMs > seenAtMs;
+}
+
+/// Bildirimler sayfası açılınca kişisel bildirimleri sunucuda da okundu
+/// işaretler (web zili ve diğer cihazlar görsün).
+final Provider<Future<void> Function(List<NotificationItem>)>
+markPersonalReadProvider =
+    Provider<Future<void> Function(List<NotificationItem>)>((Ref ref) {
+      return (List<NotificationItem> items) async {
+        final String? uid = ref.read(currentUidProvider);
+        if (uid == null) return;
+        final List<String> ids = <String>[
+          for (final NotificationItem item in items)
+            if (item.isPersonal && !item.readElsewhere) item.inboxId,
+        ];
+        if (ids.isEmpty) return;
+        try {
+          await ref.read(inboxRepositoryProvider).markRead(uid, ids);
+        } catch (_) {
+          // Ağ yoksa bir dahaki açılışta tekrar denenir.
+        }
+      };
 });
