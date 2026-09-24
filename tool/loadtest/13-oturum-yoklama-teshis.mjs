@@ -3,7 +3,7 @@
  * `permission-denied` alıyor?
  *
  * Mobildeki `EventRepository.markOwnSessionCheckIn` yazımının BİREBİR aynısını
- * gerçek kural dosyasına (Desktop/REGİPASS/firestore.rules) karşı çalıştırır ve
+ * gerçek kural dosyasına (Regipass-Web/firestore.rules) karşı çalıştırır ve
  * hangi veri şeklinde düştüğünü tek tek gösterir.
  *
  * Çalıştırma:
@@ -34,6 +34,7 @@ function uygula(temel, yama) {
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
+import { WEB_ROOT } from './lib/web-repo.mjs';
 
 import { PROJECT_ID } from './lib/harness.mjs';
 
@@ -41,7 +42,7 @@ const PORT = Number(process.env.LOADTEST_RULES_PORT ?? 8733);
 /// Varsayılan: asıl kural dosyası. Eski bir kopyayla karşılaştırmak için
 /// `LOADTEST_RULES=tool/loadtest/firestore.rules node 13-...mjs`.
 const RULES = process.env.LOADTEST_RULES
-  ?? join(homedir(), 'Desktop', 'REGİPASS', 'firestore.rules');
+  ?? join(WEB_ROOT, 'firestore.rules');
 
 const CLUB = 'sess_club';
 const STUDENT = 'sess_student';

@@ -14,7 +14,7 @@
  * alanlar hangi tiple saklanıyor, saniye çözünürlüğü yazma/okuma turunda
  * korunuyor mu.
  *
- * Kurallar ASIL dosyadan okunur (Desktop/REGİPASS/firestore.rules) —
+ * Kurallar ASIL dosyadan okunur (Regipass-Web/firestore.rules) —
  * tool/loadtest altındaki kopyalar bayat olabilir (bkz. README).
  *
  * Çalıştırma:
@@ -37,6 +37,7 @@ import {
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
+import { WEB_ROOT } from './lib/web-repo.mjs';
 
 import { RunLog, PROJECT_ID } from './lib/harness.mjs';
 
@@ -46,7 +47,7 @@ const PORT = Number(process.env.LOADTEST_RULES_PORT ?? 8733);
 
 /// Asıl kural dosyası; yoksa depodaki kopyaya düşülür ama bu AÇIKÇA belirtilir
 /// (bayat kopyayla yapılan test bir kez yanlış sonuç vermişti).
-const AUTHORITATIVE = join(homedir(), 'Desktop', 'REGİPASS', 'firestore.rules');
+const AUTHORITATIVE = join(WEB_ROOT, 'firestore.rules');
 const FALLBACK = join(import.meta.dirname, 'firestore.rules');
 
 const STUDENT = 'consent_student';

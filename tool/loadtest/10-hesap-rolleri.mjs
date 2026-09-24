@@ -11,7 +11,7 @@
  * Ayrica mesru akislarin (ilk kayit, ikinci rol ekleme, profil duzenleme,
  * alanlari eksik ESKI belgeler) bozulmadigini dogrular.
  *
- * Kurallar dogrudan ASIL dosyadan okunur (Desktop/REGIPASS/firestore.rules),
+ * Kurallar dogrudan ASIL dosyadan okunur (Regipass-Web/firestore.rules),
  * bu klasordeki kopyadan degil.
  *
  * Calistirma:
@@ -19,6 +19,8 @@
  *   node tool/loadtest/10-hesap-rolleri.mjs
  */
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { WEB_ROOT } from './lib/web-repo.mjs';
 import {
   initializeTestEnvironment,
   assertSucceeds,
@@ -32,7 +34,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 
-const RULES = "C:/Users/5sana/Desktop/REG\u0130PASS/firestore.rules";
+const RULES = process.env.LOADTEST_RULES ?? join(WEB_ROOT, "firestore.rules");
 
 const env = await initializeTestEnvironment({
   projectId: "regipass-rules-check",

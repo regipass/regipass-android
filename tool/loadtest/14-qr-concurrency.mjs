@@ -11,13 +11,14 @@ import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join, resolve } from 'node:path';
 import { homedir, cpus, totalmem } from 'node:os';
+import { WEB_ROOT } from './lib/web-repo.mjs';
 import { performance } from 'node:perf_hooks';
 
 const projectId = 'demo-regipass-qr-load';
 const port = 9091;
 const rulesPath = resolve(process.env.LOADTEST_RULES || 'tool/loadtest/firestore.rules');
 const rules = readFileSync(rulesPath, 'utf8');
-const webRoot = join(homedir(), 'Desktop', 'REGİPASS', 'js/modules/events');
+const webRoot = join(WEB_ROOT, 'js/modules/events');
 const counts = (process.env.QR_COUNTS || '25,100,250,500,1000').split(',').map(Number);
 const modes = (process.env.QR_MODES || 'door,session,unbounded').split(',');
 const validModes = new Set(['door','session','unbounded','mobile','web','mixed','mobile-overflow','web-overflow','mixed-overflow','closed','stale-door','duplicate-door','duplicate-session']);

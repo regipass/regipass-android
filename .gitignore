@@ -80,3 +80,10 @@ app.*.map.json
 
 # Test kullanicilarinin e-posta listesi: kisisel veri, kaynak kod degil.
 testers.csv
+
+# Firestore kuralları/indeksleri TEK kaynaktan (Regipass-Web) kopyalanır, burada tutulmaz (İP-1).
+# Eşitlemek için: tool/loadtest/kurallari-esitle.sh
+/tool/loadtest/firestore.rules
+/tool/loadtest/firestore.indexes.json
+/tool/loadtest/rules-env/firestore.rules
+/tool/loadtest/rules-env/firestore.indexes.json

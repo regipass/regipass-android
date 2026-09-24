@@ -18,12 +18,16 @@ Emulator'ü ayrı bir terminalde başlat (ilk çalıştırmada .jar indirir):
 cd tool/loadtest && firebase emulators:start --only firestore --project eventapp-604a5
 ```
 
-`firestore.rules` buraya **kopyalanmıştır**; asıl dosya
-`Desktop/REGİPASS/firestore.rules`. Kuralları değiştirdiğinde kopyala:
+Kuralların tek kaynağı **Regipass-Web** reposudur (İP-1). Repolar yan yana
+(`~/Developer/Regipass/Regipass-Web` ve bu repo) durmalı. Emulator'ü başlatmadan
+önce ve kurallar her değiştiğinde kopyala:
 
 ```bash
-cp "$HOME/Desktop/REGİPASS/firestore.rules" tool/loadtest/firestore.rules
+tool/loadtest/kurallari-esitle.sh        # başka yer için: REGIPASS_WEB=/yol/Regipass-Web
 ```
+
+Kopyalar git'e girmez. Kuralları doğrudan okuyan betikler (10–14, quota-retry)
+`lib/web-repo.mjs` üzerinden Regipass-Web'i bulur.
 
 Emulator dosyayı izler ve kendiliğinden yeniden yükler.
 
@@ -46,7 +50,7 @@ node 05-realistic.mjs
 
 `11-onay-logu.mjs` kuralları emulator'e yeniden yükler ve veriyi siler
 (`clearFirestore`) — `06-rules.mjs` gibi, başka bir koşuyla aynı emulator'de
-çalıştırma. Kuralları **asıl** dosyadan (`Desktop/REGİPASS/firestore.rules`)
+çalıştırma. Kuralları **asıl** dosyadan (`Regipass-Web/firestore.rules`)
 okur, buradaki kopyadan değil. Başka porttaki bir emulator'e yönlendirmek için:
 
 ```bash

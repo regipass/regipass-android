@@ -5,8 +5,9 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {homedir} from 'node:os';
+import { WEB_ROOT } from './lib/web-repo.mjs';
 
-const root=join(homedir(),'Desktop','REGİPASS','js/modules/events');
+const root=join(WEB_ROOT,'js/modules/events');
 function load(file, dependencies, names) {
   const source=readFileSync(join(root,file),'utf8')
     .replace(/^import\s+[\s\S]*?;\s*$/gm,'')

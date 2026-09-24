@@ -1,6 +1,13 @@
 # Regipass — Mobil (Flutter)
 
-Regipass web uygulamasının (`Desktop/REGİPASS`) Android + iOS portu.
+Regipass web uygulamasının ([Regipass-Web](https://github.com/eyyupahmet24-arch/Regipass-Web)) Android + iOS portu.
+
+> **Firebase kaynağı tek yerde (İP-1):** Firestore/Storage kuralları, indeksler ve
+> Cloud Functions yalnızca **Regipass-Web** reposunda tutulur ve oradan yayınlanır.
+> Bu repoda `functions/` ve kural dosyası yoktur; buradan `firebase deploy` ile
+> kural veya fonksiyon yayını **yapılmaz**. Yük testleri kuralları Regipass-Web'den
+> okur (`tool/loadtest/kurallari-esitle.sh`). Eski dokümanlarda geçen
+> `Desktop/REGİPASS` yolu bugün Regipass-Web reposudur.
 **Aynı Firebase projesini** (`eventapp-604a5`) ve **aynı Firestore
 koleksiyonlarını** kullanır; web ve mobil aynı veriyi okur/yazar.
 

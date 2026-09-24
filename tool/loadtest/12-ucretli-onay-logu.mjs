@@ -9,7 +9,7 @@
  * (Emulator: cd tool/loadtest/rules-env &&
  *  firebase emulators:start --only firestore --project eventapp-604a5)
  *
- * Kurallar ASIL dosyadan okunur (Desktop/REGİPASS/firestore.rules) —
+ * Kurallar ASIL dosyadan okunur (Regipass-Web/firestore.rules) —
  * tool/loadtest altındaki kopyalar bayat olabilir (bkz. README).
  *
  * Şema web ile ortaktır: iki belgede de `paidConsentLog` haritası
@@ -34,11 +34,12 @@ import { doc, deleteDoc, getDoc, setDoc, updateDoc, writeBatch, increment, delet
 import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { WEB_ROOT } from './lib/web-repo.mjs';
 
 const PROJECT_ID = 'eventapp-604a5';
 const PORT = Number(process.env.CONSENT_PORT ?? 8733);
 const RULES = process.env.RULES_FILE
-  ?? join(homedir(), 'Desktop', 'REGİPASS', 'firestore.rules');
+  ?? join(WEB_ROOT, 'firestore.rules');
 const FIELDS = JSON.parse(readFileSync(process.argv[2], 'utf8'));
 
 const CLUB = 'rulestest_club';
