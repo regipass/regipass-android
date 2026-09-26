@@ -49,7 +49,7 @@ class _ClubDashboardScreenState extends ConsumerState<ClubDashboardScreen> {
           if (requested.clubId == ref.read(currentUidProvider)) {
             context.go('${Routes.clubEventDetail}?eventId=${Uri.encodeComponent(requestedId)}');
           } else {
-            showEventDetailSheet(context, event: requested);
+            showEventDetailSheet(context, event: requested, forClub: true);
           }
         });
       }
@@ -106,6 +106,7 @@ class _ClubDashboardScreenState extends ConsumerState<ClubDashboardScreen> {
                     context,
                     event: event,
                     priority: getStudentEventPriority(event, pseudo),
+                    forClub: true,
                   ),
                 );
               },

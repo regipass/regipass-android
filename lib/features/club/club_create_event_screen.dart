@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:io' show Platform;
-import 'dart:typed_data';
 
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -190,7 +190,7 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
         ? event.contactMode
         : 'club';
     if (_contactMode == 'hidden' && _feeType == 'paid') _contactMode = 'club';
-    _contactPhone.text = event.contactPhone;
+    _contactPhone.text = formatContactPhone(event.contactPhone);
     _contactEmail.text = event.contactEmail;
     _sessionCount.text = '${event.sessionCount}';
     _checkinMode = event.resolvedCheckinMode;
@@ -615,7 +615,7 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
     final String contactMode = _feeType == 'paid' && _contactMode == 'hidden'
         ? 'club'
         : _contactMode;
-    final String contactPhone = _contactPhone.text.trim();
+    final String contactPhone = formatContactPhone(_contactPhone.text);
     final String contactEmail = _contactEmail.text.trim();
     if (contactMode == 'custom') {
       final String? error = contactFieldsError(contactPhone, contactEmail);
@@ -929,9 +929,12 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
                 enabled: !_saving,
                 keyboardType: TextInputType.phone,
                 textInputAction: TextInputAction.next,
-                inputFormatters: guardedInput(30),
+                inputFormatters: const <TextInputFormatter>[
+                  ContactPhoneFormatter(),
+                ],
                 decoration: InputDecoration(
                   labelText: context.t('clubCreateEvent.contact.phone'),
+                  hintText: '0XXX XXX XX XX',
                   prefixIcon: Icon(
                     Icons.phone_outlined,
                     size: 19,

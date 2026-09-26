@@ -278,7 +278,7 @@ Future<void> openSessionQr(
   }
 
   // Bilerek beklenmiyor: pencere arkada açık kalacak, akış QR ile sürüyor.
-  unawaited(showEventDetailSheet(context, event: event));
+  unawaited(showEventDetailSheet(context, event: event, forClub: true));
 
   if (event.currentSession >= 1) {
     await showSessionQrDialog(context, ref, event.id, event.currentSession);

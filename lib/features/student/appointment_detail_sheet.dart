@@ -300,10 +300,8 @@ class _AppointmentDetailSheetState
                       // için kulübün iletişim bilgileri kayıt sonrasında da
                       // erişilebilir olmalı. Kayıt anındaki pencere kapandıktan
                       // sonra öğrencinin bakacağı yer burası.
-                      if (item.event!.isPaid) ...<Widget>[
-                        const SizedBox(height: 20),
-                        EventPaidContactBlock(event: item.event!),
-                      ],
+                      const SizedBox(height: 20),
+                      EventPaidContactBlock(event: item.event!),
                     ],
 
                     const SizedBox(height: 24),

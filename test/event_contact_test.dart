@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:regipass/domain/event_contact.dart';
 import 'package:regipass/models/event.dart';
@@ -46,8 +47,10 @@ void main() {
     test('boş', () => expect(contactFieldsError('', ' '), 'clubCreateEvent.contact.errorEmpty'));
     test('bozuk e-posta', () => expect(contactFieldsError('', 'a@b'), 'clubCreateEvent.contact.errorEmail'));
     test('kısa telefon', () => expect(contactFieldsError('0532 11', ''), 'clubCreateEvent.contact.errorPhone'));
+    test('sabit hat da geçerli', () => expect(contactFieldsError('0212 123 45 67', ''), isNull));
     test('geçerli', () {
       expect(contactFieldsError('0532 111 22 33', ''), isNull);
+      expect(contactFieldsError('0532 111 22 3', ''), 'clubCreateEvent.contact.errorPhone');
       expect(contactFieldsError('', 'a@b.co'), isNull);
     });
   });
@@ -60,5 +63,38 @@ void main() {
     expect(r.count, 3);
     expect(r.notFound, <String>['x']);
     expect(bulkResultFrom(<String, dynamic>{}, countKey: 'removed').count, 0);
+  });
+
+  group('formatContactPhone', () {
+    test('cep, sabit hat, +90, fazla hane', () {
+      expect(formatContactPhone('05551234567'), '0555 123 45 67');
+      expect(formatContactPhone('2121234567'), '0212 123 45 67');
+      expect(formatContactPhone('+90 850 123 45 67'), '0850 123 45 67');
+      expect(formatContactPhone('0555123456789'), '0555 123 45 67');
+      expect(formatContactPhone('0555'), '0555');
+      expect(formatContactPhone(''), '');
+    });
+
+    test('yazarken biçimlendirir, imleç sonda kalır', () {
+      const ContactPhoneFormatter f = ContactPhoneFormatter();
+      final TextEditingValue v = f.formatEditUpdate(
+        TextEditingValue.empty,
+        const TextEditingValue(
+          text: '021212',
+          selection: TextSelection.collapsed(offset: 6),
+        ),
+      );
+      expect(v.text, '0212 12');
+      expect(v.selection.end, v.text.length);
+      final TextEditingValue w = f.formatEditUpdate(
+        TextEditingValue.empty,
+        const TextEditingValue(
+          text: '5',
+          selection: TextSelection.collapsed(offset: 1),
+        ),
+      );
+      expect(w.text, '05');
+      expect(w.selection.end, 2);
+    });
   });
 }

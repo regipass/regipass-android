@@ -208,4 +208,23 @@ void main() {
       expect(find.byType(EventSectionTitle), findsNothing);
     });
   });
+
+  testWidgets('kulüp ekranında not kulübe göre yazılır', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      _wrap(EventPaidContactBlock(event: _event(feeType: 'paid'), forClub: true)),
+    );
+    expect(find.text(_feeNote()), findsNothing);
+    expect(
+      find.text(
+        translate(
+          'eventModal.feeContactNoteClub',
+          params: <String, Object?>{'fee': '150 TL'},
+          language: 'tr',
+        ),
+      ),
+      findsOneWidget,
+    );
+  });
 }

@@ -453,9 +453,16 @@ List<({IconData icon, String label, String value})> eventInfoRows(
 /// Hangi bilginin gösterileceğini kulüp etkinliği oluştururken seçer
 /// ([AppEvent.shownContact]).
 class EventPaidContactBlock extends StatelessWidget {
-  const EventPaidContactBlock({required this.event, super.key});
+  const EventPaidContactBlock({
+    required this.event,
+    this.forClub = false,
+    super.key,
+  });
 
   final AppEvent event;
+
+  /// Kulüp ekranı: ücret notu öğrenciye değil kulübe göre yazılır.
+  final bool forClub;
 
   @override
   Widget build(BuildContext context) {
@@ -477,7 +484,7 @@ class EventPaidContactBlock extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 10),
-        _PaidContactCard(event: event),
+        _PaidContactCard(event: event, forClub: forClub),
       ],
     );
   }
@@ -488,9 +495,10 @@ class EventPaidContactBlock extends StatelessWidget {
 /// Hem detay penceresindeki blokta hem de kayıt sonrası açılan pencerede
 /// aynısı gösteriliyor; iki yerde ayrı ayrı kurmamak için tek parça.
 class _PaidContactCard extends StatelessWidget {
-  const _PaidContactCard({required this.event});
+  const _PaidContactCard({required this.event, this.forClub = false});
 
   final AppEvent event;
+  final bool forClub;
 
   /// Satıra dokunmak bilgiyi panoya alır.
   ///
@@ -524,26 +532,33 @@ class _PaidContactCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           if (event.isPaid)
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Icon(Icons.info_outline, size: 16, color: context.brandInk),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  context.t('eventModal.feeContactNoteWithFee', <String, Object?>{
-                    'fee': event.feeInfo.isNotEmpty ? event.feeInfo : '${event.feeAmount} TL',
-                  }),
-                  style: TextStyle(
-                    fontSize: 13,
-                    height: 1.45,
-                    fontWeight: FontWeight.w600,
-                    color: context.brandInk,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Icon(Icons.info_outline, size: 16, color: context.brandInk),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    context.t(
+                      forClub
+                          ? 'eventModal.feeContactNoteClub'
+                          : 'eventModal.feeContactNoteWithFee',
+                      <String, Object?>{
+                        'fee': event.feeInfo.isNotEmpty
+                            ? event.feeInfo
+                            : '${event.feeAmount} TL',
+                      },
+                    ),
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.45,
+                      fontWeight: FontWeight.w600,
+                      color: context.brandInk,
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
           if (phone.isNotEmpty || email.isNotEmpty) ...<Widget>[
             if (event.isPaid) const SizedBox(height: 12),
             if (phone.isNotEmpty)
@@ -769,6 +784,7 @@ Future<void> showEventDetailSheet(
   int? priority,
   Widget? extraContent,
   Widget? actionBar,
+  bool forClub = false,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -782,6 +798,7 @@ Future<void> showEventDetailSheet(
       priority: priority,
       extraContent: extraContent,
       actionBar: actionBar,
+      forClub: forClub,
     ),
   );
 }
@@ -792,6 +809,7 @@ class EventDetailSheet extends ConsumerWidget {
     this.priority,
     this.extraContent,
     this.actionBar,
+    this.forClub = false,
     super.key,
   });
 
@@ -799,6 +817,9 @@ class EventDetailSheet extends ConsumerWidget {
   final int? priority;
   final Widget? extraContent;
   final Widget? actionBar;
+
+  /// Kulüp ekranından açıldı: ücret notu kulübe göre.
+  final bool forClub;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -913,12 +934,11 @@ class EventDetailSheet extends ConsumerWidget {
                           const SizedBox(height: 10),
                           EventInfoTable(rows: eventInfoRows(context, event)),
 
-                          // Ücretli etkinlik: ödeme uygulama dışında yapılıyor,
-                          // öğrenci kulübe ulaşabilmeli.
-                          if (event.isPaid) ...<Widget>[
-                            const SizedBox(height: 22),
-                            EventPaidContactBlock(event: event),
-                          ],
+                          // İletişim: ücretsizde "İletişim Bilgileri", ücretlide
+                          // "Ücret İçin İletişim Bilgileri" (blok kendisi karar
+                          // verir; gösterilecek bilgi yoksa hiç çizilmez).
+                          const SizedBox(height: 22),
+                          EventPaidContactBlock(event: event, forClub: forClub),
 
                           const SizedBox(height: 22),
                           EventSectionTitle(

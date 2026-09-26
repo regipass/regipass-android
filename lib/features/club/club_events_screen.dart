@@ -63,7 +63,7 @@ class _ClubEventsScreenState extends ConsumerState<ClubEventsScreen> {
 
     _autoOpenedEventId = eventId;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) showEventDetailSheet(context, event: event!);
+      if (mounted) showEventDetailSheet(context, event: event!, forClub: true);
     });
   }
 

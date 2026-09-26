@@ -881,10 +881,8 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
                           // Ücretli etkinlik: pop-up kapandıktan sonra da
                           // kulüp iletişim bilgileri kaybolmasın diye burada
                           // kalıcı olarak da gösteriliyor.
-                          if (event.isPaid) ...<Widget>[
-                            const SizedBox(height: 22),
-                            EventPaidContactBlock(event: event),
-                          ],
+                          const SizedBox(height: 22),
+                          EventPaidContactBlock(event: event),
 
                           // ── Açıklama ────────────────────────────────────────
                           const SizedBox(height: 22),
