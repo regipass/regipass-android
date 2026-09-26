@@ -2,11 +2,14 @@
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../domain/event_utils.dart';
 import '../../domain/registration_capacity.dart';
 import '../../models/event.dart';
 import '../../models/profiles.dart';
+import '../../services/door_gate.dart';
+import '../../state/connectivity.dart';
 import '../../state/providers.dart';
 
 /// Kulübün kendi etkinlikleri — canlı.
@@ -237,3 +240,23 @@ bool canDistributeCertificates(AppEvent event, {DateTime? now}) =>
     event.isMultiSession
     ? event.sessionsCompleted
     : (isEventFinished(event, now: now) || isPastEvent(event, now: now));
+
+/// Kapı denetleyicisi (İP-O): cihazdaki bilet listesi + bekleyen okumalar.
+///
+/// Kulüp oturumu başına tek örnek: etkinlik ekranı listeyi buraya yazar
+/// (internetsiz kapı için), okutma ekranı da aynı örneği kullanır.
+final FutureProvider<DoorGate?> doorGateProvider = FutureProvider<DoorGate?>((
+  Ref ref,
+) async {
+  final String? uid = ref.watch(currentUidProvider);
+  if (uid == null) return null;
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  final DoorGate gate = DoorGate(
+    clubId: uid,
+    prefs: prefs,
+    backend: GateBackend.firestore(uid),
+    isOnline: () => ref.read(onlineProvider),
+  );
+  ref.onDispose(gate.dispose);
+  return gate;
+});

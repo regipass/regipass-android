@@ -519,6 +519,7 @@ class EventRegistration {
     this.ticketCode = '',
     this.attendanceFlags = const <String>[],
     this.attendanceVerified = const <String, int>{},
+    this.studentPhotoUrl = '',
   });
 
   factory EventRegistration.fromMap(String id, Map<String, dynamic> data) {
@@ -530,6 +531,7 @@ class EventRegistration {
       deadlineAtMs: asInt(data['deadlineAtMs']) ?? 0,
       clubId: asString(data['clubId']),
       clubName: asString(data['clubName']),
+      studentPhotoUrl: asString(data['studentPhotoUrl']),
       studentId: asString(data['studentId']),
       studentEmail: asString(data['studentEmail']),
       studentFirstName: asString(data['studentFirstName']),
@@ -604,6 +606,9 @@ class EventRegistration {
 
   /// Sunucunun ürettiği bilet kodu (İP-Y); kapıda kayıtla karşılaştırılır.
   final String ticketCode;
+
+  /// Kayıt anındaki profil fotoğrafı (web yazar); kapı kartında gösterilir.
+  final String studentPhotoUrl;
 
   /// Sunucunun koyduğu şüphe işaretleri: `door:edge`, `session:2:low-accuracy`.
   final List<String> attendanceFlags;

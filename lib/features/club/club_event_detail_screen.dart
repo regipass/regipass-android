@@ -19,6 +19,7 @@ import '../../domain/paid_event_consent.dart';
 import '../../domain/routing.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/event.dart';
+import '../../services/door_gate.dart';
 import '../../services/event_repository.dart';
 import '../../services/firebase_refs.dart';
 import '../../state/providers.dart';
@@ -1293,6 +1294,9 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
     });
   }
 
+  /// Kapı listesine en son yazılan kayıt listesi (aynı liste tekrar yazılmasın).
+  List<EventRegistration>? _seededRegistrations;
+
   @override
   Widget build(BuildContext context) {
     final AsyncValue<AppEvent?> eventAsync =
@@ -1306,6 +1310,19 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
 
     final AppEvent? watched = eventAsync.value;
     if (watched != null) _scheduleAutoDistribute(watched, registrations);
+
+    // İP-O: etkinlik bir kez açıldıysa bilet listesi cihaza da yazılır;
+    // kapıda internet olmasa da okutma çalışır.
+    final DoorGate? doorGate = ref.watch(doorGateProvider).value;
+    final List<EventRegistration>? liveRegs =
+        ref.read(eventRegistrationsProvider(widget.eventId)).value;
+    if (doorGate != null &&
+        watched != null &&
+        liveRegs != null &&
+        !identical(liveRegs, _seededRegistrations)) {
+      _seededRegistrations = liveRegs;
+      doorGate.seedFromEvent(watched, liveRegs);
+    }
 
     return Scaffold(
       appBar: ClubAppBar(
