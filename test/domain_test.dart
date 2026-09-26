@@ -486,7 +486,7 @@ void main() {
           final String token = createCheckinQrToken(payload);
           final String url = buildCheckinQrUrl(token);
           expect(
-            url.startsWith('https://eventapp-604a5.web.app/qr.html'),
+            url.startsWith('https://regipass.com/qr.html'),
             isTrue,
           );
           expect(extractCheckinQrToken(url), token);
@@ -509,7 +509,7 @@ void main() {
       );
       final String url = buildCheckinQrUrl(token);
 
-      expect(url.startsWith('https://eventapp-604a5.web.app/qr.html'), isTrue);
+      expect(url.startsWith('https://regipass.com/qr.html'), isTrue);
       expect(extractCheckinQrToken(url), token);
       expect(parseCheckinQrToken(url)!['eventId'], 'e1');
     });

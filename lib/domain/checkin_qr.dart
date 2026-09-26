@@ -29,7 +29,12 @@ const String kQrEntryPath = 'qr.html';
 const String kQrTokenParam = 't';
 
 /// Mobilde `window.location` yoktur; adres her zaman yayındaki siteye kurulur.
-const String kQrPublicBaseUrl = 'https://eventapp-604a5.web.app/';
+///
+/// 26 Eylül: ana alan adı (regipass.com). Öğrencinin web oturumu bu alanda;
+/// eski web.app adresi kamerayla açılınca yeniden giriş istiyordu. Android
+/// App Link ve iOS Universal Link iki alanda da tanımlı; eski QR'lar
+/// (web.app) çalışmaya devam eder, web onları regipass.com'a aktarır.
+const String kQrPublicBaseUrl = 'https://regipass.com/';
 
 String _toBase64Url(String text) => base64Url
     .encode(utf8.encode(text))
