@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 
 import '../core/constants.dart';
 import '../core/input_guard.dart';
@@ -10,9 +11,14 @@ import 'firebase_refs.dart';
 
 /// Yönetici işlemleri — js/pages/admin-*.js karşılığı.
 ///
-/// Bu sınıfın tüm çağrıları yalnızca yönetici hesabı için firestore.rules
-/// tarafından yetkilendirilmiştir (`isAdmin()`); başka bir hesapta
-/// `permission-denied` döner.
+/// Bu sınıfın tüm çağrıları yalnızca yönetim hesabı için firestore.rules
+/// tarafından yetkilendirilmiştir (`isAdmin()` / `isStaff()`: rol etiketi +
+/// doğrulayıcı kodla açılmış oturum); başka bir hesapta `permission-denied`
+/// döner.
+///
+/// İP-M1: engelleme artık SUNUCUDA (functions/adminAccounts.js#adminSetBan):
+/// gerekçe zorunlu ve işlem kaydına yazılır, engellenen hesap giriş yapamaz,
+/// kulüpte gelecek etkinlikler iptal edilip kayıtlılara bildirim gider.
 class AdminRepository {
   const AdminRepository();
 
@@ -59,30 +65,12 @@ class AdminRepository {
     await batch.commit();
   }
 
-  /// Kulübü engeller.
+  /// Başvuru incelemesinde kulübü reddeder (engeller).
   ///
-  /// Belgeler önce Storage'dan silinir: engellenen bir kulübün kimlik
-  /// belgelerini saklamanın bir gerekçesi yok. Silme başarısız olsa da
-  /// engelleme sürer — aksi hâlde kulüp açıkta kalırdı.
-  Future<void> blockClub(ClubProfile club) async {
-    await _deleteClubDocuments(club);
-
-    final WriteBatch batch = fbDb.batch();
-
-    batch.update(clubProfileDoc(club.uid), <String, dynamic>{
-      'clubStatus': ClubStatus.banned,
-      'documents': FieldValue.delete(),
-      'reviewedAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-
-    batch.update(userDoc(club.uid), <String, dynamic>{
-      'clubStatus': ClubStatus.banned,
-      'banned': true,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-
-    await batch.commit();
+  /// Belgeler sunucuda Storage'dan silinir (`deleteDocuments`): engellenen
+  /// bir kulübün kimlik belgelerini saklamanın bir gerekçesi yok.
+  Future<void> blockClub(ClubProfile club, {required String reason}) async {
+    await _setBan(club.uid, true, reason: reason, deleteDocuments: true);
   }
 
   /// Belgeleri eksik/hatalı bulup kulübü yükleme aşamasına geri gönderir.
@@ -172,45 +160,58 @@ class AdminRepository {
   /// Kulübü engeller ya da engelini kaldırır; işlemden sonraki `clubStatus`
   /// değerini döndürür.
   ///
-  /// [blockClub]'dan farkı: belgelere dokunmaz. Onay kuyruğundaki bir kulübü
-  /// reddetmek belgeleri silmeyi gerektiriyor, listeden engellemek ise geri
-  /// alınabilir bir işlem — engeli kaldırınca kulüp kaldığı yerden devam eder.
-  Future<String> setClubBanned(ClubProfile club, bool banned) async {
-    final String nextStatus = banned
-        ? ClubStatus.banned
-        : clubStatusAfterUnban(club);
-
-    final WriteBatch batch = fbDb.batch();
-
-    batch.update(clubProfileDoc(club.uid), <String, dynamic>{
-      'clubStatus': nextStatus,
-      'banned': banned,
-      'reviewedAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-
-    batch.update(userDoc(club.uid), <String, dynamic>{
-      'clubStatus': nextStatus,
-      'banned': banned,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-
-    await batch.commit();
-    return nextStatus;
+  /// [blockClub]'dan farkı: belgelere dokunmaz. Engeli kaldırınca kulüp
+  /// kaldığı yerden devam eder (belgeleri duruyorsa incelemeye döner).
+  /// İptal edilen etkinlikler engel kalkınca geri gelmez.
+  Future<String> setClubBanned(
+    ClubProfile club,
+    bool banned, {
+    String reason = '',
+  }) async {
+    final Map<String, dynamic> result = await _setBan(
+      club.uid,
+      banned,
+      reason: reason,
+    );
+    final Object? status = result['clubStatus'];
+    return status is String && status.isNotEmpty
+        ? status
+        : (banned ? ClubStatus.banned : clubStatusAfterUnban(club));
   }
 
-  Future<void> _deleteClubDocuments(ClubProfile club) async {
-    await Future.wait(
-      club.documents.values.map((Map<String, dynamic> info) async {
-        final String path = '${info['path'] ?? ''}';
-        if (path.isEmpty) return;
-        try {
-          await fbStorage.ref(path).delete();
-        } catch (_) {
-          // Dosya zaten yoksa ya da silinemiyorsa engelleme devam etmeli.
-        }
-      }),
+  /// Engelleme öncesi etkisi: kaç gelecek etkinlik iptal edilecek, kaç kişi.
+  Future<BanPreview> previewBan(String uid) async {
+    final Map<String, dynamic> data = await _call(
+      'adminPreviewBan',
+      <String, dynamic>{'uid': uid},
     );
+    return BanPreview.fromMap(data);
+  }
+
+  Future<Map<String, dynamic>> _setBan(
+    String uid,
+    bool banned, {
+    String reason = '',
+    bool deleteDocuments = false,
+  }) => _call('adminSetBan', <String, dynamic>{
+    'uid': uid,
+    'banned': banned,
+    'reason': reason,
+    'deleteDocuments': deleteDocuments,
+  }, timeout: const Duration(minutes: 5));
+
+  Future<Map<String, dynamic>> _call(
+    String name,
+    Map<String, dynamic> data, {
+    Duration timeout = const Duration(seconds: 60),
+  }) async {
+    final HttpsCallableResult<dynamic> result = await fbFunctions
+        .httpsCallable(name, options: HttpsCallableOptions(timeout: timeout))
+        .call<dynamic>(data);
+    final Object? value = result.data;
+    return value is Map
+        ? Map<String, dynamic>.from(value)
+        : <String, dynamic>{};
   }
 
   // ── Öğrenciler (admin-ban.js, admin-stats.js) ───────────────────────
@@ -235,21 +236,26 @@ class AdminRepository {
     return list;
   }
 
-  /// Öğrenciyi engeller. Router `banned` görünce oturumu kapatır.
-  Future<void> setStudentBanned(String uid, bool banned) async {
-    final WriteBatch batch = fbDb.batch();
-
-    batch.update(studentProfileDoc(uid), <String, dynamic>{
-      'banned': banned,
-      'bannedAt': banned ? FieldValue.serverTimestamp() : null,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-
-    batch.update(userDoc(uid), <String, dynamic>{
-      'banned': banned,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-
-    await batch.commit();
+  /// Öğrenciyi engeller / engelini kaldırır. Engellenen hesap giriş
+  /// yapamaz (sunucu Auth hesabını kapatır, oturumu düşürür).
+  Future<void> setStudentBanned(
+    String uid,
+    bool banned, {
+    String reason = '',
+  }) async {
+    await _setBan(uid, banned, reason: reason);
   }
+}
+
+/// Engelleme önizlemesi (functions/adminAccounts.js#adminPreviewBan).
+class BanPreview {
+  const BanPreview({required this.futureEvents, required this.registrations});
+
+  factory BanPreview.fromMap(Map<String, dynamic> map) => BanPreview(
+    futureEvents: (map['futureEvents'] as num?)?.toInt() ?? 0,
+    registrations: (map['registrations'] as num?)?.toInt() ?? 0,
+  );
+
+  final int futureEvents;
+  final int registrations;
 }

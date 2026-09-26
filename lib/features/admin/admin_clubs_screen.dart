@@ -19,6 +19,7 @@ import '../shared/common_widgets.dart';
 import '../shared/legal_consent.dart';
 import 'admin_providers.dart';
 import 'admin_shell.dart';
+import 'ban_decision_dialog.dart';
 import 'club_message_panel.dart';
 
 /// Durum süzgeci düğmeleri. `null` = tümü.
@@ -494,32 +495,20 @@ class _ClubDetailDialogState extends ConsumerState<_ClubDetailDialog> {
         ? club.clubName
         : context.t('admin.clubs.unnamed');
 
-    final bool? ok = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext dialogContext) => AlertDialog(
-        title: Text(
-          dialogContext.t(banning ? 'admin.clubs.ban' : 'admin.clubs.unban'),
-        ),
-        content: Text(
-          dialogContext.t(
-            banning ? 'admin.ban.confirmClubBan' : 'admin.ban.confirmClubUnban',
-            <String, Object?>{'name': name},
-          ),
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(dialogContext.t('common.cancel')),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(dialogContext.t('common.continueAction')),
-          ),
-        ],
+    final String? reason = await askBanDecision(
+      context,
+      ref,
+      uid: club.uid,
+      title: context.t(banning ? 'admin.clubs.ban' : 'admin.clubs.unban'),
+      message: context.t(
+        banning ? 'admin.ban.confirmClubBan' : 'admin.ban.confirmClubUnban',
+        <String, Object?>{'name': name},
       ),
+      banning: banning,
+      isClub: true,
     );
 
-    if (ok != true || !mounted) return;
+    if (reason == null || !mounted) return;
 
     setState(() {
       _busy = true;
@@ -530,7 +519,7 @@ class _ClubDetailDialogState extends ConsumerState<_ClubDetailDialog> {
     try {
       final String nextStatus = await ref
           .read(adminRepositoryProvider)
-          .setClubBanned(club, banning);
+          .setClubBanned(club, banning, reason: reason);
       if (!mounted) return;
 
       setState(() {
@@ -750,7 +739,10 @@ class _ClubDetailDialogState extends ConsumerState<_ClubDetailDialog> {
                           ),
                           minimumSize: const Size(0, 46),
                         ),
-                        onPressed: _busy ? null : _toggleBan,
+                        onPressed:
+                            _busy || !ref.watch(sessionProvider).canAdminWrite
+                            ? null
+                            : _toggleBan,
                         icon: Icon(
                           club.isBanned
                               ? Icons.lock_open_outlined

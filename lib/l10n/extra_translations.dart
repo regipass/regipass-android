@@ -11,6 +11,30 @@ library;
 const Map<String, Map<String, String>>
 kExtraTranslations = <String, Map<String, String>>{
   'tr': <String, String>{
+    // İP-M1: yönetim hesabı (rol etiketi + doğrulayıcı uygulama)
+    'auth.error.userDisabled':
+        'Bu hesap askıya alındı ya da silinmek üzere. Bir yanlışlık olduğunu '
+        'düşünüyorsan product@regipass.com adresine yaz.',
+    'auth.error.staffSetupRequired':
+        'Yönetim hesabında iki aşamalı doğrulama henüz kurulmamış. Kurulumu '
+        'bilgisayardan regipass.com/admin-login.html adresinde yap.',
+    'auth.totp.title': 'Doğrulama kodu',
+    'auth.totp.body':
+        'Doğrulayıcı uygulamadaki (Google Authenticator vb.) Regipass '
+        'satırındaki 6 haneli kodu yaz.',
+    'auth.totp.label': 'Kod',
+    'auth.totp.format': '6 haneli kodu yaz.',
+    'auth.totp.submit': 'Giriş yap',
+    'auth.totp.invalid':
+        'Kod hatalı ya da süresi geçti. Uygulamadaki güncel kodu yaz.',
+    'auth.totp.unsupported': 'Bu hesapta doğrulayıcı uygulama kayıtlı değil.',
+    'admin.ban.clubImpact':
+        'Bu kulübün {{events}} gelecek etkinliği İPTAL edilecek; {{people}} '
+        'kayıtlı kişiye bildirim gidecek. Kulüp hesabı giriş yapamayacak.',
+    'admin.ban.reasonLabel': 'Gerekçe',
+    'admin.ban.reasonHelper':
+        'Zorunlu. İşlem kaydına yazılır; öğrencilere gösterilmez.',
+    'admin.ban.reasonRequired': 'Engellemek için gerekçe yazmalısın.',
     // register.js içinde sabit metin olarak duruyordu
     'auth.error.roleAlreadyExists':
         'Bu hesap türü zaten var. Lütfen giriş yap.',
@@ -829,7 +853,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'admin.ban.filter.banned': 'Engelli',
     'admin.ban.bannedLabel': 'Engelli',
     'admin.ban.confirmClubBan':
-        '{{name}} engellensin mi? Kulüp panele erişemez; belgeleri silinmez.',
+        '{{name}} engellensin mi? Kulüp giriş yapamaz; belgeleri silinmez.',
     'admin.ban.confirmClubUnban':
         '{{name}} için engel kaldırılsın mı? Kulüp, belgeleri duruyorsa '
         'inceleme kuyruğuna, durmuyorsa belge yükleme adımına döner.',
@@ -1135,6 +1159,30 @@ kExtraTranslations = <String, Map<String, String>>{
     'registration.ticket.paymentPendingHint': 'Ödemen henüz onaylanmadı: kapıda giriş yapılamaz. Kulüp ödemeni onaylayınca bilet geçerli olur.',
   },
   'en': <String, String>{
+    // İP-M1: staff account (role claim + authenticator app)
+    'auth.error.userDisabled':
+        'This account has been suspended or is scheduled for deletion. If you '
+        'think this is a mistake, write to product@regipass.com.',
+    'auth.error.staffSetupRequired':
+        'Two-step verification is not set up for this staff account yet. '
+        'Set it up on a computer at regipass.com/admin-login.html.',
+    'auth.totp.title': 'Verification code',
+    'auth.totp.body':
+        'Enter the 6-digit code shown for Regipass in your authenticator app.',
+    'auth.totp.label': 'Code',
+    'auth.totp.format': 'Enter the 6-digit code.',
+    'auth.totp.submit': 'Sign in',
+    'auth.totp.invalid':
+        'The code is wrong or expired. Enter the current code from the app.',
+    'auth.totp.unsupported': 'No authenticator app is enrolled on this account.',
+    'admin.ban.clubImpact':
+        '{{events}} upcoming events of this club will be CANCELLED; '
+        '{{people}} registered people will be notified. The club account will '
+        'not be able to sign in.',
+    'admin.ban.reasonLabel': 'Reason',
+    'admin.ban.reasonHelper':
+        'Required. Saved to the audit log; not shown to students.',
+    'admin.ban.reasonRequired': 'You must enter a reason to ban.',
     'auth.error.roleAlreadyExists':
         'This account type already exists. Please sign in.',
     'auth.error.emailRegisteredWrongPassword':

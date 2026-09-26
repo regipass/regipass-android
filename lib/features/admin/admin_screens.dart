@@ -21,6 +21,7 @@ import '../shared/common_widgets.dart';
 import '../shared/legal_consent.dart';
 import 'admin_providers.dart';
 import 'admin_shell.dart';
+import 'ban_decision_dialog.dart';
 import 'club_message_panel.dart';
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -159,6 +160,9 @@ class _PendingClubCardState extends ConsumerState<_PendingClubCard> {
     }
   }
 
+  /// İP-M1: destek rolü yalnızca görür (kurallar/sunucu da reddeder).
+  bool get _canWrite => ref.watch(sessionProvider).canAdminWrite;
+
   Future<void> _approve() async {
     final bool ok = await _confirm(
       context.t('admin.action.approve'),
@@ -246,17 +250,24 @@ class _PendingClubCardState extends ConsumerState<_PendingClubCard> {
   }
 
   Future<void> _block() async {
-    final bool ok = await _confirm(
-      context.t('admin.action.block'),
-      context.t('admin.confirm.block', <String, Object?>{
+    final String? reason = await askBanDecision(
+      context,
+      ref,
+      uid: widget.club.uid,
+      title: context.t('admin.action.block'),
+      message: context.t('admin.confirm.block', <String, Object?>{
         'club': widget.club.clubName,
       }),
+      banning: true,
+      isClub: true,
     );
-    if (!ok || !mounted) return;
+    if (reason == null || !mounted) return;
 
     final String message = context.t('admin.feedback.blocked');
     await _run(
-      () => ref.read(adminRepositoryProvider).blockClub(widget.club),
+      () => ref
+          .read(adminRepositoryProvider)
+          .blockClub(widget.club, reason: reason),
       message,
     );
   }
@@ -446,7 +457,7 @@ class _PendingClubCardState extends ConsumerState<_PendingClubCard> {
                     backgroundColor: BrandColors.success,
                     minimumSize: const Size(0, 44),
                   ),
-                  onPressed: _busy ? null : _approve,
+                  onPressed: _busy || !_canWrite ? null : _approve,
                   icon: const Icon(Icons.check, size: 18),
                   label: Text(context.t('admin.action.approve')),
                 ),
@@ -459,7 +470,7 @@ class _PendingClubCardState extends ConsumerState<_PendingClubCard> {
                     side: const BorderSide(color: BrandColors.danger),
                     minimumSize: const Size(0, 44),
                   ),
-                  onPressed: _busy ? null : _block,
+                  onPressed: _busy || !_canWrite ? null : _block,
                   icon: const Icon(Icons.block, size: 18),
                   label: Text(context.t('admin.action.block')),
                 ),
@@ -471,7 +482,7 @@ class _PendingClubCardState extends ConsumerState<_PendingClubCard> {
           // yükleyebilsin diye ayrı bir yol.
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(minimumSize: const Size(0, 44)),
-            onPressed: _busy ? null : _requestFix,
+            onPressed: _busy || !_canWrite ? null : _requestFix,
             icon: const Icon(Icons.report_gmailerrorred_outlined, size: 18),
             label: Text(context.t('admin.action.needsDocuments')),
           ),
@@ -1127,55 +1138,46 @@ class _BanRow extends ConsumerStatefulWidget {
 class _BanRowState extends ConsumerState<_BanRow> {
   bool _busy = false;
 
+  /// İP-M1: destek rolü yalnızca görür.
+  bool get _canWrite => ref.watch(sessionProvider).canAdminWrite;
+
   Future<void> _toggleBan() async {
     final BanEntry entry = widget.entry;
     final bool banning = !entry.banned;
     final bool isStudent = widget.scope == BanScope.students;
 
-    final bool? ok = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext dialogContext) => AlertDialog(
-        title: Text(
-          banning
-              ? dialogContext.t('admin.ban.banButton')
-              : dialogContext.t('admin.ban.unbanButton'),
-        ),
-        content: Text(
-          dialogContext.t(
-            switch ((isStudent, banning)) {
-              (true, true) => 'admin.ban.confirmBan',
-              (true, false) => 'admin.ban.confirmUnban',
-              (false, true) => 'admin.ban.confirmClubBan',
-              (false, false) => 'admin.ban.confirmClubUnban',
-            },
-            <String, Object?>{'name': entry.title},
-          ),
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(dialogContext.t('common.cancel')),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(dialogContext.t('common.continueAction')),
-          ),
-        ],
+    final String? reason = await askBanDecision(
+      context,
+      ref,
+      uid: entry.uid,
+      title: context.t(
+        banning ? 'admin.ban.banButton' : 'admin.ban.unbanButton',
       ),
+      message: context.t(
+        switch ((isStudent, banning)) {
+          (true, true) => 'admin.ban.confirmBan',
+          (true, false) => 'admin.ban.confirmUnban',
+          (false, true) => 'admin.ban.confirmClubBan',
+          (false, false) => 'admin.ban.confirmClubUnban',
+        },
+        <String, Object?>{'name': entry.title},
+      ),
+      banning: banning,
+      isClub: !isStudent,
     );
 
-    if (ok != true || !mounted) return;
+    if (reason == null || !mounted) return;
 
     setState(() => _busy = true);
     try {
       final AdminRepository repository = ref.read(adminRepositoryProvider);
 
       if (isStudent) {
-        await repository.setStudentBanned(entry.uid, banning);
+        await repository.setStudentBanned(entry.uid, banning, reason: reason);
       } else {
         // Kulüp listesi tek seferlik bir sorgudan geliyor; öğrenciler gibi
         // canlı değil, bu yüzden yazdıktan sonra elle tazeleniyor.
-        await repository.setClubBanned(entry.club!, banning);
+        await repository.setClubBanned(entry.club!, banning, reason: reason);
         ref.invalidate(allClubsProvider);
       }
     } catch (_) {
@@ -1253,7 +1255,7 @@ class _BanRowState extends ConsumerState<_BanRow> {
             )
           else
             TextButton(
-              onPressed: _toggleBan,
+              onPressed: _canWrite ? _toggleBan : null,
               style: TextButton.styleFrom(
                 foregroundColor: entry.banned
                     ? BrandColors.success

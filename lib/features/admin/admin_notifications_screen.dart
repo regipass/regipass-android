@@ -69,14 +69,12 @@ class _AdminNotificationsScreenState
   ///
   ///   1. Yayındaki firestore.rules'ta `notifications` bloğu yok — dosyanın
   ///      sonundaki `match /{document=**}` her yazmayı reddediyor.
-  ///   2. Kuraldaki sabit yönetici UID'si bu oturumunkinden farklı. Panele
-  ///      giriş E-POSTAYA bakıyor (`isAdminEmail`, state/providers.dart),
-  ///      Firestore izni ise UID'ye: aynı e-postayla açılmış BAŞKA bir hesap
-  ///      panele girebiliyor ama hiçbir şey yazamıyor.
+  ///   2. Oturumun rolü "destek" (yalnızca görür) ya da rol etiketi / kod
+  ///      doğrulaması kurallarla uyuşmuyor (İP-M1: yetki rol etiketinden +
+  ///      doğrulayıcı kodla açılmış oturumdan gelir).
   ///
-  /// İkisini ayırmanın tek yolu oturumun UID'sini kuraldakiyle karşılaştırmak,
-  /// o yüzden UID mesaja ekleniyor. Bu metni yalnızca yönetici görür ve
-  /// gördüğü kendi UID'sidir.
+  /// Hata ayıklamayı kolaylaştırmak için oturumun UID'si mesaja ekleniyor.
+  /// Bu metni yalnızca yönetim ekibi görür ve gördüğü kendi UID'sidir.
   String _sendErrorMessage(FirebaseException error, String uid) =>
       error.code == 'permission-denied'
       ? '${context.t('admin.notify.sendDenied')} (uid: $uid)'

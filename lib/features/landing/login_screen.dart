@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/system_ui.dart';
 import '../../app/theme.dart';
-import '../../core/constants.dart';
 import '../../core/input_guard.dart';
 import '../../core/sanitize.dart';
 import '../../domain/routing.dart';
@@ -14,6 +13,7 @@ import '../../state/connectivity.dart';
 import '../../state/providers.dart';
 import '../auth/auth_actions.dart';
 import '../auth/auth_widgets.dart';
+import '../auth/totp_code_dialog.dart';
 import '../shared/common_widgets.dart';
 import '../shared/glowing_border.dart';
 import 'splash_screen.dart';
@@ -91,19 +91,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final String rawEmail = _emailController.text.trim();
     final String password = _passwordController.text;
 
-    // ── Yönetici girişi ── "a" veya a@regipass.app + şifre
-    if (isAdminLogin(rawEmail)) {
-      if (password.isEmpty) {
-        _setFeedback(context.t('auth.feedback.fillEmailPassword'));
-        return Future<void>.value();
-      }
-      return _run(() async {
-        await ref
-            .read(authRepositoryProvider)
-            .signInWithEmail(kAdminEmail, password);
-      });
-    }
-
     final String? email = sanitizeEmail(rawEmail);
     if (email == null || password.isEmpty) {
       _setFeedback(context.t('auth.feedback.fillEmailPassword'));
@@ -111,10 +98,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
 
     return _run(() async {
-      final UserCredential result = await ref
-          .read(authRepositoryProvider)
-          .signInWithEmail(email, password);
-      if (result.user != null) await completePostAuth(ref, result.user!);
+      UserCredential? result;
+      try {
+        result = await ref
+            .read(authRepositoryProvider)
+            .signInWithEmail(email, password);
+      } on FirebaseAuthMultiFactorException catch (error) {
+        // İP-M1: yönetim hesabı — şifre doğru, doğrulayıcı kodu isteniyor.
+        if (!mounted) return;
+        result = await resolveTotpSignIn(context, error.resolver);
+      }
+      if (result?.user != null) await completePostAuth(ref, result!.user!);
     });
   }
 

@@ -1,26 +1,13 @@
 /// Uygulama genelindeki sabitler.
 ///
-/// js/core/admin-config.js ve js/modules/auth/role-session.js karşılığı.
+/// js/modules/auth/role-session.js karşılığı.
 library;
 
-/// Yönetici girişi. Kullanıcı giriş ekranına "a" yazar; sistem bunu gerçek
-/// Firebase Auth hesabı olan [kAdminEmail] adresine eşler.
-///
-/// NOT: Web'deki `admin-config.js` ayrıca sabit bir yönetici parolası
-/// sabitini içeriyordu. Bu sabit hiçbir yerde kullanılmıyordu (giriş akışı
-/// kullanıcının yazdığı şifreyi kullanır) ve istemci paketine gömülü bir
-/// yönetici şifresi ciddi bir risk oluşturduğu için buraya taşınmadı.
-const String kAdminLoginAlias = 'a';
-const String kAdminEmail = 'a@regipass.app';
-
-/// Hem kısa "a" takma adını hem de tam yönetici e-postasını kabul eder.
-bool isAdminLogin(String? rawInput) {
-  final String value = (rawInput ?? '').trim().toLowerCase();
-  return value == kAdminLoginAlias || value == kAdminEmail;
-}
-
-bool isAdminEmail(String? email) =>
-    (email ?? '').trim().toLowerCase() == kAdminEmail;
+/// İP-M1: yönetici girişi artık e-postaya ("a" / a@regipass.app) bağlı
+/// DEĞİL. Yetki sunucunun verdiği rol etiketinden (custom claim) ve
+/// doğrulayıcı uygulama koduyla açılmış oturumdan gelir; bkz.
+/// lib/domain/staff_access.dart. Yönetici normal e-posta + şifreyle girer,
+/// ardından 6 haneli kod istenir.
 
 /// Kulüp onay sürecindeki durumlar (`club_profiles.clubStatus`).
 ///

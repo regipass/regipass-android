@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/constants.dart';
 import '../domain/routing.dart';
+import '../domain/staff_access.dart';
 import '../models/event.dart';
 import '../models/profiles.dart';
 import '../services/account_cleanup_repository.dart';
@@ -153,6 +154,20 @@ final Provider<NotificationReadStore> notificationReadStoreProvider =
 final StreamProvider<User?> authStateProvider = StreamProvider<User?>(
   (Ref ref) => ref.watch(authRepositoryProvider).authStateChanges(),
 );
+
+/// İP-M1: oturumun yönetim yetkisi (rol etiketi + doğrulayıcı kodu).
+/// ID token'dan okunur; token okunamazsa yönetim yetkisi YOK sayılır.
+final FutureProvider<StaffAccess> staffAccessProvider =
+    FutureProvider<StaffAccess>((Ref ref) async {
+      final User? user = ref.watch(authStateProvider).value;
+      if (user == null) return StaffAccess.none;
+      try {
+        final IdTokenResult token = await user.getIdTokenResult();
+        return StaffAccess.fromClaims(token.claims);
+      } catch (_) {
+        return StaffAccess.none;
+      }
+    });
 
 /// Giriş yapmış kullanıcının uid'i (yoksa null).
 final Provider<String?> currentUidProvider = Provider<String?>(
@@ -324,6 +339,7 @@ class Session {
     this.pendingRole,
     this.isProbingAccount = false,
     this.isResettingPassword = false,
+    this.staff = StaffAccess.none,
   });
 
   final bool isLoading;
@@ -345,9 +361,17 @@ class Session {
   /// Şifre yenileme, SMS doğrulamasının açtığı geçici oturumda sürüyor.
   final bool isResettingPassword;
 
+  /// İP-M1: rol etiketi + doğrulayıcı kodu (bkz. [StaffAccess]).
+  final StaffAccess staff;
+
   bool get isSignedIn => user != null;
 
-  bool get isAdmin => isAdminEmail(user?.email);
+  /// Yönetim paneli (yönetici ya da destek; kodla açılmış oturum).
+  /// Eskiden e-postaya bakıyordu (a@regipass.app); artık rol etiketine.
+  bool get isAdmin => staff.isStaff;
+
+  /// Engelleme/onay/duyuru gibi yazma işlemleri yalnızca yönetici rolünde.
+  bool get canAdminWrite => staff.canWrite;
 
   bool get hasStudentRole => studentProfile?.onboardingCompleted ?? false;
 
@@ -394,6 +418,7 @@ final Provider<Session> sessionProvider = Provider<Session>((Ref ref) {
     );
   }
 
+  final AsyncValue<StaffAccess> staff = ref.watch(staffAccessProvider);
   final AsyncValue<AppUser?> appUser = ref.watch(appUserProvider);
   final AppUser? userProfile = appUser.value;
   final String? activeRole = ref.watch(activeRoleProvider);
@@ -438,7 +463,11 @@ final Provider<Session> sessionProvider = Provider<Session>((Ref ref) {
   final ClubProfile? safeClub = club.value?.uid == user.uid ? club.value : null;
 
   return Session(
-    isLoading: appUser.isLoading || student.isLoading || club.isLoading,
+    isLoading:
+        staff.isLoading ||
+        appUser.isLoading ||
+        student.isLoading ||
+        club.isLoading,
     user: user,
     appUser: safeAppUser,
     studentProfile: safeStudent,
@@ -447,5 +476,6 @@ final Provider<Session> sessionProvider = Provider<Session>((Ref ref) {
     pendingRole: pendingRole,
     isProbingAccount: probing,
     isResettingPassword: resettingPassword,
+    staff: staff.value ?? StaffAccess.none,
   );
 });

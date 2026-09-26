@@ -10,7 +10,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
-import '../../core/constants.dart';
+import '../../domain/staff_access.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/profiles.dart';
 import '../../state/providers.dart';
@@ -21,7 +21,15 @@ import '../../state/providers.dart';
 /// burada hiçbir belge oluşturulmaz; tamamlanmış bir hesabın yalnız giriş
 /// zamanı ve Auth e-postası tazelenir.
 Future<void> completePostAuth(WidgetRef ref, User user) async {
-  if (isAdminEmail(user.email)) return; // router /admin'e alır
+  // İP-M1: yönetim hesabı rol etiketinden tanınır. Kodla açılmış oturum →
+  // router /admin'e alır. Rolü olup doğrulayıcısı hiç kurulmamış hesap
+  // mobilde kurulum yapamaz (QR + ilk kod webde): oturum kapatılır.
+  final StaffAccess staff = await _staffAccessOf(user);
+  if (staff.state == StaffAccessState.ready) return;
+  if (staff.state == StaffAccessState.needsSetup) {
+    await ref.read(authRepositoryProvider).signOut();
+    throw FirebaseAuthException(code: kStaffSetupRequiredCode);
+  }
 
   final profileRepository = ref.read(profileRepositoryProvider);
   final authRepository = ref.read(authRepositoryProvider);
@@ -29,6 +37,18 @@ Future<void> completePostAuth(WidgetRef ref, User user) async {
   if (appUser == null) return;
 
   await authRepository.recordExistingUserLogin(user);
+}
+
+/// Yönetim hesabının doğrulayıcı kurulumu webde yapılmalı (İP-M1).
+const String kStaffSetupRequiredCode = 'staff-setup-required';
+
+Future<StaffAccess> _staffAccessOf(User user) async {
+  try {
+    final IdTokenResult token = await user.getIdTokenResult();
+    return StaffAccess.fromClaims(token.claims);
+  } catch (_) {
+    return StaffAccess.none;
+  }
 }
 
 /// login-modal.js#getFriendlyErrorMessage portu.
@@ -50,6 +70,12 @@ String friendlyAuthError(BuildContext context, Object error) {
     'invalid-credential' ||
     'wrong-password' => context.t('auth.error.invalidCredentials'),
     'user-not-found' => context.t('auth.error.userNotFound'),
+    // İP-M1: engellenen ya da silinmeyi bekleyen hesap (Auth hesabı kapalı).
+    'user-disabled' => context.t('auth.error.userDisabled'),
+    kStaffSetupRequiredCode => context.t('auth.error.staffSetupRequired'),
+    'invalid-verification-code' ||
+    'missing-code' => context.t('auth.totp.invalid'),
+    'multi-factor-unsupported' => context.t('auth.totp.unsupported'),
     'email-already-in-use' => context.t('auth.error.emailInUse'),
     'weak-password' => context.t('auth.error.weakPassword'),
     'too-many-requests' => context.t('auth.error.tooManyRequests'),
