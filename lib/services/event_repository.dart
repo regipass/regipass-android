@@ -166,6 +166,8 @@ class EventRepository {
       'studentDepartment': profile?.department ?? '',
       'studentClassYear': profile?.classYear ?? '',
       'studentCity': profile?.city ?? '',
+      // Kapı kartında gösterilir (web de kayıtta yazıyor).
+      'studentPhotoUrl': profile?.photoUrl ?? '',
       'registeredAtMs': DateTime.now().millisecondsSinceEpoch,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),

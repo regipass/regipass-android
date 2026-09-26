@@ -357,4 +357,31 @@ void main() {
       );
     },
   );
+
+  test(
+    'liste hazırlanırken eksik fotoğraflar için sunucuya bir kez istek gider',
+    () async {
+      final FakeServer server = FakeServer();
+      final List<String> calls = <String>[];
+      final GateBackend base = server.backend();
+      final DoorGate gate = DoorGate(
+        clubId: 'clubA',
+        prefs: await SharedPreferences.getInstance(),
+        isOnline: () => true,
+        now: () => server.clock,
+        networkTimeout: const Duration(milliseconds: 50),
+        backend: GateBackend(
+          fetchEvent: base.fetchEvent,
+          fetchRegistrations: base.fetchRegistrations,
+          fetchRegistration: base.fetchRegistration,
+          writeCheckIn: base.writeCheckIn,
+          fillPhotos: (String eventId) async => calls.add(eventId),
+        ),
+      );
+      await gate.preparePack('e1', force: true);
+      await gate.preparePack('e1', force: true);
+      await Future<void>.delayed(Duration.zero);
+      expect(calls, <String>['e1']);
+    },
+  );
 }

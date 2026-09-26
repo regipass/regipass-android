@@ -717,14 +717,6 @@ class _GateCard extends StatelessWidget {
                                   fontSize: 12,
                                 ),
                               ),
-                            if (o.event != null && o.event!.title.isNotEmpty)
-                              Text(
-                                o.event!.title,
-                                style: const TextStyle(
-                                  color: Color(0xFF6B7280),
-                                  fontSize: 12,
-                                ),
-                              ),
                           ],
                         ),
                       ),

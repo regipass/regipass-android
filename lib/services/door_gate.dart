@@ -15,6 +15,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../domain/checkin_qr.dart';
@@ -144,6 +145,7 @@ class GateBackend {
     required this.fetchRegistration,
     required this.writeCheckIn,
     this.watchRegistrations,
+    this.fillPhotos,
   });
 
   /// Gerçek Firestore bağlantıları.
@@ -179,6 +181,14 @@ class GateBackend {
           'checkedInByClubId': clubId,
           'updatedAt': FieldValue.serverTimestamp(),
         }),
+    fillPhotos: (String eventId) async {
+      await fbFunctions
+          .httpsCallable(
+            'fillEventStudentPhotos',
+            options: HttpsCallableOptions(timeout: const Duration(seconds: 30)),
+          )
+          .call(<String, Object?>{'eventId': eventId});
+    },
     watchRegistrations: (String eventId) => registrationsCol
         .where('eventId', isEqualTo: eventId)
         .snapshots()
@@ -198,6 +208,10 @@ class GateBackend {
   final Future<void> Function(String regId, int checkedInAtMs) writeCheckIn;
   final Stream<List<GateRegistration>> Function(String eventId)?
   watchRegistrations;
+
+  /// Fotoğrafı eksik kayıtları sunucu profilden doldurur (kulüp profilleri
+  /// okuyamaz); sonuç canlı listeyle gelir.
+  final Future<void> Function(String eventId)? fillPhotos;
 }
 
 bool _isPermissionError(Object error) =>
@@ -234,6 +248,21 @@ class DoorGate {
       StreamController<GateChange>.broadcast();
   late List<GatePending> _pending;
   Future<({int sent, int left})>? _flushing;
+  final Set<String> _photoRequested = <String>{};
+
+  /// Kartta fotoğraf çıksın: eksik fotoğraflar için sunucudan etkinlik
+  /// başına bir kez doldurma istenir; sonuç canlı listeyle gelir.
+  void _requestPhotos(String eventId, List<GateRegistration> regs) {
+    final Future<void> Function(String)? fill = backend.fillPhotos;
+    if (fill == null || _photoRequested.contains(eventId) || !isOnline()) {
+      return;
+    }
+    if (!regs.any((GateRegistration r) => r.studentPhotoUrl.trim().isEmpty)) {
+      return;
+    }
+    _photoRequested.add(eventId);
+    unawaited(fill(eventId).catchError((Object _) {}));
+  }
 
   Stream<GateChange> get changes => _changes.stream;
   int get pendingCount => _pending.length;
@@ -357,7 +386,7 @@ class DoorGate {
   /// yazılır; kulübün etkinliği bir kez açmış olması yeterlidir.
   void seedFromEvent(AppEvent event, List<EventRegistration> registrations) {
     if (!event.hasDoorCheckin) return;
-    _store(
+    final GatePack pack = _store(
       GateEvent(
         id: event.id,
         title: event.title,
@@ -383,6 +412,7 @@ class DoorGate {
       ],
       fromServer: true,
     );
+    _requestPhotos(event.id, pack.registrations);
   }
 
   /// Bilet listesini hazırlar: internet varsa indirir, yoksa cihazdakini
@@ -400,6 +430,7 @@ class DoorGate {
         if (got.$1 == null) return null;
         final GatePack pack = _store(got.$1!, got.$2, fromServer: true);
         _listen(eventId);
+        _requestPhotos(eventId, pack.registrations);
         return pack;
       } catch (_) {
         // Cihazdaki listeye düşülür.
