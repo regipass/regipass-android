@@ -24,6 +24,7 @@ import '../../models/event.dart';
 import '../../models/profiles.dart';
 import '../../services/event_repository.dart';
 import '../../services/firebase_refs.dart';
+import '../../services/registration_service.dart';
 import '../../state/providers.dart';
 import '../shared/common_widgets.dart';
 import '../shared/event_widgets.dart';
@@ -796,16 +797,29 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
 
       if (!mounted) return;
       if (context.canPop()) context.pop();
-    } catch (_) {
+    } catch (error) {
       if (createdEventId != null) {
         try {
-          await ref.read(eventRepositoryProvider).deleteEvent(createdEventId);
+          // İP-K: yeni (kaydı olmayan) etkinliği sunucu tamamen siler;
+          // istemciden silme yalnızca günü geçmiş etkinlikte açık.
+          await ref
+              .read(registrationServiceProvider)
+              .cancelEvent(eventId: createdEventId);
         } catch (_) {
           // Temizleme başarısızsa asıl kayıt hatasını yine göster.
         }
       }
       if (!mounted) return;
-      _setFeedback(context.t('feedback.saveErrorRetry'), FeedbackTone.error);
+      if (error is RegistrationFailure && !error.isNetwork) {
+        _setFeedback(
+          context.t('registration.errors.${error.reason}', <String, Object?>{
+            'registered': error.registered ?? '',
+          }),
+          FeedbackTone.error,
+        );
+      } else {
+        _setFeedback(context.t('feedback.saveErrorRetry'), FeedbackTone.error);
+      }
       setState(() => _saving = false);
     }
   }

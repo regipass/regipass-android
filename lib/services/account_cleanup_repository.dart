@@ -15,7 +15,10 @@ library;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import '../core/app_log.dart';
 import '../core/constants.dart';
+import '../domain/event_utils.dart';
+import '../models/event.dart';
 import '../models/profiles.dart';
 import 'firebase_refs.dart';
 import 'phone_directory_repository.dart';
@@ -190,41 +193,59 @@ class AccountCleanupRepository {
 
   /// Öğrencinin etkinlik kayıtları.
   ///
-  /// Belgeler düz silinmez, iptal akışından geçirilir: kontenjan sayacı da
-  /// aynı transaction'da azalır. Düz silme, etkinlikte kimsenin
-  /// kullanamayacağı boş bir yer sızdırırdı.
+  /// İP-K (L4): kayıtlar sunucuda, kontenjan yeri aynı işlemde geri verilerek
+  /// silinir; bekleme listesi girişleri de temizlenir. Çağrı başarısız olursa
+  /// hesap silme durmaz: Auth hesabı silinince sunucudaki
+  /// `releaseRegistrationsOnAccountDelete` aynı işi yeniden yapar. Geriye
+  /// kalan belge (aşama 1) doğrudan silinir.
   Future<void> _cancelStudentRegistrations(String uid) async {
+    try {
+      await registrations.cancelAllMine();
+    } catch (error) {
+      AppLog.warn('account.cleanup.registrations', <String, Object?>{
+        'error': '$error',
+      });
+    }
+
     final QSnap snap = await registrationsCol
         .where('studentId', isEqualTo: uid)
         .get();
-
     for (final QueryDocumentSnapshot<Map<String, dynamic>> doc in snap.docs) {
-      final String eventId = asString(doc.data()['eventId']);
-      if (eventId.isEmpty) {
-        await doc.reference.delete();
-        continue;
-      }
-      await registrations.unregister(eventId: eventId, studentId: uid);
+      await _bestEffort(() => doc.reference.delete());
     }
   }
 
   /// Kulübün etkinlikleri ve onlara bağlı her şey.
   ///
   /// Etkinlikleri bırakmak, sahibi olmayan ve kimsenin düzenleyemeyeceği
-  /// ilanların Keşfet'te durmaya devam etmesi demekti. Kayıtlar ve kontenjan
-  /// parçaları etkinlikten önce silinir; ters sırada etkinlik belgesi
-  /// gidince kurallar "etkinliğin sahibi miyim" sorusunu yanıtlayamaz ve alt
-  /// belgeler erişilemez hâlde kalırdı.
+  /// ilanların Keşfet'te durmaya devam etmesi demekti.
+  ///
+  /// İP-K (L5): günü geçmemiş etkinlik istemciden silinemez; sunucu İPTAL
+  /// eder (kayıtlılara bildirim gider) ya da hiç kaydı yoksa tamamen siler.
+  /// Günü geçmiş etkinlikte eski yol sürer: kayıtlar ve kontenjan parçaları
+  /// etkinlikten önce silinir; ters sırada etkinlik belgesi gidince kurallar
+  /// "etkinliğin sahibi miyim" sorusunu yanıtlayamaz ve alt belgeler
+  /// erişilemez hâlde kalırdı.
   Future<void> _deleteClubEvents(String uid) async {
     final QSnap events = await eventsCol.where('clubId', isEqualTo: uid).get();
 
     for (final QueryDocumentSnapshot<Map<String, dynamic>> event
         in events.docs) {
+      final AppEvent parsed = AppEvent.fromMap(event.id, event.data());
+      if (!isPastEvent(parsed)) {
+        await _bestEffort(
+          () => registrations.cancelEvent(
+            eventId: event.id,
+            reason: 'Kulüp hesabı kapatıldı.',
+          ),
+        );
+        continue;
+      }
       await _bestEffort(
         () => _deleteQuery(registrationsCol, 'eventId', event.id),
       );
       await _bestEffort(() => _deleteCollection(quotaShardsCol(event.id)));
-      await event.reference.delete();
+      await _bestEffort(() => event.reference.delete());
     }
   }
 

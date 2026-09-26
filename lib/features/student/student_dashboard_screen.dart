@@ -7,10 +7,10 @@ import '../../domain/checkin_qr.dart';
 import '../../domain/event_utils.dart';
 import '../../domain/paid_event_consent.dart';
 import '../../domain/registration_capacity.dart';
+import '../../domain/registration_state.dart';
 import '../../domain/routing.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/event.dart';
-import '../../models/profiles.dart';
 import '../../services/registration_service.dart';
 import '../../state/providers.dart';
 import '../shared/common_widgets.dart';
@@ -82,6 +82,11 @@ class _StudentDashboardScreenState
       studentVisibleEventsProvider,
     );
     final Set<String> registeredIds = ref.watch(registeredEventIdsProvider);
+    final Map<String, EventRegistration> registrationsByEvent = ref.watch(
+      registrationByEventProvider,
+    );
+    final Set<String> waitlistedIds =
+        ref.watch(waitlistedEventIdsProvider).value ?? const <String>{};
     final String? requestedEventId = widget.openEventId;
     final AppEvent? directEvent =
         requestedEventId == null || requestedEventId.isEmpty
@@ -139,7 +144,16 @@ class _StudentDashboardScreenState
                     event,
                     session.studentProfile,
                   ),
-                  isRegistered: registeredIds.contains(event.id),
+                  view: studentRegistrationView(
+                    event: event,
+                    registered: registeredIds.contains(event.id),
+                    paymentPending:
+                        registrationsByEvent[event.id]?.paymentPendingFor(
+                          event,
+                        ) ??
+                        false,
+                    waitlisted: waitlistedIds.contains(event.id),
+                  ),
                   onTap: () => _openEventSheet(context, ref, event),
                 );
               },
@@ -185,24 +199,21 @@ class _EventCard extends StatelessWidget {
   const _EventCard({
     required this.event,
     required this.priority,
-    required this.isRegistered,
+    required this.view,
     required this.onTap,
   });
 
   final AppEvent event;
   final int priority;
-  final bool isRegistered;
+
+  /// İP-K: kayıtlı / ödeme bekleniyor / bekleme listesi / dolu / açık.
+  final StudentRegistrationView view;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final bool closed = isRegistrationClosed(event);
-
-    final (String label, FeedbackTone tone) = closed
-        ? (context.t('dashboard.status.expired'), FeedbackTone.error)
-        : isRegistered
-        ? (context.t('dashboard.status.registered'), FeedbackTone.success)
-        : (context.t('dashboard.status.open'), FeedbackTone.info);
+    final String label = context.t(view.statusKey);
+    final FeedbackTone tone = feedbackToneFor(view.statusTone);
 
     return Card(
       child: InkWell(
@@ -430,21 +441,13 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
           : null;
       if ((latest.isPaid && paidEventConsent == null) || !mounted) return;
 
-      final StudentProfile? profile = session.studentProfile;
-
-      // Kontenjanı koruyan yol: kayıt ile sayaç aynı transaction'da yazılır,
-      // çekişme olursa jitter'lı bekleyişle yeniden denenir. Bu yüzden çağrı
-      // saniyeler sürebilir — düğme `_busy` ile zaten kilitli.
+      // İP-K: kayıt sunucuda (registerForEvent). Kontenjan, son başvuru,
+      // engel ve hedef kitle orada denetlenir; sunucu yoğunsa servis kısa
+      // bekleyişlerle yeniden dener.
       final RegistrationResult result = await ref
           .read(registrationServiceProvider)
           .register(
             event: latest,
-            studentId: uid,
-            studentEmail: session.user?.email ?? '',
-            profile: profile,
-            displayName: _displayName(session),
-            eventFallbackTitle: context.t('dashboard.eventFallback'),
-            clubFallbackName: context.t('dashboard.clubFallback'),
             paidEventConsent: paidEventConsent,
             onWaiting: (int round) {
               if (!mounted || _queued) return;
@@ -460,31 +463,42 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
       // etkinliğin kartı bunu göstermeli.
       ref.invalidate(studentVisibleEventsProvider);
 
+      // Kontenjan doldu: bekleme listesi önerilir.
+      if (result.outcome == RegistrationOutcome.quotaFull) {
+        final bool join = await _confirm(
+          context.t('registration.alerts.fullOfferWaitlist'),
+          confirmKey: 'registration.actions.joinWaitlist',
+        );
+        if (join && mounted) await _joinWaitlist(skipBusy: true);
+        return;
+      }
+
       _toast(switch (result.outcome) {
-        RegistrationOutcome.registered => context.t(
-          'dashboard.alerts.registerSuccess',
-        ),
+        RegistrationOutcome.registered => result.paymentPending
+            ? '${context.t('dashboard.alerts.registerSuccess')}\n${context.t('registration.alerts.paymentPendingNote')}'
+            : context.t('dashboard.alerts.registerSuccess'),
         RegistrationOutcome.alreadyRegistered => context.t(
           'dashboard.alerts.alreadyRegistered',
         ),
         RegistrationOutcome.quotaFull => context.t(
           'dashboard.alerts.quotaFull',
         ),
-        RegistrationOutcome.closed => context.t(
-          'dashboard.alerts.registrationClosed',
-        ),
+        RegistrationOutcome.closed => result.reason.isNotEmpty
+            ? context.t('registration.errors.${result.reason}')
+            : context.t('dashboard.alerts.registrationClosed'),
         RegistrationOutcome.notFound => context.t(
           'dashboard.alerts.eventNotFound',
         ),
-        RegistrationOutcome.notEligible => context.t(
-          'dashboard.errors.register.permissionDenied',
-        ),
+        RegistrationOutcome.notEligible => result.reason.isNotEmpty
+            ? context.t('registration.errors.${result.reason}')
+            : context.t('dashboard.errors.register.permissionDenied'),
         RegistrationOutcome.retryExhausted => context.t(
           'dashboard.errors.register.retryExhausted',
         ),
-        RegistrationOutcome.unavailable => context.t(
-          'dashboard.errors.register.unavailable',
-        ),
+        RegistrationOutcome.unavailable =>
+          result.reason.isNotEmpty && result.reason != 'network'
+          ? context.t('registration.errors.${result.reason}')
+          : context.t('dashboard.errors.register.unavailable'),
       });
 
       // Ücretli etkinlikte ödeme uygulama dışında: kayıt alındıktan sonra
@@ -516,15 +530,22 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
     setState(() => _busy = true);
 
     try {
-      // Kaydı silmek kontenjanda yer AÇAR: silme ile sayaç azaltması aynı
-      // transaction'da olmalı, yoksa kontenjan sızar.
+      // İP-K: iptal sunucuda; kontenjan yeri aynı işlemde geri verilir ve
+      // bekleme listesindekilere haber gider.
       await ref
           .read(registrationServiceProvider)
-          .unregister(eventId: widget.event.id, studentId: uid);
+          .unregister(eventId: widget.event.id);
 
       if (!mounted) return;
       ref.invalidate(studentVisibleEventsProvider);
       _toast(context.t('dashboard.alerts.unregisterSuccess'));
+    } on RegistrationFailure catch (failure) {
+      if (!mounted) return;
+      _toast(
+        failure.isNetwork
+            ? context.t('dashboard.errors.unregister.generic')
+            : context.t('registration.errors.${failure.reason}'),
+      );
     } catch (error) {
       if (!mounted) return;
       _toast(context.t('dashboard.errors.unregister.generic'));
@@ -533,17 +554,91 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
     }
   }
 
-  String _displayName(Session session) {
-    final String full = session.studentProfile?.fullName ?? '';
-    if (full.isNotEmpty) return full;
+  /// İP-K: bekleme listesindeki sıra (pencere açılınca sunucudan).
+  int? _position;
+  bool _positionRequested = false;
 
-    final String displayName = session.user?.displayName ?? '';
-    if (displayName.isNotEmpty) return displayName;
+  void _refreshPosition(bool waitlisted) {
+    if (!waitlisted || _positionRequested) return;
+    _positionRequested = true;
+    ref
+        .read(registrationServiceProvider)
+        .waitlistPosition(widget.event.id)
+        .then((WaitlistResult r) {
+          if (mounted && r.waiting) setState(() => _position = r.position);
+        })
+        .catchError((Object _) {});
+  }
 
-    final String email = session.user?.email ?? '';
-    if (email.isNotEmpty) return email.split('@').first;
+  Future<void> _joinWaitlist({bool skipBusy = false}) async {
+    if (_busy && !skipBusy) return;
+    setState(() => _busy = true);
+    try {
+      final WaitlistResult r = await ref
+          .read(registrationServiceProvider)
+          .joinWaitlist(widget.event.id);
+      if (!mounted) return;
+      if (r.status == 'seats-available') {
+        _toast(context.t('registration.alerts.seatsAvailableNow'));
+      } else if (r.waiting) {
+        setState(() {
+          _position = r.position;
+          _positionRequested = true;
+        });
+        _toast(
+          context.t('registration.alerts.waitlistJoined', <String, Object?>{
+            'position': r.position,
+          }),
+        );
+      }
+    } on RegistrationFailure catch (failure) {
+      if (!mounted) return;
+      _toast(
+        failure.isNetwork
+            ? context.t('dashboard.errors.register.unavailable')
+            : context.t('registration.errors.${failure.reason}'),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
 
-    return context.t('dashboard.studentFallback');
+  Future<void> _leaveWaitlist() async {
+    final bool ok = await _confirm(
+      context.t('registration.alerts.leaveWaitlistConfirm'),
+      confirmKey: 'registration.actions.leaveWaitlist',
+    );
+    if (!ok || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      await ref.read(registrationServiceProvider).leaveWaitlist(widget.event.id);
+      if (mounted) setState(() => _position = null);
+    } on RegistrationFailure catch (_) {
+      if (!mounted) return;
+      _toast(context.t('registration.errors.generic'));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<bool> _confirm(String message, {required String confirmKey}) async {
+    final bool? ok = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        content: Text(message),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(ctx.t('common.cancel')),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(ctx.t(confirmKey)),
+          ),
+        ],
+      ),
+    );
+    return ok ?? false;
   }
 
   /// dashboard.js#getRegisterErrorMessage
@@ -598,10 +693,22 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
     final bool isRegistered = ref
         .watch(registeredEventIdsProvider)
         .contains(event.id);
-    final bool closed = isRegistrationClosed(event);
+    final EventRegistration? registration = ref.watch(
+      registrationByEventProvider,
+    )[event.id];
+    final bool waitlisted =
+        ref.watch(waitlistedEventIdsProvider).value?.contains(event.id) ??
+        false;
+    final StudentRegistrationView view = studentRegistrationView(
+      event: event,
+      registered: isRegistered,
+      paymentPending: registration?.paymentPendingFor(event) ?? false,
+      waitlisted: waitlisted,
+    );
     final int priority = getStudentEventPriority(event, session.studentProfile);
 
     _queueExternalQrCheckin(event, isRegistered);
+    _refreshPosition(waitlisted);
 
     return DraggableScrollableSheet(
       initialChildSize: 0.92,
@@ -705,16 +812,8 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
                             runSpacing: 6,
                             children: <Widget>[
                               StatusPill(
-                                label: closed
-                                    ? context.t('dashboard.status.expired')
-                                    : isRegistered
-                                    ? context.t('dashboard.status.registered')
-                                    : context.t('dashboard.status.open'),
-                                tone: closed
-                                    ? FeedbackTone.error
-                                    : isRegistered
-                                    ? FeedbackTone.success
-                                    : FeedbackTone.info,
+                                label: context.t(view.statusKey),
+                                tone: feedbackToneFor(view.statusTone),
                               ),
                               StatusPill(
                                 label: scopeLabel(context, event.targetScope),
@@ -824,10 +923,18 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
                   child: _SheetActionBar(
                     busy: _busy,
                     queued: _queued,
-                    closed: closed,
-                    registered: isRegistered,
-                    onRegister: _register,
-                    onUnregister: _unregister,
+                    view: view,
+                    position: _position,
+                    onPrimary: switch (view.primaryAction) {
+                      StudentPrimaryAction.register => _register,
+                      StudentPrimaryAction.joinWaitlist => () => _joinWaitlist(),
+                      StudentPrimaryAction.none => () {},
+                    },
+                    onSecondary: switch (view.secondary) {
+                      StudentSecondaryAction.unregister => _unregister,
+                      StudentSecondaryAction.leaveWaitlist => _leaveWaitlist,
+                      StudentSecondaryAction.none => () {},
+                    },
                   ),
                 ),
               ],
@@ -848,22 +955,36 @@ class _SheetActionBar extends StatelessWidget {
   const _SheetActionBar({
     required this.busy,
     required this.queued,
-    required this.closed,
-    required this.registered,
-    required this.onRegister,
-    required this.onUnregister,
+    required this.view,
+    required this.position,
+    required this.onPrimary,
+    required this.onSecondary,
   });
 
   final bool busy;
   final bool queued;
-  final bool closed;
-  final bool registered;
-  final VoidCallback onRegister;
-  final VoidCallback onUnregister;
+  final StudentRegistrationView view;
+
+  /// Bekleme listesindeki sıra (biliniyorsa).
+  final int? position;
+  final VoidCallback onPrimary;
+  final VoidCallback onSecondary;
 
   @override
   Widget build(BuildContext context) {
     final Color surface = context.surface;
+    final bool hasSecondary = view.secondary != StudentSecondaryAction.none;
+
+    // Bekleme listesindeyken sıra numarası düğmenin üzerinde yazar.
+    final String primaryLabel =
+        view.waitlisted &&
+            view.primaryAction == StudentPrimaryAction.none &&
+            position != null &&
+            position! > 0
+        ? context.t('registration.actions.waitlistPosition', <String, Object?>{
+            'position': position,
+          })
+        : context.t(view.primaryKey);
 
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 30, 18, 16),
@@ -886,12 +1007,14 @@ class _SheetActionBar extends StatelessWidget {
             child: _PrimaryAction(
               busy: busy,
               queued: queued,
-              closed: closed,
-              registered: registered,
-              onPressed: onRegister,
+              closed: !view.primaryEnabled && !view.registered && !view.waitlisted,
+              registered: view.registered || (view.waitlisted && !view.primaryEnabled),
+              enabled: view.primaryEnabled,
+              label: primaryLabel,
+              onPressed: onPrimary,
             ),
           ),
-          if (registered) ...<Widget>[
+          if (hasSecondary) ...<Widget>[
             const SizedBox(width: 10),
             // Expanded şart: temadaki `Size.fromHeight(48)` sonsuz genişlik
             // demek; Row'da esnek olmayan çocuk olarak bırakılırsa düzen
@@ -907,9 +1030,13 @@ class _SheetActionBar extends StatelessWidget {
                     shape: const StadiumBorder(),
                     backgroundColor: surface,
                   ),
-                  onPressed: busy ? null : onUnregister,
+                  onPressed: busy ? null : onSecondary,
                   child: Text(
-                    context.t('dashboard.actions.unregister'),
+                    context.t(
+                      view.secondary == StudentSecondaryAction.leaveWaitlist
+                          ? 'registration.actions.leaveWaitlist'
+                          : 'dashboard.actions.unregister',
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -931,6 +1058,8 @@ class _PrimaryAction extends StatelessWidget {
     required this.queued,
     required this.closed,
     required this.registered,
+    required this.enabled,
+    required this.label,
     required this.onPressed,
   });
 
@@ -942,23 +1071,21 @@ class _PrimaryAction extends StatelessWidget {
 
   final bool closed;
   final bool registered;
+
+  /// İP-K: düğme etkin mi (kayıt / bekleme listesine gir / yer açıldı).
+  final bool enabled;
+  final String label;
   final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    final bool enabled = !busy && !closed && !registered;
+    final bool enabled = !busy && this.enabled;
 
     final IconData icon = closed
         ? Icons.event_busy_outlined
         : registered
         ? Icons.verified_outlined
         : Icons.how_to_reg_outlined;
-
-    final String label = closed
-        ? context.t('dashboard.status.expired')
-        : registered
-        ? context.t('dashboard.actions.registered')
-        : context.t('dashboard.actions.register');
 
     final Color foreground = closed
         ? context.inkMuted
@@ -1236,3 +1363,11 @@ class _InfoTable extends StatelessWidget {
     );
   }
 }
+
+/// İP-K: saf durum tonu → ekrandaki ton.
+FeedbackTone feedbackToneFor(StudentStatusTone tone) => switch (tone) {
+  StudentStatusTone.info => FeedbackTone.info,
+  StudentStatusTone.success => FeedbackTone.success,
+  StudentStatusTone.warning => FeedbackTone.warning,
+  StudentStatusTone.error => FeedbackTone.error,
+};

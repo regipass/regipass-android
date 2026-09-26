@@ -37,6 +37,7 @@ class FakeServer {
   DateTime clock = t0;
   final List<(String, int)> writes = <(String, int)>[];
   bool hangWrites = false;
+  final List<String> markedPaid = <String>[];
   final Map<String, Map<String, dynamic>> regs = <String, Map<String, dynamic>>{
     'e1_s1': reg('s1'),
     'e1_s2': reg('s2'),
@@ -82,6 +83,11 @@ class FakeServer {
         );
       }
       regs[id]!['checkedInAtMs'] = ms;
+    },
+    markPaid: (String eventId, String studentId) async {
+      if (!online) offline();
+      markedPaid.add(studentId);
+      regs['${eventId}_$studentId']!['paymentStatus'] = 'paid';
     },
   );
 
@@ -384,4 +390,66 @@ void main() {
       expect(calls, <String>['e1']);
     },
   );
+
+  // ── İP-K: ödeme ve iptal ──────────────────────────────────────────────
+  test('İP-K: ödemesi onaylanmamış bilet ayrı sonuç; eski kayıt ve paid geçer', () {
+    final Map<String, dynamic> paidEvent = <String, dynamic>{
+      ...FakeServer().event,
+      'feeType': 'paid',
+    };
+    final GateEvent ev = GateEvent.fromMap('e1', paidEvent);
+    final Map<String, dynamic> p = <String, dynamic>{
+      'type': 'event-checkin',
+      'eventId': 'e1',
+      'studentId': 's1',
+      'registrationId': 'e1_s1',
+      'c': 'CODE_s1',
+    };
+    GateResult r(Map<String, dynamic> regData, {GateEvent? event, String code = 'CODE_s1'}) =>
+        evaluateGateTicket(
+          payload: <String, dynamic>{...p, 'c': code},
+          event: event ?? ev,
+          registration: GateRegistration.fromMap('e1_s1', regData),
+          clubId: 'clubA',
+          now: t0,
+        ).result;
+
+    expect(r(<String, dynamic>{...reg('s1'), 'paymentStatus': 'pending'}), GateResult.paymentPending);
+    expect(toneForResult(GateResult.paymentPending), GateTone.pay);
+    expect(r(reg('s1')), GateResult.checkedIn);
+    expect(r(<String, dynamic>{...reg('s1'), 'paymentStatus': 'paid'}), GateResult.checkedIn);
+    // Sahte bilet önce yakalanır.
+    expect(r(<String, dynamic>{...reg('s1'), 'paymentStatus': 'pending'}, code: 'X'), GateResult.invalidTicket);
+    // Ücretsiz etkinlikte işaretin anlamı yok.
+    expect(
+      r(<String, dynamic>{...reg('s1'), 'paymentStatus': 'pending'}, event: GateEvent.fromMap('e1', FakeServer().event)),
+      GateResult.checkedIn,
+    );
+    expect(
+      r(reg('s1'), event: GateEvent.fromMap('e1', <String, dynamic>{...paidEvent, 'cancelled': true})),
+      GateResult.eventCancelled,
+    );
+  });
+
+  test('İP-K: kapıda "Ödendi" işaretlenir ve giriş alınır', () async {
+    final FakeServer server = FakeServer();
+    server.event['feeType'] = 'paid';
+    server.regs['e1_s1']!['paymentStatus'] = 'pending';
+    final DoorGate gate = await server.gate();
+    final GateOutcome first = await gate.processToken(ticket('s1'));
+    expect(first.result, GateResult.paymentPending);
+    expect(server.writes, isEmpty);
+    expect(gate.canMarkPaid, isTrue);
+
+    final GateOutcome next = await gate.markPaidAndAdmit(first);
+    expect(next.result, GateResult.checkedIn);
+    expect(next.paidAtGate, isTrue);
+    expect(server.markedPaid, <String>['s1']);
+    await gate.flush();
+    expect(server.writes.length, 1);
+
+    server.online = false;
+    expect(() => gate.markPaidAndAdmit(first), throwsA(isA<StateError>()));
+    await gate.dispose();
+  });
 }

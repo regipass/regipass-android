@@ -51,6 +51,26 @@ final Provider<Set<String>> registeredEventIdsProvider = Provider<Set<String>>((
       .toSet();
 });
 
+/// İP-K: öğrencinin kayıtları etkinliğe göre (ödeme durumu için).
+final Provider<Map<String, EventRegistration>> registrationByEventProvider =
+    Provider<Map<String, EventRegistration>>((Ref ref) {
+      final List<EventRegistration> registrations =
+          ref.watch(studentRegistrationsProvider).value ??
+          const <EventRegistration>[];
+      return <String, EventRegistration>{
+        for (final EventRegistration r in registrations)
+          if (r.eventId.isNotEmpty) r.eventId: r,
+      };
+    });
+
+/// İP-K: öğrencinin bekleme listesinde olduğu etkinlikler (canlı).
+final StreamProvider<Set<String>> waitlistedEventIdsProvider =
+    StreamProvider<Set<String>>((Ref ref) {
+      final String? uid = ref.watch(currentUidProvider);
+      if (uid == null) return Stream<Set<String>>.value(const <String>{});
+      return ref.watch(eventRepositoryProvider).watchStudentWaitlist(uid);
+    });
+
 /// Öğrencinin tüm kayıtları — canlı. Kulüp QR okuttuğunda oturum sayısı
 /// sayfa yenilenmeden güncellenir (web'deki onSnapshot davranışı).
 final StreamProvider<List<EventRegistration>> studentRegistrationsProvider =
@@ -159,7 +179,23 @@ class RegistrationWithEvent {
   /// durdurması, öğrenci zaten kayıtlıyken randevuyu "geçmiş" sekmesine
   /// düşürmemeli ve biletini/QR'ını üretmesini engellememeli — kulübün tek
   /// etkisi yeni kayıtların kapanmasıdır.
-  bool get isClosed => isEventOverForAttendee(event);
+  bool get isClosed => isEventOverForAttendee(event) || isCancelled;
+
+  /// İP-K: kulüp etkinliği iptal etti (kayıt korunur, bilet geçersiz).
+  bool get isCancelled => event?.cancelled ?? false;
+
+  /// İP-K: ücretli etkinlikte ödeme henüz onaylanmadı.
+  bool get paymentPending => registration.paymentPendingFor(event);
+
+  /// Karttaki/penceredeki durum rozeti: çeviri anahtarı + "kötü/uyarı/iyi".
+  ///   iptal edildi > süresi doldu > ödeme bekleniyor > kayıtlı
+  ({String key, int tone}) get statusBadge => isCancelled
+      ? (key: 'registration.status.cancelled', tone: -1)
+      : isEventOverForAttendee(event)
+      ? (key: 'dashboard.status.expired', tone: -1)
+      : paymentPending
+      ? (key: 'registration.status.paymentPending', tone: 0)
+      : (key: 'dashboard.status.registered', tone: 1);
 
   /// student-appointments.js#updateQrButtonVisibility:
   ///  • Tek oturumlu: giriş onaylandıysa QR üretilemez.
@@ -186,7 +222,10 @@ class RegistrationWithEvent {
   /// Giriş bir kez alındıktan sonra bilet gizlenir; aynı bilet ikinci kez işe
   /// yaramaz (kapıda "zaten giriş yapmış" uyarısı çıkar).
   bool get canShowTicket =>
-      event != null && event!.hasDoorCheckin && !registration.isCheckedIn;
+      event != null &&
+      !event!.cancelled &&
+      event!.hasDoorCheckin &&
+      !registration.isCheckedIn;
 
   /// Oturumlu etkinlikte QR okutma düğmesinin durumu.
   ///

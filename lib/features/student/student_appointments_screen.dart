@@ -319,12 +319,12 @@ class AppointmentCard extends StatelessWidget {
                       Row(
                         children: <Widget>[
                           StatusPill(
-                            label: item.isClosed
-                                ? context.t('dashboard.status.expired')
-                                : context.t('dashboard.status.registered'),
-                            tone: item.isClosed
-                                ? FeedbackTone.error
-                                : FeedbackTone.success,
+                            label: context.t(item.statusBadge.key),
+                            tone: switch (item.statusBadge.tone) {
+                              -1 => FeedbackTone.error,
+                              0 => FeedbackTone.warning,
+                              _ => FeedbackTone.success,
+                            },
                           ),
                           if (item.isMultiSession) ...<Widget>[
                             const SizedBox(width: 6),

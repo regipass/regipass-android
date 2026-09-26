@@ -303,11 +303,10 @@ QuotaGateAction quotaGateAction({
 }) {
   if (!status.isTracked) return QuotaGateAction.none;
 
-  if (status.isFull && !registrationClosed) return QuotaGateAction.pause;
-
-  if (!status.isFull &&
-      registrationClosed &&
-      closedReason == ClosedReason.quotaFull) {
+  // İP-K: kontenjan dolunca kayıtlar artık DURDURULMAZ; öğrenci bekleme
+  // listesine girer (sunucu "dolu" bilgisini `seatsFull` ile yazar). Eski
+  // sürümün otomatik kapattığı etkinlik dolu olsa bile geri açılır.
+  if (registrationClosed && closedReason == ClosedReason.quotaFull) {
     return QuotaGateAction.resume;
   }
 

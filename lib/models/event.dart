@@ -47,6 +47,9 @@ class AppEvent {
     required this.clubFields,
     required this.registrationClosed,
     this.registrationClosedReason = '',
+    this.cancelled = false,
+    this.cancelReason = '',
+    this.seatsFull = false,
     required this.hiddenFromClubList,
     required this.hiddenGlobally,
     required this.currentSession,
@@ -129,6 +132,11 @@ class AppEvent {
       clubFields: asStringList(data['clubFields'], asString(data['clubField'])),
       registrationClosed: data['registrationClosed'] == true,
       registrationClosedReason: asString(data['registrationClosedReason']),
+      // İP-K: iptal ve "kontenjan dolu" ipucu yalnızca sunucudan yazılır
+      // (functions/registrations.js).
+      cancelled: data['cancelled'] == true,
+      cancelReason: asString(data['cancelReason']),
+      seatsFull: data['seatsFull'] == true,
       hiddenFromClubList: data['hiddenFromClubList'] == true,
       hiddenGlobally: data['hiddenGlobally'] == true,
       currentSession: asInt(data['currentSession']) ?? 0,
@@ -283,6 +291,16 @@ class AppEvent {
   /// Ayrım şart: kontenjan dolduğu için kendiliğinden kapanan etkinlik yer
   /// açılınca geri açılmalı, kulübün eliyle durdurduğu etkinlik açılmamalı.
   final String registrationClosedReason;
+
+  /// İP-K: kulüp etkinliği iptal etti (kayıtlar korunur, biletler geçersiz).
+  final bool cancelled;
+  final String cancelReason;
+
+  /// İP-K: kontenjan doldu — öğrenci bekleme listesine girebilir.
+  final bool seatsFull;
+
+  /// Yeni etkinlik: kontenjan sunucuda kurulana kadar kayda kapalı.
+  bool get quotaSetupPending => registrationClosed && registrationClosedReason == 'quota-setup';
   final bool hiddenFromClubList;
   final bool hiddenGlobally;
   final int currentSession;
@@ -520,6 +538,8 @@ class EventRegistration {
     this.attendanceFlags = const <String>[],
     this.attendanceVerified = const <String, int>{},
     this.studentPhotoUrl = '',
+    this.paymentStatus = '',
+    this.paymentMarkedAtMs = 0,
   });
 
   factory EventRegistration.fromMap(String id, Map<String, dynamic> data) {
@@ -555,6 +575,10 @@ class EventRegistration {
         role: PaidEventConsentRole.student,
       ),
       checkedInVia: asString(data['checkedInVia']),
+      // İP-K: ödeme durumu (yalnızca sunucu yazar). Alan yoksa (eski kayıt)
+      // onaylı sayılır; bkz. [paymentPendingFor].
+      paymentStatus: asString(data['paymentStatus']),
+      paymentMarkedAtMs: asInt(data['paymentMarkedAtMs']) ?? 0,
       // İP-Y: aşağıdakileri yalnızca sunucu yazar (functions/attendance.js).
       ticketCode: asString(data['ticketCode']),
       attendanceFlags: data['attendanceFlags'] is List
@@ -575,6 +599,15 @@ class EventRegistration {
   ) => doc.exists ? EventRegistration.fromMap(doc.id, doc.data()!) : null;
 
   final String id;
+
+  /// İP-K: '' (eski kayıt, onaylı sayılır) | 'pending' | 'paid'.
+  final String paymentStatus;
+  final int paymentMarkedAtMs;
+
+  /// Ücretli etkinlikte ödemesi onaylanmamış mı? (registrations.js ile aynı)
+  bool paymentPendingFor(AppEvent? event) =>
+      (event?.isPaid ?? false) && paymentStatus == 'pending';
+
   final String eventId;
   final String eventTitle;
   final String eventImageUrl;

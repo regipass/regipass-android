@@ -334,6 +334,7 @@ class AuthFeedback extends StatelessWidget {
       FeedbackTone.success => const Color(0xFF4ADE80),
       FeedbackTone.error => const Color(0xFFFF6B6E),
       FeedbackTone.info => const Color(0xFF7DB3FF),
+      FeedbackTone.warning => const Color(0xFFFFC870),
     };
 
     return Container(

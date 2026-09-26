@@ -30,6 +30,9 @@ Col get registrationsCol => fbDb.collection(Collections.eventRegistrations);
 Col get certificatesCol => fbDb.collection(Collections.studentCertificates);
 Col get announcementsCol => fbDb.collection(Collections.announcements);
 
+/// İP-K: bekleme listesi (`event_waitlist/{eventId}_{uid}`), yalnızca sunucu yazar.
+Col get waitlistCol => fbDb.collection('event_waitlist');
+
 Doc userDoc(String uid) => usersCol.doc(uid);
 Doc studentProfileDoc(String uid) => studentProfilesCol.doc(uid);
 Doc clubProfileDoc(String uid) => clubProfilesCol.doc(uid);

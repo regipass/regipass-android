@@ -1,613 +1,318 @@
-/// Kontenjanı koruyan, yoğun kayıt isteklerini zamana yayan kayıt akışı.
-/// İlk denemeler rastgele bir bekleme penceresine yayılır. Sayaç ile kayıt
-/// aynı transaction'da yazılır; doğrulanmış sayaç yarışları yeniden denenir.
-/// Bu bir sunucu/FIFO kuyruğu değildir; bekleyiş her istemcide yürütülür.
-/// Mevcut sayaç parçası planı ve eski kayıt şeması korunur.
-/// Yerel ölçümler: docs/qr-kayit-sirasi-2026-09-09.md.
+/// Kayıt ve kontenjan sunucuda (İP-K) — Cloud Functions çağrıları.
+///
+/// Sunucu: Regipass-Web/functions/registrations.js. Kayıt, iptal, bekleme
+/// listesi, kulübün kayıt silmesi, "Ödendi" işareti, kontenjan ve etkinlik
+/// iptali artık yalnızca bu çağrılarla yapılır; uygulama kayıt belgesini ve
+/// kontenjan parçalarını doğrudan yazmaz.
+///
+/// Eskiden (≤1.0.7) bu dosya kontenjan parçalarını istemcide kapıyordu. O yol
+/// kurallarda aşama 1 boyunca açık kalır (eski sürümler için); aşama 2'de
+/// kapanır (bkz. Regipass-Web/docs/ip-k-kayit-sunucuda.md).
 library;
 
-import 'dart:math';
-
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 
 import '../core/app_log.dart';
 import '../domain/paid_event_consent.dart';
-import '../domain/event_utils.dart';
 import '../domain/registration_capacity.dart';
 import '../models/event.dart';
-import '../models/profiles.dart';
 import 'firebase_refs.dart';
 
-/// Kayıt denemesinin sonucu — sonuç kodu + tanı alanları.
+/// Kayıt denemesinin sonucu.
 class RegistrationResult {
   const RegistrationResult({
     required this.outcome,
-    required this.rounds,
-    required this.contentions,
-    required this.shardsScanned,
     required this.elapsed,
-    this.shard,
+    this.paymentPending = false,
+    this.reason = '',
+    this.attempts = 1,
   });
 
   final RegistrationOutcome outcome;
-
-  /// Kaç tur döndü (0 = ilk denemede oldu).
-  final int rounds;
-
-  /// Kaç kez çekişmeye takılıp geri çekildi.
-  final int contentions;
-
-  /// Kaç parça tarandı.
-  final int shardsScanned;
-
   final Duration elapsed;
 
-  /// Kaydın düştüğü parça (başarılıysa).
-  final int? shard;
+  /// Ücretli etkinlik: kayıt "ödeme bekliyor" durumunda başladı.
+  final bool paymentPending;
+
+  /// Sunucunun ret nedeni (`details.reason`), varsa.
+  final String reason;
+  final int attempts;
 
   bool get isSuccess => outcome.isSuccess;
 
   Map<String, Object?> toFields() => <String, Object?>{
     'outcome': outcome.name,
-    'rounds': rounds,
-    'contentions': contentions,
-    'shardsScanned': shardsScanned,
     'ms': elapsed.inMilliseconds,
-    if (shard != null) 'shard': shard,
+    'attempts': attempts,
+    if (reason.isNotEmpty) 'reason': reason,
+    if (paymentPending) 'paymentPending': true,
   };
 }
 
-/// Tek bir parçaya yapılan denemenin sonucu.
-///
-/// Transaction'ın İÇİNDEN istisna fırlatmak yerine bilerek değer
-/// döndürülüyor: `runTransaction` gövdeden geçen istisnaları sarmalayabilir
-/// ve o zaman "parça dolu" ile "çekişme" birbirine karışırdı — biri sıradaki
-/// parçaya yürümeyi, diğeri bekleyip baştan denemeyi gerektirdiği için bu
-/// ayrım algoritmanın merkezinde.
-enum _ClaimResult {
-  /// Yer kapıldı, kayıt yazıldı.
-  claimed,
+/// Sunucunun reddettiği işlem.
+class RegistrationFailure implements Exception {
+  const RegistrationFailure(
+    this.reason, {
+    this.details = const <String, Object?>{},
+  });
 
-  /// Bu parçada yer yok (ya da parça hiç kurulmamış) — sıradakine bak.
-  shardFull,
+  /// `deadline-passed`, `below-registered`, `cancel-locked` ... ya da
+  /// bağlantı sorununda `network`.
+  final String reason;
+  final Map<String, Object?> details;
 
-  /// Öğrenci zaten kayıtlı; kontenjan harcanmadı.
-  alreadyRegistered,
+  int? get registered => (details['registered'] as num?)?.toInt();
+
+  bool get isNetwork => reason == 'network';
+
+  @override
+  String toString() => 'RegistrationFailure($reason)';
+}
+
+/// Sunucu hatasını [RegistrationFailure]'a çevirir (testlerde de kullanılır).
+RegistrationFailure registrationFailureFrom(String code, Object? details) {
+  final Map<String, Object?> map = details is Map
+      ? Map<String, Object?>.from(details)
+      : <String, Object?>{};
+  final Object? reason = map['reason'];
+  if (reason is String && reason.isNotEmpty) {
+    return RegistrationFailure(reason, details: map);
+  }
+  return RegistrationFailure(
+    const <String>{
+          'unavailable',
+          'deadline-exceeded',
+          'internal',
+          'aborted',
+          'resource-exhausted',
+        }.contains(code)
+        ? 'network'
+        : code,
+    details: map,
+  );
+}
+
+/// Sunucu ret nedeni → ekrandaki sonuç.
+RegistrationOutcome outcomeForReason(String reason) => switch (reason) {
+  'event-not-found' => RegistrationOutcome.notFound,
+  'not-eligible' ||
+  'club-banned' ||
+  'banned' => RegistrationOutcome.notEligible,
+  'registration-closed' ||
+  'deadline-passed' ||
+  'event-started' ||
+  'event-past' ||
+  'event-cancelled' ||
+  'event-hidden' ||
+  'quota-setup' => RegistrationOutcome.closed,
+  'busy' => RegistrationOutcome.retryExhausted,
+  _ => RegistrationOutcome.unavailable,
+};
+
+/// Bekleme listesi çağrılarının sonucu.
+class WaitlistResult {
+  const WaitlistResult({
+    required this.status,
+    this.position = 0,
+    this.size = 0,
+  });
+
+  /// `waiting` | `seats-available` | `already-registered` | `not-waiting` | `left`
+  final String status;
+  final int position;
+  final int size;
+
+  bool get waiting => status == 'waiting';
 }
 
 class RegistrationService {
-  const RegistrationService({this.random});
+  const RegistrationService({this.functions});
 
-  /// Testlerde jitter'ı belirlenir kılmak için.
-  final Random? random;
+  final FirebaseFunctions? functions;
 
-  /// Kontenjanı koruyarak kayıt oluşturur.
+  /// Sunucu "şu an yoğun" derse (ya da bağlantı kısa süre koparsa) bu kadar
+  /// deneme yapılır.
+  static const int _maxAttempts = 4;
+
+  Future<Map<String, dynamic>> _call(
+    String name,
+    Map<String, Object?> data, {
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
+    try {
+      final HttpsCallableResult<Object?> result =
+          await (functions ?? fbFunctions)
+              .httpsCallable(
+                name,
+                options: HttpsCallableOptions(timeout: timeout),
+              )
+              .call(data);
+      final Object? raw = result.data;
+      return raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{};
+    } on FirebaseFunctionsException catch (error) {
+      throw registrationFailureFrom(error.code, error.details);
+    }
+  }
+
+  /// Etkinliğe kayıt. Kontenjan, son başvuru, engel, hedef kitle ve ücretli
+  /// etkinlik onayı sunucuda denetlenir.
   ///
-  /// [event] çağıran tarafından **sunucudan taze** okunmuş olmalıdır
-  /// (`EventRepository.fetchEventFromServer`): önbellekteki "kayıt açık"
-  /// hâline güvenilmez.
+  /// [onWaiting]: sunucu yoğun olduğu için yeniden denenirken çağrılır.
   Future<RegistrationResult> register({
     required AppEvent event,
-    required String studentId,
-    required String studentEmail,
-    required StudentProfile? profile,
-    required String displayName,
-    required String eventFallbackTitle,
-    required String clubFallbackName,
     required PaidEventConsentAcceptance? paidEventConsent,
     void Function(int round)? onWaiting,
   }) async {
-    // Ekrandaki zorunlu pop-up atlatılsa bile servis ücretli kaydı kurmaz.
-    // DİKKAT: firestore.rules onay alanlarını ZORUNLU TUTMUYOR (emulator ile
-    // doğrulandı, bkz. tool/loadtest/12-ucretli-onay-logu.mjs) — zorunluluk şu an
-    // yalnızca istemcide. Bu denetim son sınır, kaldırılmamalı.
+    // Ekrandaki zorunlu pop-up atlatılsa bile ücretli kayıt onaysız gitmez
+    // (sunucu da `paid-consent-required` ile reddeder).
     if (event.isPaid && paidEventConsent == null) {
       throw ArgumentError('Paid event registration requires student consent.');
     }
 
     final Stopwatch watch = Stopwatch()..start();
-
     AppLog.info('registration.start', <String, Object?>{
       'eventId': event.id,
-      'studentId': studentId,
       'quota': event.quota,
-      'shards': event.quotaShardCount,
     });
 
-    // Kontenjansız etkinlik (quota <= 0) ya da parçaları henüz kurulmamış
-    // ESKİ etkinlik: korunacak bir sayaç yok, eski yol aynen çalışır.
-    // Davranışı bozmamak esas — parçasız etkinlikte kayıt reddedilmemeli.
-    if (event.quota <= 0 || event.quotaShardCount <= 0) {
-      AppLog.warn('registration.unbounded', <String, Object?>{
-        'eventId': event.id,
-        'quota': event.quota,
-        'reason': event.quota <= 0 ? 'no-quota' : 'no-shards',
-      });
-      await _writeRegistration(
-        event: event,
-        studentId: studentId,
-        studentEmail: studentEmail,
-        profile: profile,
-        displayName: displayName,
-        eventFallbackTitle: eventFallbackTitle,
-        clubFallbackName: clubFallbackName,
-        paidEventConsent: paidEventConsent,
-        shard: null,
-      );
-      return RegistrationResult(
-        outcome: RegistrationOutcome.registered,
-        rounds: 0,
-        contentions: 0,
-        shardsScanned: 0,
-        elapsed: watch.elapsed,
-      );
-    }
-
-    final int shards = event.quotaShardCount;
-    final int start = startShardFor(studentId, shards);
-
-    final Duration admission = registrationAdmissionDelay(
-      quota: event.quota,
-      shards: shards,
-      random: random,
-    );
-    if (admission > Duration.zero) {
-      onWaiting?.call(0);
-      await Future<void>.delayed(admission);
-    }
-    // İlk bekleyişte etkinlik kapanmış veya son başvuru süresi dolmuş olabilir.
-    final RegistrationOutcome? gate = await _registrationGate(
-      event.id,
-      profile,
-    );
-    if (gate != null) {
-      return RegistrationResult(
-        outcome: gate,
-        rounds: 0,
-        contentions: 0,
-        shardsScanned: 0,
-        elapsed: watch.elapsed,
-      );
-    }
-
-    int contentions = 0;
-    int shardsScanned = 0;
-
-    for (int round = 0; round < kRegistrationMaxRounds; round++) {
-      int fullShards = 0;
-      bool contended = false;
-
-      for (int step = 0; step < shards; step++) {
-        final int shard = (start + step) % shards;
-        shardsScanned += 1;
-
-        try {
-          final _ClaimResult claim = await _claimShard(
-            event: event,
-            shard: shard,
-            studentId: studentId,
-            studentEmail: studentEmail,
-            profile: profile,
-            displayName: displayName,
-            eventFallbackTitle: eventFallbackTitle,
-            clubFallbackName: clubFallbackName,
-            paidEventConsent: paidEventConsent,
-          );
-
-          if (claim == _ClaimResult.shardFull) {
-            fullShards += 1;
-            continue; // sıradaki parçaya yürü
-          }
-
-          final RegistrationResult result = RegistrationResult(
-            outcome: claim == _ClaimResult.claimed
-                ? RegistrationOutcome.registered
-                : RegistrationOutcome.alreadyRegistered,
-            rounds: round,
-            contentions: contentions,
-            shardsScanned: shardsScanned,
-            elapsed: watch.elapsed,
-            shard: claim == _ClaimResult.claimed ? shard : null,
-          );
-          AppLog.info(
-            claim == _ClaimResult.claimed
-                ? 'registration.ok'
-                : 'registration.already',
-            <String, Object?>{
+    for (int attempt = 1; ; attempt += 1) {
+      try {
+        final Map<String, dynamic> out =
+            await _call('registerForEvent', <String, Object?>{
               'eventId': event.id,
-              'studentId': studentId,
-              ...result.toFields(),
-            },
-          );
-          return result;
-        } on FirebaseException catch (error) {
-          // Geçici erişim kesintilerini de dene; son turda erişim sonucunu koru.
-          if (error.code == 'unavailable' &&
-              round == kRegistrationMaxRounds - 1) {
-            AppLog.warn('registration.unavailable', <String, Object?>{
-              'eventId': event.id,
-              'studentId': studentId,
-              'round': round,
+              'paidConsent': paidEventConsent != null,
+              'consentText': paidEventConsent?.text ?? '',
             });
-            return RegistrationResult(
-              outcome: RegistrationOutcome.unavailable,
-              rounds: round,
-              contentions: contentions,
-              shardsScanned: shardsScanned,
-              elapsed: watch.elapsed,
-            );
-          }
-
-          // Kural reddi: kayıtlar kapanmış ya da öğrenci hedef kitlede değil.
-          if (error.code == 'permission-denied') {
-            AppLog.warn('registration.denied', <String, Object?>{
-              'eventId': event.id,
-              'studentId': studentId,
-              'code': error.code,
-            });
-            return RegistrationResult(
-              outcome:
-                  await _registrationGate(event.id, profile) ??
-                  RegistrationOutcome.notEligible,
-              rounds: round,
-              contentions: contentions,
-              shardsScanned: shardsScanned,
-              elapsed: watch.elapsed,
-            );
-          }
-
-          if (!isRegistrationRetryable(error.code)) rethrow;
-
-          // ABORTED / DEADLINE_EXCEEDED: başkası aynı parçayı kaptı.
-          //
-          // İki başarısızlık türüne BİLEREK farklı tepki veriliyor:
-          //   • parça dolu  -> sıradaki parçaya yürü (yer arıyoruz)
-          //   • çekişme     -> turu bitir, bekle      (sistem meşgul)
-          //
-          // Çekişmede de yürümek cazip görünüyor ("belki öbür parça boştur")
-          // ama yükü katlıyor: çekişme zaten herkesin aynı anda denediği an
-          // demek; o anda her öğrencinin bütün parçaları taraması sürü
-          // etkisini parça sayısı kadar büyütür. Geri çekilmek işbirlikçi
-          // olan davranıştır.
-          contentions += 1;
-          contended = true;
-          AppLog.debug('registration.contended', <String, Object?>{
-            'eventId': event.id,
-            'shard': shard,
-            'round': round,
-            'code': error.code,
-          });
-          break;
-        }
-      }
-
-      // Çekişme YOKKEN bütün parçalar doluysa kontenjan gerçekten bitmiştir.
-      // Çekişme varsa "dolu" gördüğümüz parçalar eski okuma olabilir.
-      if (!contended && fullShards == shards) {
+        final String status = '${out['status'] ?? ''}';
         final RegistrationResult result = RegistrationResult(
-          outcome: RegistrationOutcome.quotaFull,
-          rounds: round,
-          contentions: contentions,
-          shardsScanned: shardsScanned,
+          outcome: switch (status) {
+            'registered' => RegistrationOutcome.registered,
+            'already-registered' => RegistrationOutcome.alreadyRegistered,
+            'full' => RegistrationOutcome.quotaFull,
+            _ => RegistrationOutcome.unavailable,
+          },
+          paymentPending: '${out['paymentStatus'] ?? ''}' == 'pending',
           elapsed: watch.elapsed,
+          attempts: attempt,
         );
-        AppLog.info('registration.quotaFull', <String, Object?>{
-          'eventId': event.id,
-          'studentId': studentId,
-          ...result.toFields(),
-        });
+        AppLog.info('registration.done', result.toFields());
+        return result;
+      } on RegistrationFailure catch (failure) {
+        final bool retry =
+            (failure.reason == 'busy' || failure.isNetwork) &&
+            attempt < _maxAttempts;
+        if (retry) {
+          onWaiting?.call(attempt);
+          await Future<void>.delayed(
+            Duration(milliseconds: 400 * attempt * attempt),
+          );
+          continue;
+        }
+        final RegistrationResult result = RegistrationResult(
+          outcome: outcomeForReason(failure.reason),
+          reason: failure.reason,
+          elapsed: watch.elapsed,
+          attempts: attempt,
+        );
+        AppLog.warn('registration.rejected', result.toFields());
         return result;
       }
-
-      if (round < kRegistrationMaxRounds - 1) {
-        final Duration wait = registrationBackoff(round, random: random);
-        AppLog.debug('registration.backoff', <String, Object?>{
-          'eventId': event.id,
-          'round': round,
-          'waitMs': wait.inMilliseconds,
-        });
-        // Bekleme kullanıcıya görünür olmalı: "bölük bölük" alınan bir
-        // kayıtta donmuş bir düğme, işlem başarısız sanılıp uygulamanın
-        // kapatılmasına yol açar.
-        onWaiting?.call(round);
-        await Future<void>.delayed(wait);
-      }
-    }
-
-    // Turlar bitti. Bu HENÜZ "tekrar dene" demek değil: kontenjan çoktan
-    // dolmuş da olabilir.
-    //
-    // Tur içindeki "hepsi dolu" kontrolü çekişme varsa çalışmıyor — dolu
-    // gördüğümüz parça eski bir okuma olabileceği için bilerek güvenmiyoruz.
-    // Ama yoğunlukta neredeyse her turda bir çekişme oluyor, dolayısıyla
-    // kontenjanı gerçekten dolmuş bir etkinlikte kullanıcı "kontenjan doldu"
-    // yerine "çok yoğun, tekrar dene" görüyordu ve boşuna tekrar deniyordu.
-    // (Yük testi 07-capacity C: 200 kişilik etkinliğe 1000 başvuru →
-    // "kontenjan doldu" diyen 0, "tekrar dene" diyen 807.)
-    //
-    // Bu yüzden pes etmeden önce parçalara bir kez temiz bakılır: S okuma,
-    // yalnızca başarısız yolda.
-    final bool full = await _isQuotaFull(event.id, shards);
-
-    final RegistrationResult result = RegistrationResult(
-      outcome: full
-          ? RegistrationOutcome.quotaFull
-          : RegistrationOutcome.retryExhausted,
-      rounds: kRegistrationMaxRounds,
-      contentions: contentions,
-      shardsScanned: shardsScanned,
-      elapsed: watch.elapsed,
-    );
-
-    if (full) {
-      AppLog.info('registration.quotaFull', <String, Object?>{
-        'eventId': event.id,
-        'studentId': studentId,
-        'via': 'final-check',
-        ...result.toFields(),
-      });
-    } else {
-      AppLog.error(
-        'registration.exhausted',
-        fields: <String, Object?>{
-          'eventId': event.id,
-          'studentId': studentId,
-          ...result.toFields(),
-        },
-      );
-    }
-    return result;
-  }
-
-  Future<RegistrationOutcome?> _registrationGate(
-    String eventId,
-    StudentProfile? profile,
-  ) async {
-    final AppEvent? live = AppEvent.fromDoc(
-      await eventDoc(eventId).get(const GetOptions(source: Source.server)),
-    );
-    if (live == null) return RegistrationOutcome.notFound;
-    if (live.hiddenGlobally || !canStudentSeeEvent(live, profile)) {
-      return RegistrationOutcome.notEligible;
-    }
-    if (isRegistrationClosed(live)) {
-      return live.registrationClosedReason == ClosedReason.quotaFull
-          ? RegistrationOutcome.quotaFull
-          : RegistrationOutcome.closed;
-    }
-    return null;
-  }
-
-  /// Bütün parçaların sayaçları kapasitelerine ulaştı mı?
-  ///
-  /// Tek seferlik, transaction'sız bir okuma: kontenjan dolduktan sonra
-  /// yeniden boşalması ancak birinin kaydını silmesiyle olur, o da nadirdir.
-  /// Yanlış "doldu" demektense yanlış "tekrar dene" demek daha az zararlı
-  /// olduğu için şüphede kalınırsa `false` döner.
-  Future<bool> _isQuotaFull(String eventId, int shards) async {
-    try {
-      final QSnap snap = await quotaShardsCol(eventId).get();
-      if (snap.docs.length < shards) return false; // eksik parça: emin değiliz
-
-      for (final QueryDocumentSnapshot<Map<String, dynamic>> doc in snap.docs) {
-        final int count = asInt(doc.data()['count']) ?? 0;
-        final int capacity = asInt(doc.data()['capacity']) ?? 0;
-        if (count < capacity) return false;
-      }
-      return true;
-    } catch (error) {
-      AppLog.warn('registration.quotaCheckFailed', <String, Object?>{
-        'eventId': eventId,
-        'error': error.toString(),
-      });
-      return false;
     }
   }
 
-  /// Tek bir parçadan yer kapma denemesi — kayıt ve sayaç **aynı**
-  /// transaction'da yazılır, böylece ikisi birbiri olmadan var olamaz.
-  Future<_ClaimResult> _claimShard({
-    required AppEvent event,
-    required int shard,
-    required String studentId,
-    required String studentEmail,
-    required StudentProfile? profile,
-    required String displayName,
-    required String eventFallbackTitle,
-    required String clubFallbackName,
-    required PaidEventConsentAcceptance? paidEventConsent,
-  }) async {
-    final Doc shardRef = quotaShardDoc(event.id, shard);
-    int? attemptedCount;
-    try {
-      return await fbDb.runTransaction<_ClaimResult>(
-        (Transaction tx) async {
-          final Doc regRef = registrationDoc(event.id, studentId);
-
-          // Firestore transaction'ında bütün okumalar yazımlardan önce olmalı.
-          final DocumentSnapshot<Map<String, dynamic>> shardSnap = await tx.get(
-            shardRef,
-          );
-          final DocumentSnapshot<Map<String, dynamic>> regSnap = await tx.get(
-            regRef,
-          );
-
-          // Öğrenci zaten kayıtlı: sayacı İKİNCİ kez artırmak kontenjanı yerdi.
-          // (Ağ kesilip kullanıcı tekrar bastığında bu yol işler.)
-          if (regSnap.exists) return _ClaimResult.alreadyRegistered;
-
-          // Parça yok: kulüp etkinliği oluştururken kurmamış olabilir. Burada
-          // kurmak güvenlik açığı olurdu (istemci kapasiteyi kendisi belirlerdi
-          // — firestore.rules de zaten izin vermez), bu yüzden dolu sayılır.
-          if (!shardSnap.exists) return _ClaimResult.shardFull;
-
-          final Map<String, dynamic> data = shardSnap.data()!;
-          final int count = asInt(data['count']) ?? 0;
-          final int capacity = asInt(data['capacity']) ?? 0;
-
-          if (count >= capacity) return _ClaimResult.shardFull;
-          attemptedCount = count;
-
-          tx.set(
-            regRef,
-            _registrationPayload(
-              event: event,
-              studentId: studentId,
-              studentEmail: studentEmail,
-              profile: profile,
-              displayName: displayName,
-              eventFallbackTitle: eventFallbackTitle,
-              clubFallbackName: clubFallbackName,
-              paidEventConsent: paidEventConsent,
-              shard: shard,
-            ),
-          );
-          tx.update(shardRef, <String, dynamic>{'count': count + 1});
-          return _ClaimResult.claimed;
-        },
-        // Yeniden denemeyi BİZ yönetiyoruz: SDK'nın kendi denemesi jitter'sız
-        // ve parçalar arası yürüyüşten habersiz.
-        maxAttempts: 1,
-      );
-    } on FirebaseException catch (error) {
-      if (error.code == 'permission-denied' && attemptedCount != null) {
-        final DocumentSnapshot<Map<String, dynamic>> latest = await shardRef
-            .get(const GetOptions(source: Source.server));
-        if (quotaChangedAfterDeniedWrite(
-          code: error.code,
-          attemptedCount: attemptedCount,
-          currentCount: asInt(latest.data()?['count']),
-        )) {
-          throw FirebaseException(
-            plugin: 'cloud_firestore',
-            code: 'aborted',
-            message:
-                'Quota changed during registration; retry with fresh state.',
-          );
-        }
-      }
-      rethrow;
-    }
-  }
-
-  /// Parçasız (eski / kontenjansız) etkinlik için düz yazım.
-  Future<void> _writeRegistration({
-    required AppEvent event,
-    required String studentId,
-    required String studentEmail,
-    required StudentProfile? profile,
-    required String displayName,
-    required String eventFallbackTitle,
-    required String clubFallbackName,
-    required PaidEventConsentAcceptance? paidEventConsent,
-    required int? shard,
-  }) => registrationDoc(event.id, studentId).set(
-    _registrationPayload(
-      event: event,
-      studentId: studentId,
-      studentEmail: studentEmail,
-      profile: profile,
-      displayName: displayName,
-      eventFallbackTitle: eventFallbackTitle,
-      clubFallbackName: clubFallbackName,
-      paidEventConsent: paidEventConsent,
-      shard: shard,
-    ),
-    SetOptions(merge: true),
-  );
-
-  /// Kayıt yükü — `EventRepository.registerToEvent` ile alan alan aynı,
-  /// üzerine kaydın hangi parçadan geçtiğini söyleyen `quotaShard`.
-  /// Kayıt iptalinde o parçanın sayacı bu alan sayesinde geri alınır.
-  Map<String, dynamic> _registrationPayload({
-    required AppEvent event,
-    required String studentId,
-    required String studentEmail,
-    required StudentProfile? profile,
-    required String displayName,
-    required String eventFallbackTitle,
-    required String clubFallbackName,
-    required PaidEventConsentAcceptance? paidEventConsent,
-    required int? shard,
-  }) => <String, dynamic>{
-    'registrationId': registrationIdFor(event.id, studentId),
-    'eventId': event.id,
-    'eventTitle': event.title.isNotEmpty ? event.title : eventFallbackTitle,
-    'eventImageUrl': event.imageUrl,
-    'deadlineAtMs': event.deadlineAtMs,
-    'clubId': event.clubId,
-    'clubName': event.clubName.isNotEmpty ? event.clubName : clubFallbackName,
-    'studentId': studentId,
-    'studentEmail': studentEmail,
-    'studentFirstName': profile?.firstName ?? '',
-    'studentLastName': profile?.lastName ?? '',
-    'studentName': displayName,
-    'studentPhone': profile?.phone ?? '',
-    'studentUniversity': profile?.university ?? '',
-    'studentDepartment': profile?.department ?? '',
-    'studentClassYear': profile?.classYear ?? '',
-    'studentCity': profile?.city ?? '',
-    'registeredAtMs': DateTime.now().millisecondsSinceEpoch,
-    'quotaShard': ?shard,
-    // Ücretli etkinliğin öğrenci onay logu, kaydın KENDİ belgesinde
-    // (etkinliğin katılımcı verisinde) durur — öğrenci profil belgesinde
-    // değil. Şema web ile ortak (dashboard.js#buildRegistrationPayload):
-    // kabul edilen metin + epoch + okunabilir damga. Ücretsiz etkinlikte
-    // hiçbir alan eklenmez.
-    if (event.isPaid && paidEventConsent != null)
-      kPaidConsentLogField: <String, dynamic>{
-        ...paidEventConsent.toLogMap(),
-        // Sunucu damgası: istemcinin saatinden bağımsız ikinci kayıt.
-        'approvedAt': FieldValue.serverTimestamp(),
-      },
-    'createdAt': FieldValue.serverTimestamp(),
-    'updatedAt': FieldValue.serverTimestamp(),
-  };
-
-  /// Kaydı siler ve yerini kontenjana geri verir.
-  ///
-  /// Silme ile sayaç azaltması **aynı** transaction'dadır: biri olup diğeri
-  /// olmazsa kontenjan ya sızar ya şişer. `firestore.rules` azaltmayı
-  /// yalnızca kaydın aynı işlemde silinmesi şartıyla kabul eder
-  /// (`existsAfter`), yani kimse kaydını silmeden yer açamaz.
-  Future<void> unregister({
-    required String eventId,
-    required String studentId,
-  }) async {
-    final Doc regRef = registrationDoc(eventId, studentId);
-
-    await fbDb.runTransaction((Transaction tx) async {
-      final DocumentSnapshot<Map<String, dynamic>> regSnap = await tx.get(
-        regRef,
-      );
-      if (!regSnap.exists) return;
-
-      final int? shard = asInt(regSnap.data()?['quotaShard']);
-
-      // Parçasız kayıt (eski etkinlik): yalnızca sil.
-      if (shard == null) {
-        tx.delete(regRef);
-        return;
-      }
-
-      final Doc shardRef = quotaShardDoc(eventId, shard);
-      final DocumentSnapshot<Map<String, dynamic>> shardSnap = await tx.get(
-        shardRef,
-      );
-
-      tx.delete(regRef);
-
-      if (shardSnap.exists) {
-        final int count = asInt(shardSnap.data()!['count']) ?? 0;
-        if (count > 0) {
-          tx.update(shardRef, <String, dynamic>{'count': count - 1});
-        }
-      }
-    });
-
+  /// Öğrenci kaydını iptal eder; kontenjan yeri aynı işlemde geri verilir ve
+  /// bekleme listesindekilere haber gider. Hata olursa [RegistrationFailure].
+  Future<void> unregister({required String eventId}) async {
+    await _call('cancelRegistration', <String, Object?>{'eventId': eventId});
     AppLog.info('registration.cancelled', <String, Object?>{
       'eventId': eventId,
-      'studentId': studentId,
     });
+  }
+
+  /// Hesap silme: bütün kayıtlar yer geri verilerek silinir, bekleme listesi
+  /// girişleri temizlenir.
+  Future<void> cancelAllMine() async {
+    await _call(
+      'cancelAllMyRegistrations',
+      const <String, Object?>{},
+      timeout: const Duration(seconds: 60),
+    );
+  }
+
+  Future<WaitlistResult> joinWaitlist(String eventId) async => _waitlistResult(
+    await _call('joinWaitlist', <String, Object?>{'eventId': eventId}),
+  );
+
+  Future<void> leaveWaitlist(String eventId) async {
+    await _call('leaveWaitlist', <String, Object?>{'eventId': eventId});
+  }
+
+  Future<WaitlistResult> waitlistPosition(String eventId) async =>
+      _waitlistResult(
+        await _call('getWaitlistPosition', <String, Object?>{
+          'eventId': eventId,
+        }, timeout: const Duration(seconds: 15)),
+      );
+
+  WaitlistResult _waitlistResult(Map<String, dynamic> out) => WaitlistResult(
+    status: '${out['status'] ?? ''}',
+    position: (out['position'] as num?)?.toInt() ?? 0,
+    size: (out['size'] as num?)?.toInt() ?? 0,
+  );
+
+  // ── Kulüp ────────────────────────────────────────────────────────────────
+  Future<void> clubRemoveRegistration({
+    required String eventId,
+    required String studentId,
+    String reason = '',
+  }) async {
+    await _call('clubRemoveRegistration', <String, Object?>{
+      'eventId': eventId,
+      'studentId': studentId,
+      'reason': reason,
+    });
+  }
+
+  Future<void> setPaymentStatus({
+    required String eventId,
+    required String studentId,
+    required bool paid,
+  }) async {
+    await _call('setPaymentStatus', <String, Object?>{
+      'eventId': eventId,
+      'studentId': studentId,
+      'paid': paid,
+    });
+  }
+
+  /// Kontenjanı kurar/değiştirir (parça silinmez, sayımlar kayıtlardan yeniden
+  /// hesaplanır). Kayıtlı sayısının altına inilirse `below-registered`.
+  Future<int> setEventQuota({
+    required String eventId,
+    required int quota,
+  }) async {
+    final Map<String, dynamic> out = await _call(
+      'setEventQuota',
+      <String, Object?>{'eventId': eventId, 'quota': quota},
+      timeout: const Duration(seconds: 60),
+    );
+    return (out['quota'] as num?)?.toInt() ?? quota;
+  }
+
+  /// Etkinliği iptal eder. Hiç kaydı olmayan etkinlik tamamen silinir.
+  /// Dönüş: `cancelled` | `deleted` | `already-cancelled`.
+  Future<({String status, int notified})> cancelEvent({
+    required String eventId,
+    String reason = '',
+  }) async {
+    final Map<String, dynamic> out = await _call(
+      'cancelEvent',
+      <String, Object?>{'eventId': eventId, 'reason': reason},
+      timeout: const Duration(seconds: 120),
+    );
+    return (
+      status: '${out['status'] ?? ''}',
+      notified: (out['notified'] as num?)?.toInt() ?? 0,
+    );
   }
 }

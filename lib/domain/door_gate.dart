@@ -33,7 +33,13 @@ enum GateResult {
   unknownEvent('unknown-event'),
 
   /// Aynı bilet az önce okundu → sessizce yok sayılır.
-  duplicate('duplicate');
+  duplicate('duplicate'),
+
+  /// İP-K: ücretli etkinlik, ödeme onaylanmamış (kapıdan onaylanabilir).
+  paymentPending('payment-pending'),
+
+  /// İP-K: etkinlik iptal edildi, biletler geçersiz.
+  eventCancelled('event-cancelled');
 
   const GateResult(this.code);
 
@@ -41,12 +47,14 @@ enum GateResult {
   final String code;
 }
 
-enum GateTone { ok, warn, bad, none }
+/// `pay`: İP-K — bilet gerçek ama ödeme onayı bekliyor (ayrı renk).
+enum GateTone { ok, warn, bad, none, pay }
 
 GateTone toneForResult(GateResult result) => switch (result) {
   GateResult.checkedIn => GateTone.ok,
   GateResult.already => GateTone.warn,
   GateResult.duplicate => GateTone.none,
+  GateResult.paymentPending => GateTone.pay,
   _ => GateTone.bad,
 };
 
@@ -60,6 +68,8 @@ class GateEvent {
     required this.sessionCount,
     required this.eventDateAtMs,
     required this.deadlineAtMs,
+    this.feeType = '',
+    this.cancelled = false,
   });
 
   factory GateEvent.fromMap(String id, Map<String, dynamic> data) => GateEvent(
@@ -72,11 +82,18 @@ class GateEvent {
     sessionCount: asInt(data['sessionCount']) ?? 0,
     eventDateAtMs: asEpochMilliseconds(data['eventDateAtMs']) ?? 0,
     deadlineAtMs: asEpochMilliseconds(data['deadlineAtMs']) ?? 0,
+    feeType: asString(data['feeType']),
+    cancelled: data['cancelled'] == true,
   );
 
   final String id;
   final String title;
   final String clubId;
+
+  /// İP-K
+  final String feeType;
+  final bool cancelled;
+  bool get isPaid => feeType == 'paid';
   final String? checkinMode;
   final int sessionCount;
   final int eventDateAtMs;
@@ -94,6 +111,8 @@ class GateEvent {
     'sessionCount': sessionCount,
     'eventDateAtMs': eventDateAtMs,
     'deadlineAtMs': deadlineAtMs,
+    'feeType': feeType,
+    'cancelled': cancelled,
   };
 }
 
@@ -110,6 +129,7 @@ class GateRegistration {
     required this.studentClassYear,
     required this.ticketCode,
     required this.checkedInAtMs,
+    this.paymentStatus = '',
   });
 
   factory GateRegistration.fromMap(String id, Map<String, dynamic> data) {
@@ -135,6 +155,7 @@ class GateRegistration {
       studentClassYear: asString(data['studentClassYear']),
       ticketCode: asString(data['ticketCode']),
       checkedInAtMs: checked > 0 ? checked : 0,
+      paymentStatus: asString(data['paymentStatus']),
     );
   }
 
@@ -151,6 +172,10 @@ class GateRegistration {
   /// Giriş saati (cihazda alınır); 0 = girmedi.
   int checkedInAtMs;
 
+  /// İP-K: '' (eski kayıt, onaylı) | 'pending' | 'paid'. Kapıdan "Ödendi"
+  /// işaretlenince cihazda da güncellenir.
+  String paymentStatus;
+
   bool get isCheckedIn => checkedInAtMs > 0;
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -164,6 +189,7 @@ class GateRegistration {
     'studentClassYear': studentClassYear,
     'ticketCode': ticketCode,
     'checkedInAtMs': checkedInAtMs,
+    'paymentStatus': paymentStatus,
   };
 }
 
@@ -227,6 +253,7 @@ GateRegistration? findGateRegistration(
   if (clubId.isNotEmpty && event.clubId.isNotEmpty && event.clubId != clubId) {
     return r(GateResult.notOwner);
   }
+  if (event.cancelled) return r(GateResult.eventCancelled);
   if (isGateEventOver(event, now: now)) return r(GateResult.pastEvent);
   if (!event.hasDoorCheckin) return r(GateResult.noDoor);
   if (registration == null) return r(GateResult.notRegistered);
@@ -236,5 +263,9 @@ GateRegistration? findGateRegistration(
     expected: registration.ticketCode,
   );
   if (!ticket.ok) return r(GateResult.invalidTicket);
+  // İP-K: bilet gerçek ama ödeme onaylanmamış → giriş yazılmaz.
+  if (event.isPaid && registration.paymentStatus == 'pending') {
+    return (result: GateResult.paymentPending, legacy: ticket.legacy);
+  }
   return (result: GateResult.checkedIn, legacy: ticket.legacy);
 }

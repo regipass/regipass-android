@@ -208,13 +208,34 @@ class _AppointmentDetailSheetState
                     ),
                     const SizedBox(height: 10),
                     StatusPill(
-                      label: item.isClosed
-                          ? context.t('dashboard.status.expired')
-                          : context.t('dashboard.status.registered'),
-                      tone: item.isClosed
-                          ? FeedbackTone.error
-                          : FeedbackTone.success,
+                      label: context.t(item.statusBadge.key),
+                      tone: switch (item.statusBadge.tone) {
+                        -1 => FeedbackTone.error,
+                        0 => FeedbackTone.warning,
+                        _ => FeedbackTone.success,
+                      },
                     ),
+                    // İP-K: iptal notu ve ödeme uyarısı.
+                    if (item.isCancelled) ...<Widget>[
+                      const SizedBox(height: 12),
+                      FeedbackBanner(
+                        message: (item.event?.cancelReason ?? '').isNotEmpty
+                            ? context.t(
+                                'registration.club.cancelledBannerReason',
+                                <String, Object?>{
+                                  'reason': item.event!.cancelReason,
+                                },
+                              )
+                            : context.t('registration.status.cancelledNoReason'),
+                        tone: FeedbackTone.error,
+                      ),
+                    ] else if (item.paymentPending) ...<Widget>[
+                      const SizedBox(height: 12),
+                      FeedbackBanner(
+                        message: context.t('registration.ticket.paymentPendingHint'),
+                        tone: FeedbackTone.warning,
+                      ),
+                    ],
                     const SizedBox(height: 16),
 
                     Text(
@@ -364,7 +385,11 @@ class _AppointmentDetailSheetState
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 32),
                             child: Text(
-                              context.t('studentAppointments.modal.qrHint'),
+                              context.t(
+                                item.paymentPending
+                                    ? 'registration.ticket.paymentPendingHint'
+                                    : 'studentAppointments.modal.qrHint',
+                              ),
                               textAlign: TextAlign.center,
                               style: const TextStyle(color: BrandColors.white),
                             ),

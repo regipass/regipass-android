@@ -8,7 +8,13 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../app/theme.dart';
 
 /// Web'deki `setFeedback(message, isError)` deseninin karşılığı.
-enum FeedbackTone { info, success, error }
+/// `warning`: İP-K — ödeme bekleniyor, kontenjan dolu (bekleme listesi).
+enum FeedbackTone { info, success, error, warning }
+
+const Color _warningFg = Color(0xFF9A5B00);
+const Color _warningBg = Color(0xFFFFF4E0);
+const Color _warningOnDark = Color(0xFFFFC870);
+const Color _warningBgDark = Color(0x33F5A623);
 
 /// Ton renkleri görünüme göre değişir: açık moddaki pastel zeminler koyu
 /// yüzeyde göz alacak kadar parlak kalıyordu.
@@ -30,6 +36,7 @@ enum FeedbackTone { info, success, error }
         bg: BrandColors.infoBgDark,
         fg: BrandColors.infoOnDark,
       ),
+      FeedbackTone.warning => (bg: _warningBgDark, fg: _warningOnDark),
     };
   }
 
@@ -40,6 +47,7 @@ enum FeedbackTone { info, success, error }
     ),
     FeedbackTone.error => (bg: BrandColors.dangerBg, fg: BrandColors.danger),
     FeedbackTone.info => (bg: BrandColors.infoBg, fg: BrandColors.info),
+    FeedbackTone.warning => (bg: _warningBg, fg: _warningFg),
   };
 }
 
@@ -144,6 +152,7 @@ void showTopFeedback(
     FeedbackTone.success => Icons.check_circle_outline,
     FeedbackTone.error => Icons.error_outline,
     FeedbackTone.info => Icons.info_outline,
+    FeedbackTone.warning => Icons.hourglass_top_outlined,
   };
 
   // Üst üste binen uyarılar sıraya girip birbirini bekletmesin: yenisi
@@ -200,6 +209,7 @@ class FeedbackBanner extends StatelessWidget {
       FeedbackTone.success => Icons.check_circle_outline,
       FeedbackTone.error => Icons.error_outline,
       FeedbackTone.info => Icons.info_outline,
+      FeedbackTone.warning => Icons.hourglass_top_outlined,
     };
 
     return Container(

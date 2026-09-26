@@ -7,6 +7,7 @@ import '../../domain/event_utils.dart';
 import '../../domain/routing.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/event.dart';
+import '../../services/registration_service.dart';
 import '../../state/providers.dart';
 import '../shared/common_widgets.dart';
 import '../shared/event_widgets.dart';
@@ -66,19 +67,42 @@ class _ClubEventsScreenState extends ConsumerState<ClubEventsScreen> {
     });
   }
 
-  /// Süresi geçmemiş etkinlik herkesten silinir; geçmiş etkinlik yalnızca
-  /// kulüp listesinden kaldırılır (öğrencinin geçmiş kaydı bozulmasın).
+  /// İP-K (L5): günü geçmemiş etkinlik İPTAL edilir (sunucu: kayıtlılara ve
+  /// bekleyenlere bildirim; kaydı yoksa tamamen siler). Geçmiş ya da iptal
+  /// edilmiş etkinlik yalnızca kulüp listesinden kaldırılır.
   Future<void> _delete(AppEvent event) async {
-    final bool globally = !isPastEvent(event);
+    final bool cancellable = !isPastEvent(event) && !event.cancelled;
+    final TextEditingController reason = TextEditingController();
 
     final bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (BuildContext dialogContext) => AlertDialog(
-        title: Text(dialogContext.t('clubEvents.delete.title')),
-        content: Text(
-          globally
-              ? dialogContext.t('clubEvents.delete.confirmGlobal')
-              : dialogContext.t('clubEvents.delete.confirmLocal'),
+        title: Text(
+          cancellable
+              ? dialogContext.t('registration.club.cancelEventTitle')
+              : dialogContext.t('clubEvents.delete.title'),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              cancellable
+                  ? dialogContext.t('registration.club.cancelEventBody')
+                  : dialogContext.t('clubEvents.delete.confirmLocal'),
+            ),
+            if (cancellable) ...<Widget>[
+              const SizedBox(height: 12),
+              TextField(
+                controller: reason,
+                maxLength: 300,
+                maxLines: 2,
+                decoration: InputDecoration(
+                  labelText: dialogContext.t('registration.club.reasonLabel'),
+                ),
+              ),
+            ],
+          ],
         ),
         actions: <Widget>[
           TextButton(
@@ -88,7 +112,9 @@ class _ClubEventsScreenState extends ConsumerState<ClubEventsScreen> {
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
             child: Text(
-              dialogContext.t('clubEvents.delete.action'),
+              cancellable
+                  ? dialogContext.t('registration.club.cancelEventAction')
+                  : dialogContext.t('clubEvents.delete.action'),
               style: const TextStyle(color: BrandColors.danger),
             ),
           ),
@@ -96,15 +122,34 @@ class _ClubEventsScreenState extends ConsumerState<ClubEventsScreen> {
       ),
     );
 
+    final String reasonText = reason.text.trim();
+    reason.dispose();
     if (confirmed != true) return;
 
     try {
-      if (globally) {
-        await ref.read(eventRepositoryProvider).deleteEvent(event.id);
+      if (cancellable) {
+        final ({String status, int notified}) result = await ref
+            .read(registrationServiceProvider)
+            .cancelEvent(eventId: event.id, reason: reasonText);
+        if (!mounted) return;
+        _toast(
+          result.status == 'deleted'
+              ? context.t('registration.club.eventDeleted')
+              : context.t('registration.club.eventCancelled', <String, Object?>{
+                  'n': result.notified,
+                }),
+        );
       } else {
         await ref.read(eventRepositoryProvider).hideFromClubList(event.id);
+        if (mounted) _toast(context.t('clubEvents.feedback.deleted'));
       }
-      if (mounted) _toast(context.t('clubEvents.feedback.deleted'));
+    } on RegistrationFailure catch (failure) {
+      if (!mounted) return;
+      _toast(
+        failure.isNetwork
+            ? context.t('clubEvents.feedback.deleteError')
+            : context.t('registration.errors.${failure.reason}'),
+      );
     } catch (_) {
       if (mounted) _toast(context.t('clubEvents.feedback.deleteError'));
     }
@@ -195,14 +240,14 @@ class _ClubEventsScreenState extends ConsumerState<ClubEventsScreen> {
                             ),
                             footer: _CardActions(
                               // Geçmiş etkinlik düzenlenemez (web ile aynı).
-                              canEdit: !isPastEvent(event),
+                              canEdit: !isPastEvent(event) && !event.cancelled,
                               onEdit: () => context.push(
                                 '${Routes.clubCreateEvent}?eventId=${Uri.encodeComponent(event.id)}',
                               ),
                               onDelete: () => _delete(event),
-                              deleteLabel: isPastEvent(event)
+                              deleteLabel: isPastEvent(event) || event.cancelled
                                   ? context.t('clubEvents.delete.local')
-                                  : context.t('clubEvents.delete.global'),
+                                  : context.t('registration.club.cancelEventAction'),
                             ),
                           );
                         },

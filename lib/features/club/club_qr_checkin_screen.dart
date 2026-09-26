@@ -46,10 +46,13 @@ const int _kRecentLimit = 60;
 const Color _gateOk = Color(0xFF16A34A);
 const Color _gateWarn = Color(0xFFD97706);
 const Color _gateBad = Color(0xFFDC2626);
+// İP-K: ödeme bekleyen bilet (web css/door-gate.css --gate-pay ile aynı).
+const Color _gatePay = Color(0xFF7C3AED);
 
 Color _toneColor(GateTone tone) => switch (tone) {
   GateTone.ok => _gateOk,
   GateTone.warn => _gateWarn,
+  GateTone.pay => _gatePay,
   _ => _gateBad,
 };
 
@@ -68,6 +71,9 @@ class _GateItem {
   final String key;
   _SendStatus status;
   int firstMs = 0;
+
+  /// İP-K: bu okuma için "Ödendi" işaretlendi (düğme gizlenir).
+  bool paidDone = false;
 
   GateTone get tone => switch (status) {
     _SendStatus.conflict => GateTone.warn,
@@ -226,9 +232,36 @@ class _ClubQrCheckinScreenState extends ConsumerState<ClubQrCheckinScreen>
     });
     _feedback(outcome.tone);
     _collapseTimer?.cancel();
+    // İP-K: ödeme bekleyen kart, görevli karar verene kadar küçülmez.
+    if (outcome.result == GateResult.paymentPending &&
+        (_gate?.canMarkPaid ?? false)) {
+      return;
+    }
     _collapseTimer = Timer(_kCardVisible, () {
       if (mounted) setState(() => _collapsed = true);
     });
+  }
+
+  /// İP-K: kapıda "Ödendi olarak işaretle ve içeri al".
+  bool _markingPaid = false;
+
+  Future<void> _markPaid(_GateItem item) async {
+    final DoorGate? gate = _gate;
+    if (gate == null || _markingPaid) return;
+    setState(() => _markingPaid = true);
+    try {
+      final GateOutcome next = await gate.markPaidAndAdmit(item.outcome);
+      if (!mounted) return;
+      item.paidDone = true;
+      _show(next);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.t('gate.markPaidFailed'))),
+      );
+    } finally {
+      if (mounted) setState(() => _markingPaid = false);
+    }
   }
 
   void _feedback(GateTone tone) {
@@ -237,6 +270,7 @@ class _ClubQrCheckinScreenState extends ConsumerState<ClubQrCheckinScreen>
         unawaited(HapticFeedback.mediumImpact());
         if (_soundOn) unawaited(SystemSound.play(SystemSoundType.click));
       case GateTone.warn:
+      case GateTone.pay:
         unawaited(HapticFeedback.mediumImpact());
         unawaited(
           Future<void>.delayed(
@@ -282,6 +316,7 @@ class _ClubQrCheckinScreenState extends ConsumerState<ClubQrCheckinScreen>
       return context.t('gate.hint.rejected');
     }
     if (o.result == GateResult.checkedIn) {
+      if (o.paidAtGate) return context.t('gate.hint.paidAtGate');
       return o.legacy
           ? context.t('gate.hint.legacy')
           : context.t('gate.hint.in');
@@ -483,6 +518,10 @@ class _ClubQrCheckinScreenState extends ConsumerState<ClubQrCheckinScreen>
                       pinned: false,
                       onTap: _collapsed ? _expand : null,
                       onPinToggle: () => _pin(current.key),
+                      onMarkPaid: _gate?.canMarkPaid ?? false
+                          ? () => _markPaid(current)
+                          : null,
+                      markingPaid: _markingPaid,
                     ),
                   ),
                 if (pinned != null) ...<Widget>[
@@ -494,6 +533,10 @@ class _ClubQrCheckinScreenState extends ConsumerState<ClubQrCheckinScreen>
                     collapsed: false,
                     pinned: true,
                     onPinToggle: _unpin,
+                    onMarkPaid: _gate?.canMarkPaid ?? false
+                        ? () => _markPaid(pinned!)
+                        : null,
+                    markingPaid: _markingPaid,
                   ),
                 ],
               ],
@@ -587,6 +630,8 @@ class _GateCard extends StatelessWidget {
     required this.pinned,
     required this.onPinToggle,
     this.onTap,
+    this.onMarkPaid,
+    this.markingPaid = false,
     super.key,
   });
 
@@ -596,6 +641,10 @@ class _GateCard extends StatelessWidget {
   final bool pinned;
   final VoidCallback onPinToggle;
   final VoidCallback? onTap;
+
+  /// İP-K: ödeme bekleyen bilette kapıdan onay.
+  final VoidCallback? onMarkPaid;
+  final bool markingPaid;
 
   @override
   Widget build(BuildContext context) {
@@ -607,6 +656,7 @@ class _GateCard extends StatelessWidget {
     final String icon = switch (tone) {
       GateTone.ok => '✓',
       GateTone.warn => '↺',
+      GateTone.pay => '₺',
       _ => '✕',
     };
     final String meta = o.result == GateResult.checkedIn
@@ -778,6 +828,30 @@ class _GateCard extends StatelessWidget {
                       ),
                     ],
                   ),
+                  if (o.result == GateResult.paymentPending &&
+                      onMarkPaid != null &&
+                      !item.paidDone) ...<Widget>[
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 46,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _gatePay,
+                          foregroundColor: BrandColors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        onPressed: markingPaid ? null : onMarkPaid,
+                        child: Text(
+                          markingPaid
+                              ? context.t('gate.markingPaid')
+                              : context.t('gate.markPaid'),
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
       ),

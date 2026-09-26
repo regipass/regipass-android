@@ -309,29 +309,29 @@ void main() {
     });
   });
 
-  group('quotaGateAction — kontenjan dolunca beklemeye alma', () {
+  group('quotaGateAction — İP-K: dolu etkinlik açık kalır', () {
     const QuotaStatus full = QuotaStatus(used: 100, capacity: 100, shardsFound: 16);
     const QuotaStatus open = QuotaStatus(used: 40, capacity: 100, shardsFound: 16);
 
-    test('kontenjan dolunca kayıtlar beklemeye alınır', () {
+    test('İP-K: kontenjan dolunca kayıtlar DURDURULMAZ (bekleme listesi)', () {
       expect(
         quotaGateAction(
           status: full,
           registrationClosed: false,
           closedReason: '',
         ),
-        QuotaGateAction.pause,
+        QuotaGateAction.none,
       );
     });
 
-    test('zaten beklemedeyse tekrar yazılmaz', () {
+    test('İP-K: eski sürümün dolu diye kapattığı etkinlik geri açılır', () {
       expect(
         quotaGateAction(
           status: full,
           registrationClosed: true,
           closedReason: ClosedReason.quotaFull,
         ),
-        QuotaGateAction.none,
+        QuotaGateAction.resume,
       );
     });
 

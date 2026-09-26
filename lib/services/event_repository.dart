@@ -11,6 +11,7 @@ import '../domain/registration_capacity.dart';
 import '../models/event.dart';
 import '../models/profiles.dart';
 import 'firebase_refs.dart';
+import 'registration_service.dart';
 
 /// Etkinlik, kayıt ve sertifika okuma/yazma işlemleri.
 ///
@@ -107,6 +108,26 @@ class EventRepository {
           .where('studentId', isEqualTo: studentId)
           .snapshots()
           .map(_mapRegistrations);
+
+  /// İP-K: öğrencinin bekleme listesinde olduğu etkinlik kimlikleri (canlı).
+  Stream<Set<String>> watchStudentWaitlist(String studentId) => waitlistCol
+      .where('studentId', isEqualTo: studentId)
+      .snapshots()
+      .map(
+        (QSnap snap) => snap.docs
+            .map((QueryDocumentSnapshot<Map<String, dynamic>> d) => asString(d.data()['eventId']))
+            .where((String id) => id.isNotEmpty)
+            .toSet(),
+      );
+
+  /// İP-K: kulüp, kendi etkinliğinin bekleme listesi uzunluğu.
+  Future<int> countEventWaitlist(String eventId) async {
+    final AggregateQuerySnapshot snap = await waitlistCol
+        .where('eventId', isEqualTo: eventId)
+        .count()
+        .get();
+    return snap.count ?? 0;
+  }
 
   Stream<List<EventRegistration>> watchEventRegistrations(String eventId) =>
       registrationsCol
@@ -583,6 +604,8 @@ class EventRepository {
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
+  /// Yalnızca GÜNÜ GEÇMİŞ etkinlik istemciden silinebilir (kurallar). Gelecek
+  /// etkinlik için [RegistrationService.cancelEvent] kullanılır (İP-K).
   Future<void> deleteEvent(String eventId) => eventDoc(eventId).delete();
 
   // ── Sertifikalar ────────────────────────────────────────────────────
@@ -840,8 +863,10 @@ class EventRepository {
     // kaydolmaya çalışan herkes "kontenjan doldu" cevabını alacaktı.
     final Doc ref = eventsCol.doc();
 
-    final int shards = quotaShardCount(draft.quota);
-    final List<int> capacities = shardCapacities(draft.quota, shards);
+    // İP-K (L3): kontenjan parçalarını sunucu kurar (setEventQuota). Etkinlik
+    // kontenjan kurulana kadar KAYDA KAPALI oluşturulur; kurulum başarısız
+    // olursa etkinlik kapalı kalır, hiçbir zaman kontenjansız değil.
+    final bool needsQuota = draft.quota > 0;
 
     final WriteBatch batch = fbDb.batch();
     batch.set(ref, <String, dynamic>{
@@ -861,14 +886,15 @@ class EventRepository {
       'clubEmail': club?.email ?? '',
       'clubField': club?.clubField ?? '',
       'clubFields': club?.clubFields ?? const <String>[],
-      'registrationClosed': false,
+      'registrationClosed': needsQuota,
+      if (needsQuota) 'registrationClosedReason': 'quota-setup',
       'hiddenFromClubList': false,
       'hiddenGlobally': false,
       'currentSession': 0,
       'sessionsCompleted': false,
       'entryOpen': false,
       'allowSessionWithoutCheckin': false,
-      'quotaShardCount': shards,
+      'quotaShardCount': 0,
       // Ücretli etkinliğin onay logu ETKİNLİK BELGESİNDE durur: kulübün
       // kabul ettiği metnin kendisi ve saniyeye kadar inen damgası.
       // Şema web ile ortak (club-create-event.js#saveEvent); ücretsiz
@@ -883,19 +909,20 @@ class EventRepository {
       'createdAtMs': DateTime.now().millisecondsSinceEpoch,
     });
 
-    for (int shard = 0; shard < shards; shard++) {
-      batch.set(quotaShardDoc(ref.id, shard), <String, dynamic>{
-        'count': 0,
-        'capacity': capacities[shard],
-      });
-    }
-
     await batch.commit();
+
+    if (needsQuota) {
+      // Hata olursa çağırana iletilir; etkinlik kapalı kalır ve kulüp
+      // düzenleyip kaydederek kurulumu yeniden dener.
+      await const RegistrationService().setEventQuota(
+        eventId: ref.id,
+        quota: draft.quota,
+      );
+    }
 
     AppLog.info('event.created', <String, Object?>{
       'eventId': ref.id,
       'quota': draft.quota,
-      'shards': shards,
     });
 
     return ref.id;
@@ -917,8 +944,30 @@ class EventRepository {
   }) async {
     final bool paid = draft.feeType == 'paid';
 
+    // İP-K: kontenjan ÖNCE sunucuda değişir (parça silinmez, sayımlar
+    // kayıtlardan yeniden hesaplanır). Kayıtlı sayısının altına inilirse
+    // sunucu `below-registered` ile reddeder ve diğer değişiklikler de
+    // yazılmaz — kulüp düzeltip yeniden kaydeder.
+    final AppEvent? current = await fetchEventFromServer(eventId);
+    final bool quotaChanged =
+        current == null ||
+        current.quota != draft.quota ||
+        current.quotaSetupPending ||
+        (draft.quota > 0 && current.quotaShardCount <= 0);
+    if (quotaChanged) {
+      await const RegistrationService().setEventQuota(
+        eventId: eventId,
+        quota: draft.quota,
+      );
+    }
+
+    final Map<String, dynamic> fields = <String, dynamic>{...draft.toMap()}
+      // Kontenjan alanlarını yalnızca sunucu yazar.
+      ..remove('quota')
+      ..remove('quotaShardCount');
+
     await eventDoc(eventId).update(<String, dynamic>{
-      ...draft.toMap(),
+      ...fields,
       if (paid && paidEventConsent != null)
         kPaidConsentLogField: <String, dynamic>{
           ...paidEventConsent.toLogMap(),
@@ -926,103 +975,8 @@ class EventRepository {
         },
       if (!paid) kPaidConsentLogField: FieldValue.delete(),
     });
-    await syncQuotaShards(eventId: eventId, quota: draft.quota);
   }
 
-  /// Kontenjan parçalarını [quota] ile uyumlu hâle getirir.
-  ///
-  /// Üç işi birden görür:
-  ///   • **Geri dolum**: bu alan eklenmeden önce oluşturulmuş etkinliklerde
-  ///     parça yoktur; ilk çağrıda kurulur ve o ana kadar yapılmış kayıtlar
-  ///     sayaca işlenir (yoksa kontenjan sıfırdan sayılıp aşılırdı).
-  ///   • **Kontenjan değişimi**: kulüp kontenjanı büyütüp küçülttüğünde
-  ///     kapasiteler yeniden dağıtılır.
-  ///   • **Onarım**: sayaçlar gerçek kayıt sayısıyla yeniden hizalanır.
-  ///
-  /// Kapasite hiçbir parçada o parçadaki kayıt sayısının altına indirilmez:
-  /// kontenjan, kayıtlı kişi sayısının altına çekilse bile kimsenin kaydı
-  /// geçersizleşmez, yalnızca yeni kayıt alınmaz.
-  Future<void> syncQuotaShards({
-    required String eventId,
-    required int quota,
-  }) async {
-    final int shards = quotaShardCount(quota);
-
-    if (shards <= 0) {
-      // Kontenjansız etkinliğe geçildi: parçalar anlamını yitirir.
-      await eventDoc(eventId).update(<String, dynamic>{'quotaShardCount': 0});
-      return;
-    }
-
-    final QSnap existing = await quotaShardsCol(eventId).get();
-
-    // Her parçada kaç kayıt var? Parçalar yoksa (geri dolum) mevcut kayıtlar
-    // sayılıp parçalara dağıtılır.
-    final List<int> used = List<int>.filled(shards, 0);
-
-    if (existing.docs.isEmpty) {
-      final int already = await _countRegistrations(eventId);
-      final int base = already ~/ shards;
-      final int extra = already % shards;
-      for (int s = 0; s < shards; s++) {
-        used[s] = base + (s < extra ? 1 : 0);
-      }
-    } else {
-      for (final QueryDocumentSnapshot<Map<String, dynamic>> doc
-          in existing.docs) {
-        final int? index = int.tryParse(doc.id);
-        if (index == null) continue;
-        final int count = asInt(doc.data()['count']) ?? 0;
-        // Parça sayısı değiştiyse eski parçaların yükü modüler olarak taşınır.
-        used[index % shards] += count;
-      }
-    }
-
-    final int totalUsed = used.fold<int>(0, (int a, int b) => a + b);
-
-    // Kayıtlı kişiyi geri alamayız: hedef, kontenjanla kullanılanın büyüğü.
-    final int target = quota > totalUsed ? quota : totalUsed;
-    final int free = target - totalUsed;
-    final int freeBase = free ~/ shards;
-    final int freeExtra = free % shards;
-
-    final WriteBatch batch = fbDb.batch();
-    for (int s = 0; s < shards; s++) {
-      batch.set(quotaShardDoc(eventId, s), <String, dynamic>{
-        'count': used[s],
-        'capacity': used[s] + freeBase + (s < freeExtra ? 1 : 0),
-      });
-    }
-
-    // Fazla parçalar (kontenjan küçüldüyse) silinir — yükleri yukarıda
-    // kalan parçalara taşındı.
-    for (final QueryDocumentSnapshot<Map<String, dynamic>> doc
-        in existing.docs) {
-      final int? index = int.tryParse(doc.id);
-      if (index != null && index >= shards) batch.delete(doc.reference);
-    }
-
-    batch.update(eventDoc(eventId), <String, dynamic>{
-      'quotaShardCount': shards,
-    });
-
-    await batch.commit();
-
-    AppLog.info('event.quotaShardsSynced', <String, Object?>{
-      'eventId': eventId,
-      'quota': quota,
-      'shards': shards,
-      'used': totalUsed,
-    });
-  }
-
-  Future<int> _countRegistrations(String eventId) async {
-    final AggregateQuerySnapshot snap = await registrationsCol
-        .where('eventId', isEqualTo: eventId)
-        .count()
-        .get();
-    return snap.count ?? 0;
-  }
 
   /// Kulüp logosunu kulübün TÜM etkinliklerine işler.
   ///

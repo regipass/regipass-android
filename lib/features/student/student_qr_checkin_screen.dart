@@ -510,6 +510,9 @@ String attendanceFailureMessage(
   'invalid-token' ||
   'unsigned' => context.t('scan.notRegipassQr'),
   'entry-closed' => context.t('scan.doorClosed'),
+  // İP-K
+  'payment-pending' => context.t('registration.errors.payment-pending'),
+  'event-cancelled' => context.t('registration.errors.event-cancelled'),
   'already-checked-in' => context.t('attendance.error.alreadyCheckedIn'),
   'already-attended' => context.t(
     'scan.alreadyCheckedInSession',

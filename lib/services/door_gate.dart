@@ -103,6 +103,7 @@ class GateOutcome {
     this.event,
     this.registration,
     this.queued = false,
+    this.paidAtGate = false,
   });
 
   final GateResult result;
@@ -111,6 +112,9 @@ class GateOutcome {
   final GateEvent? event;
   final GateRegistration? registration;
   final bool queued;
+
+  /// İP-K: ödeme kapıda "Ödendi" işaretlenerek alındı.
+  final bool paidAtGate;
 
   GateTone get tone => toneForResult(result);
 }
@@ -146,6 +150,7 @@ class GateBackend {
     required this.writeCheckIn,
     this.watchRegistrations,
     this.fillPhotos,
+    this.markPaid,
   });
 
   /// Gerçek Firestore bağlantıları.
@@ -181,6 +186,19 @@ class GateBackend {
           'checkedInByClubId': clubId,
           'updatedAt': FieldValue.serverTimestamp(),
         }),
+    // İP-K: kapıda "Ödendi olarak işaretle" (sunucu yazar).
+    markPaid: (String eventId, String studentId) async {
+      await fbFunctions
+          .httpsCallable(
+            'setPaymentStatus',
+            options: HttpsCallableOptions(timeout: const Duration(seconds: 15)),
+          )
+          .call(<String, Object?>{
+            'eventId': eventId,
+            'studentId': studentId,
+            'paid': true,
+          });
+    },
     fillPhotos: (String eventId) async {
       await fbFunctions
           .httpsCallable(
@@ -212,6 +230,9 @@ class GateBackend {
   /// Fotoğrafı eksik kayıtları sunucu profilden doldurur (kulüp profilleri
   /// okuyamaz); sonuç canlı listeyle gelir.
   final Future<void> Function(String eventId)? fillPhotos;
+
+  /// İP-K: kapıda "Ödendi" işareti.
+  final Future<void> Function(String eventId, String studentId)? markPaid;
 }
 
 bool _isPermissionError(Object error) =>
@@ -395,6 +416,8 @@ class DoorGate {
         sessionCount: event.sessionCount,
         eventDateAtMs: event.eventDateAtMs ?? 0,
         deadlineAtMs: event.deadlineAtMs,
+        feeType: event.feeType,
+        cancelled: event.cancelled,
       ),
       <GateRegistration>[
         for (final EventRegistration r in registrations)
@@ -408,6 +431,7 @@ class DoorGate {
             'studentClassYear': r.studentClassYear,
             'ticketCode': r.ticketCode,
             'checkedInAtMs': r.checkedInAtMs ?? 0,
+            'paymentStatus': r.paymentStatus,
           }),
       ],
       fromServer: true,
@@ -526,9 +550,11 @@ class DoorGate {
     );
 
     // Liste eski olabilir (yeni kayıt / bilet kodu az önce üretildi).
+    // Ödeme de az önce onaylanmış olabilir (liste eski).
     if (event != null &&
         (verdict.result == GateResult.notRegistered ||
-            verdict.result == GateResult.invalidTicket)) {
+            verdict.result == GateResult.invalidTicket ||
+            verdict.result == GateResult.paymentPending)) {
       final String regId =
           reg?.id ??
           ('${payload['registrationId'] ?? ''}'.isNotEmpty
@@ -558,7 +584,19 @@ class DoorGate {
       );
     }
 
-    // Giriş: önce cihaza, sonra sunucuya.
+    _admit(reg, eventId, scannedAtMs);
+    return GateOutcome(
+      result: GateResult.checkedIn,
+      scannedAtMs: scannedAtMs,
+      legacy: verdict.legacy,
+      event: event,
+      registration: reg,
+      queued: true,
+    );
+  }
+
+  /// Giriş: önce cihaza, sonra sunucuya.
+  void _admit(GateRegistration reg, String eventId, int scannedAtMs) {
     reg.checkedInAtMs = scannedAtMs;
     final GateRegistration entered = reg;
     _pending = <GatePending>[
@@ -571,17 +609,36 @@ class DoorGate {
       ),
     ];
     _savePending();
-    _savePack(_packs[eventId]!);
+    final GatePack? pack = _packs[eventId];
+    if (pack != null) _savePack(pack);
     _emit(const GateChange(GateChangeType.pending));
     unawaited(flush());
+  }
 
+  /// İP-K: kapıdan "Ödendi" işareti mümkün mü?
+  bool get canMarkPaid => backend.markPaid != null;
+
+  /// İP-K: kapıda "Ödendi olarak işaretle": sunucuya yazılır (internet şart),
+  /// sonra aynı öğrenci için giriş alınır. Hata olursa fırlatır.
+  Future<GateOutcome> markPaidAndAdmit(GateOutcome outcome) async {
+    final GateRegistration? reg = outcome.registration;
+    final String eventId = outcome.event?.id ?? reg?.eventId ?? '';
+    final Future<void> Function(String, String)? mark = backend.markPaid;
+    if (mark == null || reg == null || eventId.isEmpty) {
+      throw StateError('mark-paid-unsupported');
+    }
+    if (!isOnline()) throw StateError('offline');
+    await mark(eventId, reg.studentId).timeout(networkTimeout * 2);
+    reg.paymentStatus = 'paid';
+    final int scannedAtMs = _now().millisecondsSinceEpoch;
+    _admit(reg, eventId, scannedAtMs);
     return GateOutcome(
       result: GateResult.checkedIn,
       scannedAtMs: scannedAtMs,
-      legacy: verdict.legacy,
-      event: event,
-      registration: entered,
+      event: outcome.event,
+      registration: reg,
       queued: true,
+      paidAtGate: true,
     );
   }
 

@@ -204,8 +204,12 @@ final quotaStatusProvider = StreamProvider.family<QuotaStatus, String>((
 /// oturumda katılım ya %0'dır ya %100.
 List<EventRegistration> certificateEligible(
   AppEvent event,
-  List<EventRegistration> registrations,
+  List<EventRegistration> allRegistrations,
 ) {
+  // İP-K: ücretli etkinlikte ödemesi onaylanmamış kayıt belge hakkı kazanmaz.
+  final List<EventRegistration> registrations = allRegistrations
+      .where((EventRegistration reg) => !reg.paymentPendingFor(event))
+      .toList();
   if (!event.isMultiSession) {
     return registrations
         .where(
@@ -260,3 +264,12 @@ final FutureProvider<DoorGate?> doorGateProvider = FutureProvider<DoorGate?>((
   ref.onDispose(gate.dispose);
   return gate;
 });
+
+
+/// İP-K: kulübün etkinliğinin bekleme listesi uzunluğu (toplama sorgusu).
+/// İşlemlerden sonra `ref.invalidate` ile tazelenir.
+// ignore: always_specify_types
+final eventWaitlistCountProvider = FutureProvider.family<int, String>((
+  Ref ref,
+  String eventId,
+) => ref.watch(eventRepositoryProvider).countEventWaitlist(eventId));

@@ -22,6 +22,7 @@ import '../../models/event.dart';
 import '../../services/door_gate.dart';
 import '../../services/event_repository.dart';
 import '../../services/firebase_refs.dart';
+import '../../services/registration_service.dart';
 import '../../state/providers.dart';
 import '../shared/common_widgets.dart';
 import '../shared/event_widgets.dart';
@@ -138,13 +139,17 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
   /// sayılıp aşılırdı.
   void _scheduleQuotaShardBackfill(AppEvent event) {
     if (_shardBackfillTried || _busy) return;
-    if (event.quota <= 0 || event.quotaShardCount > 0) return;
+    // İP-K: kontenjanı kurulamamış yeni etkinlik de ("quota-setup") burada
+    // sunucuda yeniden kurulur.
+    if (event.quota <= 0) return;
+    if (event.quotaShardCount > 0 && !event.quotaSetupPending) return;
+    if (event.cancelled) return;
 
     _shardBackfillTried = true;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       try {
-        await ref.read(eventRepositoryProvider).syncQuotaShards(
+        await ref.read(registrationServiceProvider).setEventQuota(
               eventId: event.id,
               quota: event.quota,
             );
@@ -235,6 +240,28 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
   /// Kayıtları DURDURMAK her zaman serbesttir; kısıt yalnızca açma yönünde.
   Future<void> _toggleRegistrations(AppEvent event) async {
     final bool reopening = event.registrationClosed;
+    if (event.cancelled) return;
+
+    // İP-K: kontenjanı kurulamamış yeni etkinlik elle açılmaz (kontenjansız
+    // açılmış olurdu); kurulum sunucuda yeniden denenir, olursa açılır.
+    if (reopening && event.quotaSetupPending) {
+      final String ok = context.t('registration.club.quotaSetupDone');
+      await _run(() async {
+        try {
+          await ref
+              .read(registrationServiceProvider)
+              .setEventQuota(eventId: event.id, quota: event.quota);
+          _setFeedback(ok, FeedbackTone.success);
+        } on RegistrationFailure catch (failure) {
+          if (!mounted) return;
+          _setFeedback(
+            context.t('registration.errors.${failure.reason}'),
+            FeedbackTone.error,
+          );
+        }
+      });
+      return;
+    }
 
     if (reopening && eventHasStarted(event)) {
       await _notice(
@@ -272,6 +299,141 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
         } else {
           _setFeedback(errorMessage, FeedbackTone.error);
         }
+      }
+    });
+  }
+
+  // ── İP-K: ödeme, kayıt silme, "+5 yer aç" ───────────────────────────
+
+  Future<void> _setPayment(AppEvent event, EventRegistration reg, bool paid) async {
+    if (!paid) {
+      final bool ok = await _confirm(
+        context.t('registration.club.paymentTitle'),
+        context.t('registration.club.unmarkConfirm', <String, Object?>{
+          'name': reg.displayName,
+        }),
+      );
+      if (!ok || !mounted) return;
+    }
+    final String done = paid
+        ? context.t('registration.club.markedPaid', <String, Object?>{'name': reg.displayName})
+        : context.t('registration.club.unmarkedPaid', <String, Object?>{'name': reg.displayName});
+    await _run(() async {
+      try {
+        await ref.read(registrationServiceProvider).setPaymentStatus(
+              eventId: event.id,
+              studentId: reg.studentId,
+              paid: paid,
+            );
+        _setFeedback(done, FeedbackTone.success);
+      } on RegistrationFailure catch (failure) {
+        if (!mounted) return;
+        _setFeedback(
+          failure.isNetwork
+              ? context.t('clubEvents.feedback.updateError')
+              : context.t('registration.errors.${failure.reason}'),
+          FeedbackTone.error,
+        );
+      }
+    });
+  }
+
+  Future<void> _removeRegistration(AppEvent event, EventRegistration reg) async {
+    final TextEditingController reason = TextEditingController();
+    final bool? ok = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) => AlertDialog(
+        title: Text(dialogContext.t('registration.club.removeTitle')),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              dialogContext.t('registration.club.removeBody', <String, Object?>{
+                'name': reg.displayName,
+              }),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: reason,
+              maxLength: 300,
+              maxLines: 2,
+              decoration: InputDecoration(
+                labelText: dialogContext.t('registration.club.reasonLabel'),
+                hintText: dialogContext.t('registration.club.removeReasonHint'),
+              ),
+            ),
+          ],
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(dialogContext.t('common.cancel')),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(
+              dialogContext.t('registration.club.removeAction'),
+              style: const TextStyle(color: BrandColors.danger),
+            ),
+          ),
+        ],
+      ),
+    );
+    final String text = reason.text.trim();
+    reason.dispose();
+    if (ok != true || !mounted) return;
+    final String done = context.t('registration.club.removed', <String, Object?>{
+      'name': reg.displayName,
+    });
+    await _run(() async {
+      try {
+        await ref.read(registrationServiceProvider).clubRemoveRegistration(
+              eventId: event.id,
+              studentId: reg.studentId,
+              reason: text,
+            );
+        ref.invalidate(eventWaitlistCountProvider(event.id));
+        _setFeedback(done, FeedbackTone.success);
+      } on RegistrationFailure catch (failure) {
+        if (!mounted) return;
+        _setFeedback(
+          failure.isNetwork
+              ? context.t('clubEvents.feedback.updateError')
+              : context.t('registration.errors.${failure.reason}'),
+          FeedbackTone.error,
+        );
+      }
+    });
+  }
+
+  Future<void> _addSeats(AppEvent event) async {
+    const int step = 5;
+    final bool ok = await _confirm(
+      context.t('registration.club.addSeats', <String, Object?>{'n': step}),
+      context.t('registration.club.addSeatsConfirm', <String, Object?>{
+        'from': event.quota,
+        'to': event.quota + step,
+      }),
+    );
+    if (!ok || !mounted) return;
+    await _run(() async {
+      try {
+        final int quota = await ref.read(registrationServiceProvider).setEventQuota(
+              eventId: event.id,
+              quota: event.quota + step,
+            );
+        if (!mounted) return;
+        _setFeedback(
+          context.t('registration.club.quotaNow', <String, Object?>{'n': quota}),
+          FeedbackTone.success,
+        );
+      } on RegistrationFailure catch (failure) {
+        if (!mounted) return;
+        _setFeedback(
+          context.t('registration.errors.${failure.reason}'),
+          FeedbackTone.error,
+        );
       }
     });
   }
@@ -1383,6 +1545,11 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
             onDeleteDocument: (EventDocument document) =>
                 _deleteDocument(event, document),
             onDownloadExcel: () => _downloadStudentsExcel(event),
+            onSetPayment: (EventRegistration reg, bool paid) =>
+                _setPayment(event, reg, paid),
+            onRemoveRegistration: (EventRegistration reg) =>
+                _removeRegistration(event, reg),
+            onAddSeats: () => _addSeats(event),
           );
         },
       ),
@@ -1413,6 +1580,9 @@ class _Body extends ConsumerWidget {
     required this.onRedistributeDocument,
     required this.onDeleteDocument,
     required this.onDownloadExcel,
+    required this.onSetPayment,
+    required this.onRemoveRegistration,
+    required this.onAddSeats,
   });
 
   final AppEvent event;
@@ -1440,6 +1610,11 @@ class _Body extends ConsumerWidget {
   final ValueChanged<EventDocument> onDeleteDocument;
   final VoidCallback onDownloadExcel;
 
+  /// İP-K
+  final void Function(EventRegistration reg, bool paid) onSetPayment;
+  final ValueChanged<EventRegistration> onRemoveRegistration;
+  final VoidCallback onAddSeats;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<EventRegistration>> registrations =
@@ -1458,6 +1633,18 @@ class _Body extends ConsumerWidget {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
       children: <Widget>[
         if (feedback != null) FeedbackBanner(message: feedback, tone: tone),
+        // İP-K: iptal edilen etkinlik notu (gerekçeyle).
+        if (event.cancelled) ...<Widget>[
+          FeedbackBanner(
+            message: event.cancelReason.isNotEmpty
+                ? context.t('registration.club.cancelledBannerReason', <String, Object?>{
+                    'reason': event.cancelReason,
+                  })
+                : context.t('registration.club.cancelledBanner'),
+            tone: FeedbackTone.error,
+          ),
+          const SizedBox(height: 12),
+        ],
 
         ClipRRect(
           borderRadius: BorderRadius.circular(BrandShape.cardRadius),
@@ -1481,6 +1668,14 @@ class _Body extends ConsumerWidget {
           _QuotaMeter(quota: quota, event: event),
           const SizedBox(height: 12),
         ],
+        // İP-K: bekleme listesi + "+5 yer aç".
+        if (quota.isTracked && !past && !event.cancelled)
+          _WaitlistRow(
+            eventId: event.id,
+            full: quota.isFull,
+            busy: busy,
+            onAddSeats: onAddSeats,
+          ),
         _ActionCard(
           icon: past ? Icons.lock_outline : Icons.how_to_reg_outlined,
           title: past
@@ -1702,7 +1897,13 @@ class _Body extends ConsumerWidget {
           for (final EventRegistration reg in list)
             Padding(
               padding: const EdgeInsets.only(bottom: 10),
-              child: _StudentTile(registration: reg, event: event),
+              child: _StudentTile(
+                registration: reg,
+                event: event,
+                locked: past || event.cancelled || busy,
+                onSetPayment: (bool paid) => onSetPayment(reg, paid),
+                onRemove: () => onRemoveRegistration(reg),
+              ),
             ),
       ],
     );
@@ -2698,10 +2899,21 @@ class _ConsentLogRow extends StatelessWidget {
 }
 
 class _StudentTile extends StatelessWidget {
-  const _StudentTile({required this.registration, required this.event});
+  const _StudentTile({
+    required this.registration,
+    required this.event,
+    required this.locked,
+    required this.onSetPayment,
+    required this.onRemove,
+  });
 
   final EventRegistration registration;
   final AppEvent event;
+
+  /// İP-K: geçmiş/iptal edilmiş etkinlikte ödeme ve silme düğmeleri gizli.
+  final bool locked;
+  final ValueChanged<bool> onSetPayment;
+  final VoidCallback onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -2785,6 +2997,61 @@ class _StudentTile extends StatelessWidget {
               locale: context.lang,
             ),
           ),
+          // İP-K: ödeme durumu + "Ödendi" anahtarı (ücretli etkinlik).
+          if (event.isPaid)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Row(
+                children: <Widget>[
+                  Icon(
+                    registration.paymentPendingFor(event)
+                        ? Icons.hourglass_top_outlined
+                        : Icons.check_circle_outline,
+                    size: 16,
+                    color: registration.paymentPendingFor(event)
+                        ? const Color(0xFF9A5B00)
+                        : BrandColors.success,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      registration.paymentPendingFor(event)
+                          ? context.t('registration.status.paymentPending')
+                          : context.t('registration.club.paid'),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  if (!locked)
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      onPressed: () =>
+                          onSetPayment(registration.paymentPendingFor(event)),
+                      child: Text(
+                        registration.paymentPendingFor(event)
+                            ? context.t('registration.club.markPaid')
+                            : context.t('registration.club.unmarkPaid'),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          if (!locked)
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                style: TextButton.styleFrom(
+                  foregroundColor: BrandColors.danger,
+                  visualDensity: VisualDensity.compact,
+                ),
+                onPressed: onRemove,
+                icon: const Icon(Icons.person_remove_outlined, size: 18),
+                label: Text(context.t('registration.club.removeAction')),
+              ),
+            ),
           if (suspicious.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 6),
@@ -2840,6 +3107,65 @@ class _Line extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+
+/// İP-K: bekleme listesi satırı ve "+5 yer aç".
+/// Kontenjan doluysa ya da bekleyen varsa görünür.
+class _WaitlistRow extends ConsumerWidget {
+  const _WaitlistRow({
+    required this.eventId,
+    required this.full,
+    required this.busy,
+    required this.onAddSeats,
+  });
+
+  final String eventId;
+  final bool full;
+  final bool busy;
+  final VoidCallback onAddSeats;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final int count = ref.watch(eventWaitlistCountProvider(eventId)).value ?? 0;
+    if (!full && count == 0) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: context.surface,
+          borderRadius: BorderRadius.circular(BrandShape.controlRadius),
+          boxShadow: BrandShape.card,
+        ),
+        child: Row(
+          children: <Widget>[
+            const Icon(Icons.hourglass_empty_outlined, size: 18),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                count > 0
+                    ? context.t('registration.club.waitlistCount', <String, Object?>{'count': count})
+                    : context.t('registration.club.waitlistEmpty'),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            OutlinedButton(
+              // Temadaki `Size.fromHeight(48)` Row içinde sonsuz genişlik ister.
+              style: OutlinedButton.styleFrom(minimumSize: const Size(0, 40)),
+              onPressed: busy ? null : onAddSeats,
+              child: Text(
+                context.t('registration.club.addSeats', <String, Object?>{'n': 5}),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

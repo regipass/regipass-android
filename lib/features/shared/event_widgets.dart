@@ -39,10 +39,29 @@ String eventPriorityLabel(BuildContext context, int priority) =>
   BuildContext context,
   AppEvent event,
 ) {
+  // İP-K: iptal edildi / kontenjan kuruluyor / dolu (bekleme listesi).
+  if (event.cancelled) {
+    return (
+      label: context.t('registration.status.cancelled'),
+      tone: FeedbackTone.error,
+    );
+  }
   if (isPastEvent(event)) {
     return (
       label: context.t('dashboard.status.expired'),
       tone: FeedbackTone.error,
+    );
+  }
+  if (event.quotaSetupPending) {
+    return (
+      label: context.t('registration.club.quotaSetupStatus'),
+      tone: FeedbackTone.warning,
+    );
+  }
+  if (event.seatsFull && !event.registrationClosed) {
+    return (
+      label: context.t('registration.status.fullWaitlist'),
+      tone: FeedbackTone.warning,
     );
   }
   if (event.registrationClosed) {
