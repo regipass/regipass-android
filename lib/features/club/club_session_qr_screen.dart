@@ -14,6 +14,7 @@ import '../../models/event.dart';
 import '../../services/attendance_service.dart';
 import '../../state/providers.dart';
 import '../shared/common_widgets.dart';
+import '../shared/qr_code_view.dart';
 import '../shared/event_widgets.dart';
 import 'club_providers.dart';
 import 'club_shell.dart';
@@ -587,28 +588,8 @@ class _QrImage extends StatelessWidget {
       color: BrandColors.white,
       child: Padding(
         padding: const EdgeInsets.all(8),
-        child: Image.network(
-          buildCheckinQrImageUrl(data, size: 600),
-          width: 280,
-          height: 280,
-          fit: BoxFit.contain,
-          filterQuality: FilterQuality.none,
-          // Yenilenen kodda eski görsel bir an bile kalmasın diye anahtar
-          // içeriğe bağlı: aynı kutu yeni veriyle yeniden çizilir.
-          key: ValueKey<String>(data),
-          gaplessPlayback: true,
-          errorBuilder: (_, _, _) => SizedBox(
-            width: 280,
-            height: 280,
-            child: Center(
-              child: Text(
-                context.t('clubEvents.session.qrError'),
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: BrandColors.black),
-              ),
-            ),
-          ),
-        ),
+        // İP-O / O3: QR cihazda çizilir; internet yokken de görünür.
+        child: QrCodeView(data: data, size: 280),
       ),
     );
   }

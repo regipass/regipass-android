@@ -22,6 +22,8 @@ library;
 
 import 'dart:convert';
 
+import 'package:qr/qr.dart';
+
 const String kCheckinQrPrefix = 'EVAPPQR1:';
 
 /// Telefon kamerasının açacağı sayfanın yolu ve token parametresi.
@@ -99,16 +101,31 @@ Map<String, dynamic>? parseCheckinQrToken(String? rawValue) {
   }
 }
 
-/// QR görselinin URL'i. Web ile aynı servis kullanılır ki üretilen kod
-/// iki platformda birebir aynı olsun.
-String buildCheckinQrImageUrl(String data, {int size = 280}) {
-  final int sanitized = size.clamp(180, 600);
-  // The four-module white quiet zone must survive resizing and saving the
-  // image. QRServer otherwise supplies no quiet zone, just a one-pixel margin.
-  // Only rendering changes: the encoded URL/token remains byte-for-byte intact.
-  return 'https://api.qrserver.com/v1/create-qr-code/'
-      '?size=${sanitized}x$sanitized&qzone=4&margin=0'
-      '&data=${Uri.encodeComponent(data)}';
+/// QR modülleri CİHAZDA üretilir (İP-O / O3).
+///
+/// Eskiden görsel api.qrserver.com'dan çekiliyordu: biletin içeriği (bilet
+/// kodu dahil) üçüncü bir sunucuya gidiyor, internet yokken bilet hiç
+/// açılmıyordu. Web de aynı gün yerel üretime geçti
+/// (js/modules/events/qr-image.js); iki platform da hata düzeltme "M" ve
+/// 4 modül sessiz alan kullanır.
+///
+/// Dönen matriste `true` koyu modüldür; sessiz alan matrise DAHİL DEĞİLDİR,
+/// çizen taraf ([kQrQuietZone] kadar) ekler.
+const int kQrQuietZone = 4;
+
+List<List<bool>> buildQrMatrix(String data) {
+  final QrImage image = QrImage(
+    QrCode(
+      payload: QrPayload.fromString(data),
+      errorCorrectLevel: QrErrorCorrectLevel.medium,
+    ),
+  );
+  final int n = image.moduleCount;
+  return List<List<bool>>.generate(
+    n,
+    (int r) => List<bool>.generate(n, (int c) => image.isDark(r, c)),
+    growable: false,
+  );
 }
 
 /// Öğrencinin kapıda görevliye **gösterdiği** statik bilet

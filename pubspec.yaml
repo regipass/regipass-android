@@ -31,8 +31,10 @@ dependencies:
 
   # ── QR ──────────────────────────────────────────────────────────────
   # Okuma: qr-scan-engine.js (BarcodeDetector/jsQR) karşılığı.
-  # Üretim: web ile aynı şekilde api.qrserver.com görseli kullanılır.
+  # Üretim (İP-O): cihazda, qr paketiyle (saf Dart) — içerik dışarı gitmez,
+  # bilet internetsiz de açılır. Web: js/modules/events/qr-image.js.
   mobile_scanner: ^7.1.2
+  qr: ^4.0.0
 
   # ── Harita ──────────────────────────────────────────────────────────
   # Etkinlik konumu seçici. Mobilde Maps SDK kullanımı ücretsiz ve

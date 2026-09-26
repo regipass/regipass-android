@@ -7,8 +7,10 @@ import '../../domain/checkin_qr.dart';
 import '../../domain/event_utils.dart';
 import '../../domain/routing.dart';
 import '../../l10n/app_strings.dart';
+import '../../state/connectivity.dart';
 import '../../state/providers.dart';
 import '../shared/common_widgets.dart';
+import '../shared/qr_code_view.dart';
 import '../shared/event_widgets.dart';
 import 'student_providers.dart';
 
@@ -55,7 +57,7 @@ class _AppointmentDetailSheetState
     extends ConsumerState<AppointmentDetailSheet> {
   bool _qrVisible = false;
   bool _qrLoading = false;
-  String? _qrImageUrl;
+  String? _qrData;
 
   /// Giriş onaylandığı anda açık QR'ı kapatmak için önceki katılım sayısı.
   int? _lastSeenAttendance;
@@ -91,7 +93,7 @@ class _AppointmentDetailSheetState
     setState(() {
       _qrVisible = true;
       _qrLoading = true;
-      _qrImageUrl = null;
+      _qrData = null;
     });
 
     // Bilet STATİKTİR: içeriği kaydın kimliğinden ibarettir ve etkinlik
@@ -105,7 +107,9 @@ class _AppointmentDetailSheetState
     // karşılaştırılır. Kod alınamazsa (bağlantı yok) bilet kodsuz çizilir;
     // aşama 1'de kulüp uyarıyla kabul eder.
     String ticketCode = item.registration.ticketCode;
-    if (ticketCode.isEmpty) {
+    // İP-O: internet yokken sunucuyu 8 sn beklemeden bilet hemen çizilir
+    // (kod önceden alınmışsa kayıtta zaten vardır; Firestore önbelleği).
+    if (ticketCode.isEmpty && ref.read(onlineProvider)) {
       try {
         ticketCode = await ref
             .read(attendanceServiceProvider)
@@ -126,7 +130,7 @@ class _AppointmentDetailSheetState
     );
 
     setState(() {
-      _qrImageUrl = buildCheckinQrImageUrl(token, size: 400);
+      _qrData = token;
       _qrLoading = false;
     });
   }
@@ -332,7 +336,7 @@ class _AppointmentDetailSheetState
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: <Widget>[
-                        if (_qrLoading || _qrImageUrl == null) ...<Widget>[
+                        if (_qrLoading || _qrData == null) ...<Widget>[
                           const SizedBox(
                             width: 64,
                             height: 64,
@@ -353,16 +357,8 @@ class _AppointmentDetailSheetState
                               color: BrandColors.white,
                               borderRadius: BorderRadius.circular(20),
                             ),
-                            child: Image.network(
-                              _qrImageUrl!,
-                              width: 260,
-                              height: 260,
-                              errorBuilder: (_, _, _) => const SizedBox(
-                                width: 260,
-                                height: 260,
-                                child: Center(child: Icon(Icons.wifi_off)),
-                              ),
-                            ),
+                            // İP-O / O3: bilet cihazda çizilir; internet yokken de açılır.
+                            child: QrCodeView(data: _qrData!, size: 260),
                           ),
                           const SizedBox(height: 18),
                           Padding(
