@@ -1086,6 +1086,9 @@ class EventDraft {
     required this.locationLat,
     required this.locationLng,
     required this.locationRadius,
+    this.contactMode = 'club',
+    this.contactPhone = '',
+    this.contactEmail = '',
   });
 
   final String title;
@@ -1119,6 +1122,12 @@ class EventDraft {
   final double? locationLng;
   final int? locationRadius;
 
+  /// İletişim bilgisi: `club` (kulübün sistemdeki bilgileri), `custom`
+  /// (bu etkinliğe özel), `hidden` (gösterme; yalnızca ücretsiz etkinlik).
+  final String contactMode;
+  final String contactPhone;
+  final String contactEmail;
+
   EventDraft copyWith({String? imageUrl}) => EventDraft(
     title: title,
     description: description,
@@ -1146,6 +1155,9 @@ class EventDraft {
     locationLat: locationLat,
     locationLng: locationLng,
     locationRadius: locationRadius,
+    contactMode: contactMode,
+    contactPhone: contactPhone,
+    contactEmail: contactEmail,
   );
 
   Map<String, dynamic> toMap() => <String, dynamic>{
@@ -1184,6 +1196,9 @@ class EventDraft {
     'locationLng': locationLng,
     // Konum adı girilmediyse yarıçapın anlamı yok.
     'locationRadius': locationName.isEmpty ? null : locationRadius,
+    'contactMode': contactMode,
+    'contactPhone': contactMode == 'custom' ? contactPhone : '',
+    'contactEmail': contactMode == 'custom' ? contactEmail : '',
     'updatedAt': FieldValue.serverTimestamp(),
   };
 }

@@ -17,6 +17,7 @@ import '../../data/club_fields.dart';
 import '../../data/department_data.dart';
 import '../../data/location_data.dart';
 import '../../domain/checkin_mode.dart';
+import '../../domain/event_contact.dart';
 import '../../domain/event_utils.dart';
 import '../../domain/paid_event_consent.dart';
 import '../../l10n/app_strings.dart';
@@ -43,6 +44,7 @@ enum _Field {
   time,
   fee,
   quota,
+  contact,
   targetUniversity,
   targetDepartment,
   threshold,
@@ -79,6 +81,8 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
   final TextEditingController _purpose = TextEditingController();
   final TextEditingController _quota = TextEditingController();
   final TextEditingController _feeAmount = TextEditingController();
+  final TextEditingController _contactPhone = TextEditingController();
+  final TextEditingController _contactEmail = TextEditingController();
   final TextEditingController _imageUrl = TextEditingController();
   final TextEditingController _sessionCount = TextEditingController(text: '1');
   final TextEditingController _threshold = TextEditingController();
@@ -93,6 +97,10 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
   final FocusNode _purposeFocus = FocusNode();
 
   String _feeType = 'free';
+
+  /// Etkinlikte gösterilecek iletişim: `club` (sistemdeki kulüp bilgileri),
+  /// `custom` (bu etkinliğe özel), `hidden` (yalnızca ücretsiz etkinlikte).
+  String _contactMode = 'club';
   String _checkinMode = CheckinMode.checkinOnly;
   String _targetScope = TargetScope.public;
 
@@ -146,6 +154,8 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
     _purpose.dispose();
     _quota.dispose();
     _feeAmount.dispose();
+    _contactPhone.dispose();
+    _contactEmail.dispose();
     _imageUrl.dispose();
     _sessionCount.dispose();
     _threshold.dispose();
@@ -175,6 +185,13 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
     _quota.text = event.quota > 0 ? '${event.quota}' : '';
     _feeType = event.feeType.isEmpty ? 'free' : event.feeType;
     _feeAmount.text = event.feeAmount > 0 ? '${event.feeAmount}' : '';
+    _contactMode = const <String>{'club', 'custom', 'hidden'}
+            .contains(event.contactMode)
+        ? event.contactMode
+        : 'club';
+    if (_contactMode == 'hidden' && _feeType == 'paid') _contactMode = 'club';
+    _contactPhone.text = event.contactPhone;
+    _contactEmail.text = event.contactEmail;
     _sessionCount.text = '${event.sessionCount}';
     _checkinMode = event.resolvedCheckinMode;
     _threshold.text = event.certificateThresholdPercent?.toString() ?? '';
@@ -594,6 +611,20 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
       feeInfo = '$amount TL';
     }
 
+    // İletişim bilgisi
+    final String contactMode = _feeType == 'paid' && _contactMode == 'hidden'
+        ? 'club'
+        : _contactMode;
+    final String contactPhone = _contactPhone.text.trim();
+    final String contactEmail = _contactEmail.text.trim();
+    if (contactMode == 'custom') {
+      final String? error = contactFieldsError(contactPhone, contactEmail);
+      if (error != null) {
+        _fail(_Field.contact, context.t(error));
+        return;
+      }
+    }
+
     final int? quota = int.tryParse(_quota.text.trim());
     if (quota == null || quota < 1) {
       _fail(_Field.quota, context.t('clubCreateEvent.feedback.invalidQuota'));
@@ -753,6 +784,9 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
       locationLat: _lat,
       locationLng: _lng,
       locationRadius: int.tryParse(_locationRadius.text.trim()) ?? 50,
+      contactMode: contactMode,
+      contactPhone: contactPhone,
+      contactEmail: contactEmail,
     );
 
     String? createdEventId;
@@ -833,6 +867,104 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
       time.hour,
       time.minute,
     ).millisecondsSinceEpoch;
+  }
+
+  Widget _contactSection(ClubProfile? club) {
+    final bool paid = _feeType == 'paid';
+    final String clubPhone = club?.phone.trim() ?? '';
+    final String clubEmail = club?.email.trim() ?? '';
+    final String clubSummary = <String>[
+      if (clubPhone.isNotEmpty) clubPhone,
+      if (clubEmail.isNotEmpty) clubEmail,
+    ].join(' · ');
+    final TextStyle hint = TextStyle(fontSize: 12.5, color: context.inkMuted);
+    return _NeonAlert(
+      active: _invalidField == _Field.contact,
+      child: _CaptionedField(
+        label: context.t(
+          paid
+              ? 'clubCreateEvent.contact.labelPaid'
+              : 'clubCreateEvent.contact.label',
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            _ChoiceRow(
+              options: <({String value, String label})>[
+                (
+                  value: 'club',
+                  label: context.t('clubCreateEvent.contact.club'),
+                ),
+                (
+                  value: 'custom',
+                  label: context.t('clubCreateEvent.contact.custom'),
+                ),
+                if (!paid)
+                  (
+                    value: 'hidden',
+                    label: context.t('clubCreateEvent.contact.hidden'),
+                  ),
+              ],
+              selected: _contactMode,
+              enabled: !_saving,
+              onChanged: (String value) =>
+                  setState(() => _contactMode = value),
+            ),
+            const SizedBox(height: 8),
+            if (_contactMode == 'club')
+              Text(
+                clubSummary.isEmpty
+                    ? context.t('clubCreateEvent.contact.clubEmpty')
+                    : context.t(
+                        'clubCreateEvent.contact.clubPreview',
+                        <String, Object?>{'contact': clubSummary},
+                      ),
+                style: hint,
+              ),
+            if (_contactMode == 'hidden')
+              Text(context.t('clubCreateEvent.contact.hiddenHint'), style: hint),
+            if (_contactMode == 'custom') ...<Widget>[
+              TextField(
+                controller: _contactPhone,
+                enabled: !_saving,
+                keyboardType: TextInputType.phone,
+                textInputAction: TextInputAction.next,
+                inputFormatters: guardedInput(30),
+                decoration: InputDecoration(
+                  labelText: context.t('clubCreateEvent.contact.phone'),
+                  prefixIcon: Icon(
+                    Icons.phone_outlined,
+                    size: 19,
+                    color: context.inkMuted,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _contactEmail,
+                enabled: !_saving,
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) =>
+                    FocusManager.instance.primaryFocus?.unfocus(),
+                inputFormatters: guardedInput(InputLimits.email),
+                decoration: InputDecoration(
+                  labelText: context.t('clubCreateEvent.contact.email'),
+                  prefixIcon: Icon(
+                    Icons.alternate_email,
+                    size: 19,
+                    color: context.inkMuted,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(context.t('clubCreateEvent.contact.customHint'), style: hint),
+            ],
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -957,8 +1089,13 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
                     ],
                     selected: _feeType,
                     enabled: !_saving,
-                    onChanged: (String value) =>
-                        setState(() => _feeType = value),
+                    onChanged: (String value) => setState(() {
+                      _feeType = value;
+                      // Ücretli etkinlikte iletişim gizlenemez.
+                      if (value == 'paid' && _contactMode == 'hidden') {
+                        _contactMode = 'club';
+                      }
+                    }),
                   ),
                 ),
                 if (_feeType == 'paid')
@@ -982,6 +1119,7 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
                       ),
                     ),
                   ),
+                _contactSection(club),
                 _NeonAlert(
                   active: _invalidField == _Field.quota,
                   child: TextField(

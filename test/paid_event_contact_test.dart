@@ -22,7 +22,15 @@ AppEvent _event({
       'feeType': feeType,
       'clubPhone': phone,
       'clubEmail': email,
+      if (feeType == 'paid') 'feeAmount': 150,
+      if (feeType == 'paid') 'feeInfo': '150 TL',
     });
+
+String _feeNote() => translate(
+      'eventModal.feeContactNoteWithFee',
+      params: <String, Object?>{'fee': '150 TL'},
+      language: 'tr',
+    );
 
 Widget _wrap(Widget child) => LanguageScope(
       language: 'tr',
@@ -50,7 +58,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(AlertDialog), findsOneWidget);
-      expect(find.text(translate('eventModal.feeContactNote', language: 'tr')), findsOneWidget);
+      expect(find.text(_feeNote()), findsOneWidget);
       expect(find.text('05551112233'), findsOneWidget);
       expect(find.text('kulup@example.com'), findsOneWidget);
     });
@@ -99,7 +107,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text(translate('eventModal.feeContactNote', language: 'tr')), findsOneWidget);
+      expect(find.text(_feeNote()), findsOneWidget);
       expect(find.byIcon(Icons.phone_outlined), findsNothing);
       expect(find.byIcon(Icons.mail_outline), findsNothing);
     });
@@ -162,6 +170,42 @@ void main() {
       // Bildirim kök katmanda yaşıyor; testin sonunda zamanlayıcısı
       // beklemede kalmasın.
       await tester.pump(const Duration(seconds: 3));
+    });
+  });
+
+  group('EventPaidContactBlock', () {
+    Future<void> pump(WidgetTester tester, AppEvent event) =>
+        tester.pumpWidget(_wrap(EventPaidContactBlock(event: event)));
+
+    testWidgets('ücretsiz: "İletişim Bilgileri" başlığı, ücret notu yok', (
+      WidgetTester tester,
+    ) async {
+      await pump(tester, _event(feeType: 'free'));
+      expect(find.text(translate('eventModal.contactTitle', language: 'tr')), findsOneWidget);
+      expect(find.text('05551112233'), findsOneWidget);
+      expect(find.byIcon(Icons.info_outline), findsNothing);
+    });
+
+    testWidgets('ücretli: "Ücret İçin İletişim Bilgileri" + ücret notu', (
+      WidgetTester tester,
+    ) async {
+      await pump(tester, _event(feeType: 'paid'));
+      expect(find.text(translate('eventModal.feeContactTitle', language: 'tr')), findsOneWidget);
+      expect(find.text(_feeNote()), findsOneWidget);
+    });
+
+    testWidgets('ücretsiz + gizle: hiçbir şey gösterilmez', (
+      WidgetTester tester,
+    ) async {
+      await pump(
+        tester,
+        AppEvent.fromMap('e2', <String, dynamic>{
+          'title': 'X',
+          'clubPhone': '05551112233',
+          'contactMode': 'hidden',
+        }),
+      );
+      expect(find.byType(EventSectionTitle), findsNothing);
     });
   });
 }

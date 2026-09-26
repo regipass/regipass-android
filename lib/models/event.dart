@@ -50,6 +50,9 @@ class AppEvent {
     this.cancelled = false,
     this.cancelReason = '',
     this.seatsFull = false,
+    this.contactMode = '',
+    this.contactPhone = '',
+    this.contactEmail = '',
     required this.hiddenFromClubList,
     required this.hiddenGlobally,
     required this.currentSession,
@@ -137,6 +140,10 @@ class AppEvent {
       cancelled: data['cancelled'] == true,
       cancelReason: asString(data['cancelReason']),
       seatsFull: data['seatsFull'] == true,
+      // İP-K: etkinlikte gösterilecek iletişim bilgisi seçimi.
+      contactMode: asString(data['contactMode']),
+      contactPhone: asString(data['contactPhone']),
+      contactEmail: asString(data['contactEmail']),
       hiddenFromClubList: data['hiddenFromClubList'] == true,
       hiddenGlobally: data['hiddenGlobally'] == true,
       currentSession: asInt(data['currentSession']) ?? 0,
@@ -298,6 +305,23 @@ class AppEvent {
 
   /// İP-K: kontenjan doldu — öğrenci bekleme listesine girebilir.
   final bool seatsFull;
+
+  /// İP-K: 'club' (varsayılan, kulübün kayıtlı bilgisi) | 'custom' (etkinliğe
+  /// özel [contactPhone]/[contactEmail]) | 'hidden' (yalnızca ücretsizde).
+  final String contactMode;
+  final String contactPhone;
+  final String contactEmail;
+
+  /// Etkinlikte gösterilecek iletişim (web event-chips.js#resolveEventContact).
+  ({String phone, String email, bool hidden}) get shownContact {
+    if (contactMode == 'hidden' && !isPaid) {
+      return (phone: '', email: '', hidden: true);
+    }
+    if (contactMode == 'custom') {
+      return (phone: contactPhone.trim(), email: contactEmail.trim(), hidden: false);
+    }
+    return (phone: clubPhone.trim(), email: clubEmail.trim(), hidden: false);
+  }
 
   /// Yeni etkinlik: kontenjan sunucuda kurulana kadar kayda kapalı.
   bool get quotaSetupPending => registrationClosed && registrationClosedReason == 'quota-setup';

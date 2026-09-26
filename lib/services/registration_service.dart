@@ -125,6 +125,25 @@ class WaitlistResult {
   bool get waiting => status == 'waiting';
 }
 
+/// Toplu işlem sonucu.
+class BulkResult {
+  const BulkResult({required this.count, this.notFound = const <String>[]});
+
+  final int count;
+  final List<String> notFound;
+}
+
+/// Sunucu yanıtı → [BulkResult] (testlerde de kullanılır).
+BulkResult bulkResultFrom(Map<String, dynamic> out, {required String countKey}) {
+  final Object? missing = out['notFound'];
+  return BulkResult(
+    count: (out[countKey] as num?)?.toInt() ?? 0,
+    notFound: missing is List
+        ? missing.map((Object? e) => '$e').toList(growable: false)
+        : const <String>[],
+  );
+}
+
 class RegistrationService {
   const RegistrationService({this.functions});
 
@@ -284,6 +303,38 @@ class RegistrationService {
       'paid': paid,
     });
   }
+
+  /// Toplu (çoklu seçim) "Ödendi": en fazla [maxBulk] öğrenci. Dönüş:
+  /// durumu değişen kayıt sayısı ve bulunamayan (bu arada silinmiş) kayıtlar.
+  Future<BulkResult> setPaymentStatusBulk({
+    required String eventId,
+    required List<String> studentIds,
+    required bool paid,
+  }) async => bulkResultFrom(
+    await _call('setPaymentStatus', <String, Object?>{
+      'eventId': eventId,
+      'studentIds': studentIds,
+      'paid': paid,
+    }, timeout: const Duration(seconds: 120)),
+    countKey: 'changedCount',
+  );
+
+  /// Toplu kayıt silme (gerekçe hepsine aynı gider).
+  Future<BulkResult> clubRemoveRegistrations({
+    required String eventId,
+    required List<String> studentIds,
+    String reason = '',
+  }) async => bulkResultFrom(
+    await _call('clubRemoveRegistration', <String, Object?>{
+      'eventId': eventId,
+      'studentIds': studentIds,
+      'reason': reason,
+    }, timeout: const Duration(seconds: 120)),
+    countKey: 'removed',
+  );
+
+  /// Sunucunun tek çağrıda kabul ettiği en fazla öğrenci (functions MAX_BULK).
+  static const int maxBulk = 200;
 
   /// Kontenjanı kurar/değiştirir (parça silinmez, sayımlar kayıtlardan yeniden
   /// hesaplanır). Kayıtlı sayısının altına inilirse `below-registered`.

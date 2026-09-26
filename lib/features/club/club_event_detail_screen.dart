@@ -60,6 +60,9 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
   final TextEditingController _link = TextEditingController();
 
   bool _busy = false;
+
+  /// Çoklu seçim: toplu "Ödendi" ve toplu kayıt silme için seçilen öğrenciler.
+  final Set<String> _selected = <String>{};
   String? _feedback;
   FeedbackTone _tone = FeedbackTone.info;
 
@@ -338,7 +341,8 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
     });
   }
 
-  Future<void> _removeRegistration(AppEvent event, EventRegistration reg) async {
+  /// Kayıt silme onayı + isteğe bağlı gerekçe. İptalde `null`.
+  Future<String?> _askRemoveReason(String body) async {
     final TextEditingController reason = TextEditingController();
     final bool? ok = await showDialog<bool>(
       context: context,
@@ -348,11 +352,7 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text(
-              dialogContext.t('registration.club.removeBody', <String, Object?>{
-                'name': reg.displayName,
-              }),
-            ),
+            Text(body),
             const SizedBox(height: 12),
             TextField(
               controller: reason,
@@ -382,7 +382,16 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
     );
     final String text = reason.text.trim();
     reason.dispose();
-    if (ok != true || !mounted) return;
+    return ok == true ? text : null;
+  }
+
+  Future<void> _removeRegistration(AppEvent event, EventRegistration reg) async {
+    final String? text = await _askRemoveReason(
+      context.t('registration.club.removeBody', <String, Object?>{
+        'name': reg.displayName,
+      }),
+    );
+    if (text == null || !mounted) return;
     final String done = context.t('registration.club.removed', <String, Object?>{
       'name': reg.displayName,
     });
@@ -403,6 +412,108 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
               : context.t('registration.errors.${failure.reason}'),
           FeedbackTone.error,
         );
+      }
+    });
+  }
+
+  // ── Çoklu seçim ─────────────────────────────────────────────────────
+
+  void _toggleSelected(String studentId, bool selected) {
+    setState(() {
+      if (selected) {
+        _selected.add(studentId);
+      } else {
+        _selected.remove(studentId);
+      }
+    });
+  }
+
+  void _replaceSelection(Iterable<String> ids) {
+    setState(() {
+      _selected
+        ..clear()
+        ..addAll(ids);
+    });
+  }
+
+  /// Seçimden hâlâ listede olan kayıtlar (bu arada silinenler düşer).
+  List<EventRegistration> _selectedRegistrations(AppEvent event) {
+    final List<EventRegistration> regs =
+        ref.read(eventRegistrationsProvider(event.id)).value ??
+        const <EventRegistration>[];
+    return regs
+        .where((EventRegistration r) => _selected.contains(r.studentId))
+        .toList(growable: false);
+  }
+
+  String _failureText(RegistrationFailure failure) => failure.isNetwork
+      ? context.t('clubEvents.feedback.updateError')
+      : context.t('registration.errors.${failure.reason}');
+
+  Future<void> _bulkMarkPaid(AppEvent event) async {
+    final List<String> ids = _selectedRegistrations(event)
+        .where((EventRegistration r) => r.paymentPendingFor(event))
+        .map((EventRegistration r) => r.studentId)
+        .toList(growable: false);
+    if (ids.isEmpty) {
+      _setFeedback(context.t('registration.bulk.nonePending'));
+      return;
+    }
+    if (ids.length > RegistrationService.maxBulk) {
+      _setFeedback(context.t('registration.errors.too-many-students'), FeedbackTone.error);
+      return;
+    }
+    final bool ok = await _confirm(
+      context.t('registration.bulk.markPaid'),
+      context.t('registration.bulk.markPaidConfirm', <String, Object?>{'n': ids.length}),
+    );
+    if (!ok || !mounted) return;
+    await _run(() async {
+      try {
+        final BulkResult result = await ref
+            .read(registrationServiceProvider)
+            .setPaymentStatusBulk(eventId: event.id, studentIds: ids, paid: true);
+        if (!mounted) return;
+        setState(_selected.clear);
+        _setFeedback(
+          context.t('registration.bulk.markedPaid', <String, Object?>{'n': result.count}),
+          FeedbackTone.success,
+        );
+      } on RegistrationFailure catch (failure) {
+        if (!mounted) return;
+        _setFeedback(_failureText(failure), FeedbackTone.error);
+      }
+    });
+  }
+
+  Future<void> _bulkRemove(AppEvent event) async {
+    final List<String> ids = _selectedRegistrations(event)
+        .map((EventRegistration r) => r.studentId)
+        .toList(growable: false);
+    if (ids.isEmpty) return;
+    if (ids.length > RegistrationService.maxBulk) {
+      _setFeedback(context.t('registration.errors.too-many-students'), FeedbackTone.error);
+      return;
+    }
+    final String? text = await _askRemoveReason(
+      context.t('registration.bulk.removeBody', <String, Object?>{'n': ids.length}),
+    );
+    if (text == null || !mounted) return;
+    await _run(() async {
+      try {
+        final BulkResult result = await ref
+            .read(registrationServiceProvider)
+            .clubRemoveRegistrations(eventId: event.id, studentIds: ids, reason: text);
+        ref.invalidate(eventWaitlistCountProvider(event.id));
+        if (!mounted) return;
+        setState(_selected.clear);
+        _setFeedback(
+          context.t('registration.bulk.removed', <String, Object?>{'n': result.count}),
+          FeedbackTone.success,
+        );
+      } on RegistrationFailure catch (failure) {
+        if (!mounted) return;
+        _setFeedback(_failureText(failure), FeedbackTone.error);
       }
     });
   }
@@ -1550,6 +1661,11 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
             onRemoveRegistration: (EventRegistration reg) =>
                 _removeRegistration(event, reg),
             onAddSeats: () => _addSeats(event),
+            selected: _selected,
+            onToggleSelected: _toggleSelected,
+            onReplaceSelection: _replaceSelection,
+            onBulkMarkPaid: () => _bulkMarkPaid(event),
+            onBulkRemove: () => _bulkRemove(event),
           );
         },
       ),
@@ -1583,6 +1699,11 @@ class _Body extends ConsumerWidget {
     required this.onSetPayment,
     required this.onRemoveRegistration,
     required this.onAddSeats,
+    required this.selected,
+    required this.onToggleSelected,
+    required this.onReplaceSelection,
+    required this.onBulkMarkPaid,
+    required this.onBulkRemove,
   });
 
   final AppEvent event;
@@ -1614,6 +1735,13 @@ class _Body extends ConsumerWidget {
   final void Function(EventRegistration reg, bool paid) onSetPayment;
   final ValueChanged<EventRegistration> onRemoveRegistration;
   final VoidCallback onAddSeats;
+
+  /// Çoklu seçim
+  final Set<String> selected;
+  final void Function(String studentId, bool selected) onToggleSelected;
+  final ValueChanged<Iterable<String>> onReplaceSelection;
+  final VoidCallback onBulkMarkPaid;
+  final VoidCallback onBulkRemove;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1893,7 +2021,17 @@ class _Body extends ConsumerWidget {
             message: context.t('clubEvents.students.empty'),
             icon: Icons.person_off_outlined,
           )
-        else
+        else ...<Widget>[
+          if (!past && !event.cancelled)
+            _BulkBar(
+              event: event,
+              registrations: list,
+              selected: selected,
+              busy: busy,
+              onReplaceSelection: onReplaceSelection,
+              onMarkPaid: onBulkMarkPaid,
+              onRemove: onBulkRemove,
+            ),
           for (final EventRegistration reg in list)
             Padding(
               padding: const EdgeInsets.only(bottom: 10),
@@ -1901,10 +2039,15 @@ class _Body extends ConsumerWidget {
                 registration: reg,
                 event: event,
                 locked: past || event.cancelled || busy,
+                selectable: !past && !event.cancelled,
+                selected: selected.contains(reg.studentId),
+                onSelected: (bool value) =>
+                    onToggleSelected(reg.studentId, value),
                 onSetPayment: (bool paid) => onSetPayment(reg, paid),
                 onRemove: () => onRemoveRegistration(reg),
               ),
             ),
+        ],
       ],
     );
   }
@@ -2905,10 +3048,18 @@ class _StudentTile extends StatelessWidget {
     required this.locked,
     required this.onSetPayment,
     required this.onRemove,
+    this.selectable = false,
+    this.selected = false,
+    this.onSelected,
   });
 
   final EventRegistration registration;
   final AppEvent event;
+
+  /// Çoklu seçim kutusu (geçmiş/iptal etkinlikte yok).
+  final bool selectable;
+  final bool selected;
+  final ValueChanged<bool>? onSelected;
 
   /// İP-K: geçmiş/iptal edilmiş etkinlikte ödeme ve silme düğmeleri gizli.
   final bool locked;
@@ -2944,12 +3095,31 @@ class _StudentTile extends StatelessWidget {
         color: context.surface,
         borderRadius: BorderRadius.circular(BrandShape.controlRadius),
         boxShadow: BrandShape.card,
+        border: selected
+            ? Border.all(color: BrandColors.red, width: 1.5)
+            : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Row(
             children: <Widget>[
+              if (selectable)
+                Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: SizedBox(
+                    width: 28,
+                    height: 28,
+                    child: Checkbox(
+                      value: selected,
+                      visualDensity: VisualDensity.compact,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      onChanged: locked
+                          ? null
+                          : (bool? value) => onSelected?.call(value ?? false),
+                    ),
+                  ),
+                ),
               Expanded(
                 child: Text(
                   registration.displayName,
@@ -3076,6 +3246,141 @@ class _StudentTile extends StatelessWidget {
                 ],
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Çoklu seçim çubuğu: tümünü seç / temizle, ödeme bekleyenleri seç,
+/// seçilenleri "Ödendi" yap, seçilenlerin kaydını sil.
+class _BulkBar extends StatelessWidget {
+  const _BulkBar({
+    required this.event,
+    required this.registrations,
+    required this.selected,
+    required this.busy,
+    required this.onReplaceSelection,
+    required this.onMarkPaid,
+    required this.onRemove,
+  });
+
+  final AppEvent event;
+  final List<EventRegistration> registrations;
+  final Set<String> selected;
+  final bool busy;
+  final ValueChanged<Iterable<String>> onReplaceSelection;
+  final VoidCallback onMarkPaid;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final List<EventRegistration> chosen = registrations
+        .where((EventRegistration r) => selected.contains(r.studentId))
+        .toList(growable: false);
+    final List<String> pendingIds = event.isPaid
+        ? registrations
+              .where((EventRegistration r) => r.paymentPendingFor(event))
+              .map((EventRegistration r) => r.studentId)
+              .toList(growable: false)
+        : const <String>[];
+    final int chosenPending = chosen
+        .where((EventRegistration r) => r.paymentPendingFor(event))
+        .length;
+    final bool allSelected =
+        chosen.length == registrations.length && registrations.isNotEmpty;
+    final ButtonStyle compact = OutlinedButton.styleFrom(
+      minimumSize: const Size(0, 38),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      visualDensity: VisualDensity.compact,
+    );
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: context.surface,
+        borderRadius: BorderRadius.circular(BrandShape.controlRadius),
+        boxShadow: BrandShape.card,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            chosen.isEmpty
+                ? context.t('registration.bulk.hint')
+                : context.t('registration.bulk.selected', <String, Object?>{
+                    'n': chosen.length,
+                  }),
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: <Widget>[
+              OutlinedButton(
+                style: compact,
+                onPressed: busy
+                    ? null
+                    : () => onReplaceSelection(
+                        allSelected
+                            ? const <String>[]
+                            : registrations.map(
+                                (EventRegistration r) => r.studentId,
+                              ),
+                      ),
+                child: Text(
+                  context.t(
+                    allSelected
+                        ? 'registration.bulk.clear'
+                        : 'registration.bulk.selectAll',
+                  ),
+                ),
+              ),
+              if (event.isPaid)
+                OutlinedButton(
+                  style: compact,
+                  onPressed: busy || pendingIds.isEmpty
+                      ? null
+                      : () => onReplaceSelection(pendingIds),
+                  child: Text(
+                    context.t('registration.bulk.selectPending', <String, Object?>{
+                      'n': pendingIds.length,
+                    }),
+                  ),
+                ),
+              if (event.isPaid)
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(0, 38),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  onPressed: busy || chosenPending == 0 ? null : onMarkPaid,
+                  icon: const Icon(Icons.check_circle_outline, size: 18),
+                  label: Text(
+                    context.t('registration.bulk.markPaidN', <String, Object?>{
+                      'n': chosenPending,
+                    }),
+                  ),
+                ),
+              OutlinedButton.icon(
+                style: compact.copyWith(
+                  foregroundColor: const WidgetStatePropertyAll<Color>(
+                    BrandColors.danger,
+                  ),
+                ),
+                onPressed: busy || chosen.isEmpty ? null : onRemove,
+                icon: const Icon(Icons.person_remove_outlined, size: 18),
+                label: Text(
+                  context.t('registration.bulk.removeN', <String, Object?>{
+                    'n': chosen.length,
+                  }),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );

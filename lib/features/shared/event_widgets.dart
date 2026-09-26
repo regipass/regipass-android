@@ -444,16 +444,14 @@ List<({IconData icon, String label, String value})> eventInfoRows(
   ];
 }
 
-/// Ücretli etkinliklerde kulübün iletişim bilgileri + ücret notu.
+/// Kulübün iletişim bilgileri — TÜM etkinliklerde (İP-K).
 ///
-/// Yalnızca `feeType == 'paid'` olan etkinliklerde çizilir: ücret uygulama
-/// içinden tahsil edilmiyor, öğrencinin ödemeyi konuşacağı bir muhatap
-/// gerekiyor. Ücretsiz etkinliklerde kulübün numarasını yaymanın gerekçesi
-/// yok, o yüzden blok hiç görünmez.
+///   • Ücretsiz: "İletişim Bilgileri" (kulüp gizlemeyi seçtiyse ya da bilgi
+///     yoksa blok görünmez)
+///   • Ücretli : "Ücret İçin İletişim Bilgileri" + ücret ve ödeme notu
 ///
-/// Bilgiler etkinlik dokümanındaki kopyadan gelir (bkz. [AppEvent.clubPhone]);
-/// bu alanlar eklenmeden önce oluşturulmuş etkinliklerde boş olabilir, o
-/// durumda not tek başına gösterilir.
+/// Hangi bilginin gösterileceğini kulüp etkinliği oluştururken seçer
+/// ([AppEvent.shownContact]).
 class EventPaidContactBlock extends StatelessWidget {
   const EventPaidContactBlock({required this.event, super.key});
 
@@ -461,12 +459,23 @@ class EventPaidContactBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!event.isPaid) return const SizedBox.shrink();
+    final ({String phone, String email, bool hidden}) contact =
+        event.shownContact;
+    if (contact.hidden) return const SizedBox.shrink();
+    if (!event.isPaid && contact.phone.isEmpty && contact.email.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        EventSectionTitle(context.t('eventModal.clubContact')),
+        EventSectionTitle(
+          context.t(
+            event.isPaid
+                ? 'eventModal.feeContactTitle'
+                : 'eventModal.contactTitle',
+          ),
+        ),
         const SizedBox(height: 10),
         _PaidContactCard(event: event),
       ],
@@ -501,8 +510,8 @@ class _PaidContactCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String phone = event.clubPhone.trim();
-    final String email = event.clubEmail.trim();
+    final String phone = event.shownContact.phone;
+    final String email = event.shownContact.email;
 
     return Container(
       width: double.infinity,
@@ -514,6 +523,7 @@ class _PaidContactCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
+          if (event.isPaid)
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
@@ -521,7 +531,9 @@ class _PaidContactCard extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  context.t('eventModal.feeContactNote'),
+                  context.t('eventModal.feeContactNoteWithFee', <String, Object?>{
+                    'fee': event.feeInfo.isNotEmpty ? event.feeInfo : '${event.feeAmount} TL',
+                  }),
                   style: TextStyle(
                     fontSize: 13,
                     height: 1.45,
@@ -533,7 +545,7 @@ class _PaidContactCard extends StatelessWidget {
             ],
           ),
           if (phone.isNotEmpty || email.isNotEmpty) ...<Widget>[
-            const SizedBox(height: 12),
+            if (event.isPaid) const SizedBox(height: 12),
             if (phone.isNotEmpty)
               _ContactRow(
                 icon: Icons.phone_outlined,
@@ -676,7 +688,7 @@ Future<void> showPaidEventContactDialog(BuildContext context, AppEvent event) {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(BrandShape.cardRadius),
       ),
-      title: Text(dialogContext.t('eventModal.clubContact')),
+      title: Text(dialogContext.t('eventModal.feeContactTitle')),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
