@@ -9,9 +9,11 @@ import '../../core/input_guard.dart';
 import '../../core/sanitize.dart';
 import '../../data/club_fields.dart';
 import '../../data/location_data.dart';
+import '../../domain/profile_change.dart';
 import '../../domain/routing.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/profiles.dart';
+import '../../services/club_profile_change_service.dart';
 import '../../services/phone_directory_repository.dart';
 import '../../state/providers.dart';
 import '../auth/auth_actions.dart';
@@ -25,6 +27,7 @@ import '../shared/live_phone_field.dart';
 import '../shared/phone_field.dart';
 import '../shared/searchable_field.dart';
 import 'club_documents_card.dart';
+import 'club_profile_change_banner.dart';
 import 'club_shell.dart';
 
 /// club-account.html + js/pages/club-account.js karşılığı.
@@ -144,6 +147,25 @@ class _ClubAccountScreenState extends ConsumerState<ClubAccountScreen> {
     if (uid == null || !mounted) return;
 
     setState(() => _uploadingLogo = true);
+
+    // İP-KP: onaylı kulübün logosu yönetici onayına gider.
+    if (profile.clubStatus == ClubStatus.approved && !profile.isBanned) {
+      try {
+        final ({String path, String url}) pending = await uploadPendingClubLogo(uid: uid, file: file);
+        await ref.read(clubProfileChangeServiceProvider).request(<String, Object>{
+          'logoPath': pending.path,
+          'logoUrl': pending.url,
+        });
+        if (mounted) {
+          _setFeedback(context.t('profileChange.logoSent'), FeedbackTone.success);
+        }
+      } catch (_) {
+        if (mounted) _setFeedback(context.t('feedback.saveErrorRetry'), FeedbackTone.error);
+      } finally {
+        if (mounted) setState(() => _uploadingLogo = false);
+      }
+      return;
+    }
 
     try {
       final ({String path, String url}) uploaded = await uploadClubLogo(
@@ -274,6 +296,45 @@ class _ClubAccountScreenState extends ConsumerState<ClubAccountScreen> {
       }
     }
 
+    // İP-KP: onaylı kulüpte ad / üniversite / il / metinler / alanlar
+    // doğrudan yazılmaz; farklı olanlar yönetici onayına gider.
+    bool sentForReview = false;
+    if (profile.clubStatus == ClubStatus.approved && !profile.isBanned) {
+      try {
+        await ref.read(profileRepositoryProvider).updateClubRepresentative(
+              uid: uid,
+              firstName: firstName,
+              lastName: lastName,
+            );
+        final Map<String, Object> gated = gatedClubChanges(
+          current: <String, String>{
+            'clubName': profile.clubName,
+            'university': profile.university,
+            'city': profile.city,
+            'clubPurpose': profile.clubPurpose,
+            'clubContents': profile.clubContents,
+          },
+          currentFields: profile.clubFields,
+          next: <String, String>{
+            'clubName': clubName,
+            'university': _university,
+            'city': _city,
+            'clubPurpose': clubPurpose,
+            'clubContents': clubContents,
+          },
+          nextFields: _clubFields,
+        );
+        if (gated.isNotEmpty) {
+          await ref.read(clubProfileChangeServiceProvider).request(gated);
+          sentForReview = true;
+        }
+      } catch (_) {
+        if (!mounted) return;
+        setState(() => _saving = false);
+        _setFeedback(context.t('feedback.saveErrorRetry'), FeedbackTone.error);
+        return;
+      }
+    } else {
     try {
       await ref
           .read(profileRepositoryProvider)
@@ -321,6 +382,7 @@ class _ClubAccountScreenState extends ConsumerState<ClubAccountScreen> {
       _setFeedback(context.t('feedback.saveErrorRetry'), FeedbackTone.error);
       return;
     }
+    }
 
     if (!mounted) return;
 
@@ -330,7 +392,7 @@ class _ClubAccountScreenState extends ConsumerState<ClubAccountScreen> {
         _editing = false;
       });
       _setFeedback(
-        context.t('clubAccount.feedback.updated'),
+        context.t(sentForReview ? 'profileChange.sent' : 'clubAccount.feedback.updated'),
         FeedbackTone.success,
       );
       return;
@@ -514,6 +576,8 @@ class _ClubAccountScreenState extends ConsumerState<ClubAccountScreen> {
           const SizedBox(height: 24),
 
           FeedbackBanner(message: _feedback, tone: _tone),
+          // İP-KP: onay bekleyen / reddedilen profil değişikliği.
+          const ClubProfileChangeBanner(),
 
           if (_editing) ...<Widget>[
             _SectionHeader(

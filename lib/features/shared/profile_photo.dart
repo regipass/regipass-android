@@ -98,6 +98,17 @@ Future<({String url, String path})> uploadClubLogo({
   previousPath: previousPath,
 );
 
+/// İP-KP: onaylı kulübün yeni logosu ayrı dosyaya yüklenir ve onaya gider;
+/// mevcut logo onaylanana kadar yerinde kalır (eskisi silinmez).
+Future<({String url, String path})> uploadPendingClubLogo({
+  required String uid,
+  required XFile file,
+}) => _uploadPickedImage(
+  file: file,
+  path: 'club_logos/$uid/pending-${DateTime.now().millisecondsSinceEpoch}',
+  previousPath: '',
+);
+
 /// Ortak yükleme adımı: `$basePath.$uzantı` olarak yazar, eskiyi siler.
 Future<({String url, String path})> _uploadPickedImage({
   required XFile file,

@@ -360,6 +360,22 @@ class ProfileRepository {
   /// Yalnızca `club_profiles` yazılır. Etkinliklerdeki logo ayrı bir adımda
   /// tazelenir (`EventRepository.syncClubLogo`): kulübün etkinlikleri
   /// güncellenemese bile logo kaydedilmiş olsun.
+  /// İP-KP: onaylı kulübün onay gerektirmeyen alanları (temsilci adı).
+  /// Ad, üniversite, metinler ve alanlar `clubRequestProfileChange` ile
+  /// yöneticinin onayına gider; kurallar bunların doğrudan yazılmasını reddeder.
+  Future<void> updateClubRepresentative({
+    required String uid,
+    required String firstName,
+    required String lastName,
+  }) async {
+    await _refreshIdTokenBestEffort();
+    await clubProfileDoc(uid).update(<String, dynamic>{
+      'firstName': firstName,
+      'lastName': lastName,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
   Future<void> updateClubLogo({
     required String uid,
     required String logoUrl,
