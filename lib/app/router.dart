@@ -20,6 +20,7 @@ import '../features/auth/phone_verify_screen.dart';
 import '../features/auth/register_screen.dart';
 import '../features/auth/role_select_screen.dart';
 import '../features/club/club_account_screen.dart';
+import '../features/club/club_blocked_students_screen.dart';
 import '../features/club/club_create_event_screen.dart';
 import '../features/club/club_dashboard_screen.dart';
 import '../features/club/club_documents_screen.dart';
@@ -239,6 +240,10 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
           GoRoute(
             path: Routes.clubNotifications,
             builder: (_, _) => const ClubNotificationsScreen(),
+          ),
+          GoRoute(
+            path: Routes.clubBlockedStudents,
+            builder: (_, _) => const ClubBlockedStudentsScreen(),
           ),
         ],
       ),

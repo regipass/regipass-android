@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../app/theme.dart';
@@ -8,6 +9,7 @@ import '../../core/input_guard.dart';
 import '../../core/sanitize.dart';
 import '../../data/club_fields.dart';
 import '../../data/location_data.dart';
+import '../../domain/routing.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/profiles.dart';
 import '../../services/phone_directory_repository.dart';
@@ -792,6 +794,17 @@ class _ClubAccountScreenState extends ConsumerState<ClubAccountScreen> {
           if (!_editing) ...<Widget>[
             const SizedBox(height: 20),
             ClubDocumentsCard(profile: profile),
+          ],
+
+          // İP-KB: kulübün etkinliklerinden engellediği öğrenciler.
+          if (!_editing) ...<Widget>[
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              key: const Key('clubBlockedStudentsLink'),
+              onPressed: () => context.push(Routes.clubBlockedStudents),
+              icon: const Icon(Icons.block_outlined),
+              label: Text(context.t('clubBlock.listTitle')),
+            ),
           ],
 
           const SizedBox(height: 20),

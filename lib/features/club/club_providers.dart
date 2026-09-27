@@ -1,14 +1,17 @@
 /// Kulüp ekranlarına özgü türetilmiş sağlayıcılar.
 library;
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../domain/event_utils.dart';
 import '../../domain/registration_capacity.dart';
+import '../../models/club_block.dart';
 import '../../models/event.dart';
 import '../../models/profiles.dart';
 import '../../services/door_gate.dart';
+import '../../services/firebase_refs.dart';
 import '../../state/connectivity.dart';
 import '../../state/providers.dart';
 
@@ -265,11 +268,36 @@ final FutureProvider<DoorGate?> doorGateProvider = FutureProvider<DoorGate?>((
   return gate;
 });
 
-
 /// İP-K: kulübün etkinliğinin bekleme listesi uzunluğu (toplama sorgusu).
 /// İşlemlerden sonra `ref.invalidate` ile tazelenir.
 // ignore: always_specify_types
-final eventWaitlistCountProvider = FutureProvider.family<int, String>((
-  Ref ref,
-  String eventId,
-) => ref.watch(eventRepositoryProvider).countEventWaitlist(eventId));
+final eventWaitlistCountProvider = FutureProvider.family<int, String>(
+  (Ref ref, String eventId) =>
+      ref.watch(eventRepositoryProvider).countEventWaitlist(eventId),
+);
+
+/// İP-KB: kulübün engellediği öğrenciler (en yeni önce), canlı.
+final StreamProvider<List<ClubBlock>> clubBlocksProvider =
+    StreamProvider<List<ClubBlock>>((Ref ref) {
+      final String? uid = ref.watch(currentUidProvider);
+      if (uid == null) {
+        return Stream<List<ClubBlock>>.value(const <ClubBlock>[]);
+      }
+      return fbDb
+          .collection('club_student_blocks')
+          .where('clubId', isEqualTo: uid)
+          .snapshots()
+          .map((QuerySnapshot<Map<String, dynamic>> snap) {
+            final List<ClubBlock> list = snap.docs
+                .map(
+                  (QueryDocumentSnapshot<Map<String, dynamic>> d) =>
+                      ClubBlock.fromMap(d.data()),
+                )
+                .toList();
+            list.sort(
+              (ClubBlock a, ClubBlock b) =>
+                  b.createdAtMs.compareTo(a.createdAtMs),
+            );
+            return list;
+          });
+    });

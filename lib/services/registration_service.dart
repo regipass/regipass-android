@@ -134,7 +134,10 @@ class BulkResult {
 }
 
 /// Sunucu yanıtı → [BulkResult] (testlerde de kullanılır).
-BulkResult bulkResultFrom(Map<String, dynamic> out, {required String countKey}) {
+BulkResult bulkResultFrom(
+  Map<String, dynamic> out, {
+  required String countKey,
+}) {
   final Object? missing = out['notFound'];
   return BulkResult(
     count: (out[countKey] as num?)?.toInt() ?? 0,
@@ -332,6 +335,29 @@ class RegistrationService {
     }, timeout: const Duration(seconds: 120)),
     countKey: 'removed',
   );
+
+  // ── İP-KB: kulübün öğrenci engeli ────────────────────────────────────────
+  /// Kulüp, etkinliğine kaydolmuş bir öğrenciyi kendi etkinliklerinden
+  /// engeller. Dönüş: silinen gelecek etkinlik kaydı sayısı.
+  Future<int> clubBlockStudent({
+    required String studentId,
+    required String reason,
+    bool removeFutureRegistrations = false,
+  }) async {
+    final Map<String, dynamic> out =
+        await _call('clubBlockStudent', <String, Object?>{
+          'studentId': studentId,
+          'reason': reason,
+          'removeFutureRegistrations': removeFutureRegistrations,
+        }, timeout: const Duration(seconds: 120));
+    return (out['removedEvents'] as num?)?.toInt() ?? 0;
+  }
+
+  Future<void> clubUnblockStudent(String studentId) async {
+    await _call('clubUnblockStudent', <String, Object?>{
+      'studentId': studentId,
+    });
+  }
 
   /// Sunucunun tek çağrıda kabul ettiği en fazla öğrenci (functions MAX_BULK).
   static const int maxBulk = 200;

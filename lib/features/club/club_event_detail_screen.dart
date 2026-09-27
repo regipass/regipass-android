@@ -27,6 +27,7 @@ import '../../state/providers.dart';
 import '../shared/common_widgets.dart';
 import '../shared/event_widgets.dart';
 import '../shared/media_viewer.dart';
+import 'club_block_dialog.dart';
 import 'club_providers.dart';
 import 'club_session_qr_screen.dart';
 import 'club_shell.dart';
@@ -410,6 +411,42 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
           failure.isNetwork
               ? context.t('clubEvents.feedback.updateError')
               : context.t('registration.errors.${failure.reason}'),
+          FeedbackTone.error,
+        );
+      }
+    });
+  }
+
+  // ── İP-KB: kulüpten engelle ────────────────────────────────────────
+  Future<void> _blockStudent(EventRegistration reg) async {
+    final ClubBlockDecision? decision = await askClubBlock(
+      context,
+      reg.displayName,
+    );
+    if (decision == null || !mounted) return;
+    await _run(() async {
+      try {
+        final int removed = await ref
+            .read(registrationServiceProvider)
+            .clubBlockStudent(
+              studentId: reg.studentId,
+              reason: decision.reason,
+              removeFutureRegistrations: decision.removeFutureRegistrations,
+            );
+        if (!mounted) return;
+        _setFeedback(
+          context.t('clubBlock.done', <String, Object?>{
+            'name': reg.displayName,
+            'count': removed,
+          }),
+          FeedbackTone.success,
+        );
+      } on RegistrationFailure catch (failure) {
+        if (!mounted) return;
+        _setFeedback(
+          failure.isNetwork
+              ? context.t('clubEvents.feedback.updateError')
+              : context.t('clubBlock.errors.${failure.reason}'),
           FeedbackTone.error,
         );
       }
@@ -1660,6 +1697,7 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
                 _setPayment(event, reg, paid),
             onRemoveRegistration: (EventRegistration reg) =>
                 _removeRegistration(event, reg),
+            onBlockStudent: _blockStudent,
             onAddSeats: () => _addSeats(event),
             selected: _selected,
             onToggleSelected: _toggleSelected,
@@ -1698,6 +1736,7 @@ class _Body extends ConsumerWidget {
     required this.onDownloadExcel,
     required this.onSetPayment,
     required this.onRemoveRegistration,
+    required this.onBlockStudent,
     required this.onAddSeats,
     required this.selected,
     required this.onToggleSelected,
@@ -1734,6 +1773,7 @@ class _Body extends ConsumerWidget {
   /// İP-K
   final void Function(EventRegistration reg, bool paid) onSetPayment;
   final ValueChanged<EventRegistration> onRemoveRegistration;
+  final ValueChanged<EventRegistration> onBlockStudent;
   final VoidCallback onAddSeats;
 
   /// Çoklu seçim
@@ -2045,6 +2085,7 @@ class _Body extends ConsumerWidget {
                     onToggleSelected(reg.studentId, value),
                 onSetPayment: (bool paid) => onSetPayment(reg, paid),
                 onRemove: () => onRemoveRegistration(reg),
+                onBlock: busy ? null : () => onBlockStudent(reg),
               ),
             ),
         ],
@@ -3048,6 +3089,7 @@ class _StudentTile extends StatelessWidget {
     required this.locked,
     required this.onSetPayment,
     required this.onRemove,
+    this.onBlock,
     this.selectable = false,
     this.selected = false,
     this.onSelected,
@@ -3065,6 +3107,9 @@ class _StudentTile extends StatelessWidget {
   final bool locked;
   final ValueChanged<bool> onSetPayment;
   final VoidCallback onRemove;
+
+  /// İP-KB: kulüpten engelle (geçmiş etkinlikte de; null = meşgul).
+  final VoidCallback? onBlock;
 
   @override
   Widget build(BuildContext context) {
@@ -3209,19 +3254,35 @@ class _StudentTile extends StatelessWidget {
                 ],
               ),
             ),
-          if (!locked)
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                style: TextButton.styleFrom(
-                  foregroundColor: BrandColors.danger,
-                  visualDensity: VisualDensity.compact,
+          Align(
+            alignment: Alignment.centerRight,
+            child: Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 4,
+              children: <Widget>[
+                if (!locked)
+                  TextButton.icon(
+                    style: TextButton.styleFrom(
+                      foregroundColor: BrandColors.danger,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    onPressed: onRemove,
+                    icon: const Icon(Icons.person_remove_outlined, size: 18),
+                    label: Text(context.t('registration.club.removeAction')),
+                  ),
+                TextButton.icon(
+                  key: const Key('clubBlockStudentButton'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: BrandColors.danger,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  onPressed: onBlock,
+                  icon: const Icon(Icons.block_outlined, size: 18),
+                  label: Text(context.t('clubBlock.action')),
                 ),
-                onPressed: onRemove,
-                icon: const Icon(Icons.person_remove_outlined, size: 18),
-                label: Text(context.t('registration.club.removeAction')),
-              ),
+              ],
             ),
+          ),
           if (suspicious.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 6),

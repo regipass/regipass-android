@@ -11,6 +11,47 @@ library;
 const Map<String, Map<String, String>>
 kExtraTranslations = <String, Map<String, String>>{
   'tr': <String, String>{
+    // İP-KB: kulübün öğrenci engeli
+    'clubBlock.title': 'Kulüpten engelle',
+    'clubBlock.action': 'Kulüpten engelle',
+    'clubBlock.body':
+        '{{name}} kulübünün etkinliklerinden engellenecek: yeni etkinliklere '
+        'kaydolamaz, bekleme listesine giremez.',
+    'clubBlock.reasonLabel': 'Gerekçe',
+    'clubBlock.reasonHelper':
+        'Zorunlu. Öğrenciye gösterilmez; kulübün ve Regipass yönetiminin '
+        'kaydında durur.',
+    'clubBlock.reasonRequired': 'En az 3 karakterlik bir gerekçe yaz.',
+    'clubBlock.removeFuture':
+        'Gelecek etkinliklerdeki kayıtlarını da sil (öğrenciye "kaydın '
+        'iptal edildi" bildirimi gider)',
+    'clubBlock.done':
+        '{{name}} kulübünün etkinliklerinden engellendi. Silinen gelecek '
+        'kayıt: {{count}}.',
+    'clubBlock.listTitle': 'Engellenen öğrenciler',
+    'clubBlock.listHelp':
+        'Buradaki öğrenciler kulübünün yeni etkinliklerine kaydolamaz. '
+        'Öğrenciyi etkinliğin kayıt listesindeki "Kulüpten engelle" ile '
+        'ekleyebilirsin.',
+    'clubBlock.empty': 'Engellediğin öğrenci yok.',
+    'clubBlock.unblock': 'Engeli kaldır',
+    'clubBlock.unblockConfirm':
+        '{{name}} için engel kaldırılsın mı? Kulübünün etkinliklerine yeniden '
+        'kaydolabilir.',
+    'clubBlock.unblocked': '{{name}} için engel kaldırıldı.',
+    'clubBlock.studentFallback': 'Öğrenci',
+    'clubBlock.error': 'İşlem tamamlanamadı. Tekrar dene.',
+    'clubBlock.errors.reason-required':
+        'En az 3 karakterlik bir gerekçe yazmalısın.',
+    'clubBlock.errors.student-not-related':
+        'Yalnızca etkinliğine kaydolmuş öğrencileri engelleyebilirsin.',
+    'clubBlock.errors.club-not-approved':
+        'Kulübün onaylanmadan öğrenci engelleyemezsin.',
+    'clubBlock.errors.club-banned': 'Kulüp hesabın askıda.',
+    'clubBlock.errors.not-a-club': 'Bu işlem yalnızca kulüp hesabıyla yapılır.',
+    'clubBlock.errors.invalid-student': 'Öğrenci bulunamadı.',
+    'registration.errors.blocked-by-club':
+        'Bu kulübün etkinliklerine kaydolamıyorsun.',
     // İP-M1: yönetim hesabı (rol etiketi + doğrulayıcı uygulama)
     'auth.error.userDisabled':
         'Bu hesap askıya alındı ya da silinmek üzere. Bir yanlışlık olduğunu '
@@ -1159,6 +1200,45 @@ kExtraTranslations = <String, Map<String, String>>{
     'registration.ticket.paymentPendingHint': 'Ödemen henüz onaylanmadı: kapıda giriş yapılamaz. Kulüp ödemeni onaylayınca bilet geçerli olur.',
   },
   'en': <String, String>{
+    // İP-KB: club's student block
+    'clubBlock.title': 'Block from club',
+    'clubBlock.action': 'Block from club',
+    'clubBlock.body':
+        '{{name}} will be blocked from your club\'s events: they cannot '
+        'register for new events or join waitlists.',
+    'clubBlock.reasonLabel': 'Reason',
+    'clubBlock.reasonHelper':
+        'Required. Not shown to the student; kept for your club and '
+        'Regipass staff.',
+    'clubBlock.reasonRequired': 'Enter a reason of at least 3 characters.',
+    'clubBlock.removeFuture':
+        'Also remove their registrations for upcoming events (they get a '
+        '"registration cancelled" notice)',
+    'clubBlock.done':
+        '{{name}} is blocked from your club\'s events. Upcoming registrations '
+        'removed: {{count}}.',
+    'clubBlock.listTitle': 'Blocked students',
+    'clubBlock.listHelp':
+        'These students cannot register for your club\'s new events. Add a '
+        'student with "Block from club" on an event\'s registration list.',
+    'clubBlock.empty': 'You have not blocked anyone.',
+    'clubBlock.unblock': 'Unblock',
+    'clubBlock.unblockConfirm':
+        'Unblock {{name}}? They will be able to register for your events again.',
+    'clubBlock.unblocked': '{{name}} was unblocked.',
+    'clubBlock.studentFallback': 'Student',
+    'clubBlock.error': 'Could not complete. Try again.',
+    'clubBlock.errors.reason-required':
+        'Enter a reason of at least 3 characters.',
+    'clubBlock.errors.student-not-related':
+        'You can only block students who registered for your events.',
+    'clubBlock.errors.club-not-approved':
+        'Your club must be approved to block students.',
+    'clubBlock.errors.club-banned': 'Your club account is suspended.',
+    'clubBlock.errors.not-a-club': 'Only club accounts can do this.',
+    'clubBlock.errors.invalid-student': 'Student not found.',
+    'registration.errors.blocked-by-club':
+        'You can\'t register for this club\'s events.',
     // İP-M1: staff account (role claim + authenticator app)
     'auth.error.userDisabled':
         'This account has been suspended or is scheduled for deletion. If you '

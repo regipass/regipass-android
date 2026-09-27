@@ -65,6 +65,9 @@ class Routes {
   static const String clubSessionQr = '/club/qr';
 
   static const String clubAccount = '/club/account';
+
+  /// İP-KB: Hesabım > Engellenen öğrenciler (club-account.html#clubBlocksSection).
+  static const String clubBlockedStudents = '/club/account/blocked';
   static const String clubNotifications = '/club/notifications';
 
   static const String adminHome = '/admin'; // admin-dashboard.html
