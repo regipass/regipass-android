@@ -175,14 +175,14 @@ class EventNotifyCard extends ConsumerWidget {
                         : null,
                   ),
                 ),
-                if (editableAuto) ...<Widget>[
+                // Anahtar yalnızca değiştirilebilen bildirimde: gönderilmiş,
+                // zamanı geçmiş ya da saatsiz bildirimde yeşil anahtar yanıltıcı.
+                if (editableAuto && _canToggle(s)) ...<Widget>[
                   const SizedBox(width: 6),
                   Switch(
                     key: Key('autoToggle_${s.key}'),
                     value: event.autoNotifications[s.key] != false,
-                    onChanged: _canToggle(s)
-                        ? (bool v) => _toggle(context, s.key, v)
-                        : null,
+                    onChanged: (bool v) => _toggle(context, s.key, v),
                   ),
                 ],
               ],
