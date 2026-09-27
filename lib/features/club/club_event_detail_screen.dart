@@ -1929,7 +1929,7 @@ class _Body extends ConsumerWidget {
         const SizedBox(height: 22),
         EventSectionTitle(context.t('eventNotify.title')),
         const SizedBox(height: 10),
-        EventNotifyCard(event: event),
+        EventNotifyCard(event: event, compact: true),
 
         const SizedBox(height: 22),
         EventSectionTitle(context.t('clubEvents.certificate.title')),

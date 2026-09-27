@@ -9,10 +9,12 @@ library;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
 import '../../domain/message_templates.dart';
 import '../../domain/reminder_schedule.dart';
+import '../../domain/routing.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/event.dart';
 import '../../services/firebase_refs.dart';
@@ -78,9 +80,51 @@ String _formatDateTime(int ms) {
 }
 
 class EventNotifyCard extends ConsumerWidget {
-  const EventNotifyCard({super.key, required this.event});
+  const EventNotifyCard({
+    super.key,
+    required this.event,
+    this.editableAuto = false,
+    this.compact = false,
+  });
 
   final AppEvent event;
+
+  /// İP-KN: gönderilmemiş otomatik bildirimler için aç/kapa anahtarı.
+  final bool editableAuto;
+
+  /// İP-KN: etkinlik detayında yalnızca durum + Bildirimler ekranına kısayol.
+  final bool compact;
+
+  bool _canToggle(ReminderState s) {
+    final bool enabled = event.autoNotifications[s.key] != false;
+    return !event.cancelled &&
+        s.status != ReminderStatus.sent &&
+        s.status != ReminderStatus.missed &&
+        !(enabled && s.atMs == null);
+  }
+
+  String _statusText(BuildContext context, ReminderState s) {
+    final bool enabled = event.autoNotifications[s.key] != false;
+    if (s.status == ReminderStatus.off && enabled) {
+      return context.t('eventNotify.status.noTime');
+    }
+    if (s.status == ReminderStatus.pending) {
+      return context.t('eventNotify.status.planned');
+    }
+    return context.t('eventNotify.status.${s.status.name}');
+  }
+
+  Future<void> _toggle(BuildContext context, String key, bool value) async {
+    try {
+      await eventDoc(event.id).update(<String, Object>{'autoNotifications.$key': value});
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.t('eventNotify.toggleError'))),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -101,8 +145,13 @@ class EventNotifyCard extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Text(context.t('eventNotify.autoHelp'), style: text.bodySmall),
-        const SizedBox(height: 8),
+        if (!compact) ...<Widget>[
+          Text(
+            context.t(editableAuto ? 'eventNotify.autoHelpEditable' : 'eventNotify.autoHelp'),
+            style: text.bodySmall,
+          ),
+          const SizedBox(height: 8),
+        ],
         for (final ReminderState s in states)
           Padding(
             padding: const EdgeInsets.only(bottom: 4),
@@ -111,7 +160,7 @@ class EventNotifyCard extends ConsumerWidget {
                 Expanded(child: Text(context.t('autoNotify.${s.key}'))),
                 Text(
                   <String>[
-                    context.t('eventNotify.status.${s.status.name}'),
+                    _statusText(context, s),
                     if (s.status == ReminderStatus.sent)
                       _formatDateTime(s.sentAtMs ?? 0)
                     else if (s.atMs != null)
@@ -126,10 +175,30 @@ class EventNotifyCard extends ConsumerWidget {
                         : null,
                   ),
                 ),
+                if (editableAuto) ...<Widget>[
+                  const SizedBox(width: 6),
+                  Switch(
+                    key: Key('autoToggle_${s.key}'),
+                    value: event.autoNotifications[s.key] != false,
+                    onChanged: _canToggle(s)
+                        ? (bool v) => _toggle(context, s.key, v)
+                        : null,
+                  ),
+                ],
               ],
             ),
           ),
         const SizedBox(height: 10),
+        if (compact) ...<Widget>[
+          FilledButton.icon(
+            key: const Key('eventNotifyOpenPage'),
+            onPressed: () => context.push(
+              '${Routes.clubEventNotifications}?eventId=${Uri.encodeComponent(event.id)}',
+            ),
+            icon: const Icon(Icons.campaign_outlined),
+            label: Text(context.t('eventNotify.openPage')),
+          ),
+        ] else ...<Widget>[
         if (!event.cancelled)
           FilledButton.icon(
             key: const Key('eventNotifySend'),
@@ -173,6 +242,7 @@ class EventNotifyCard extends ConsumerWidget {
                     )
                     .toList(),
         ),
+        ],
       ],
     );
   }

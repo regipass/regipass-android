@@ -9,6 +9,7 @@ import '../../l10n/app_strings.dart';
 import '../../models/event.dart';
 import '../../services/registration_service.dart';
 import '../../state/providers.dart';
+import '../notifications/notification_bell.dart';
 import '../shared/common_widgets.dart';
 import '../shared/event_widgets.dart';
 import 'club_providers.dart';
@@ -160,7 +161,18 @@ class _ClubEventsScreenState extends ConsumerState<ClubEventsScreen> {
     final AsyncValue<List<AppEvent>> events = ref.watch(clubEventsProvider);
 
     return Scaffold(
-      appBar: ClubAppBar(title: context.t('club.nav.myEvents')),
+      appBar: ClubAppBar(
+        title: context.t('club.nav.myEvents'),
+        actions: <Widget>[
+          IconButton(
+            key: const Key('clubEventNotificationsLink'),
+            tooltip: context.t('clubNotify.title'),
+            icon: const Icon(Icons.campaign_outlined),
+            onPressed: () => context.push(Routes.clubEventNotifications),
+          ),
+          const NotificationBellButton(route: Routes.clubNotifications),
+        ],
+      ),
       body: events.when(
         loading: () => const LoadingView(),
         error: (Object error, StackTrace _) => Padding(

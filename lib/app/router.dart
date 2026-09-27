@@ -25,6 +25,7 @@ import '../features/club/club_create_event_screen.dart';
 import '../features/club/club_dashboard_screen.dart';
 import '../features/club/club_documents_screen.dart';
 import '../features/club/club_event_detail_screen.dart';
+import '../features/club/club_event_notifications_screen.dart';
 import '../features/club/club_events_screen.dart';
 import '../features/club/club_notifications_screen.dart';
 import '../features/club/club_pending_screen.dart';
@@ -240,6 +241,13 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
           GoRoute(
             path: Routes.clubNotifications,
             builder: (_, _) => const ClubNotificationsScreen(),
+          ),
+          GoRoute(
+            path: Routes.clubEventNotifications,
+            builder: (BuildContext context, GoRouterState state) =>
+                ClubEventNotificationsScreen(
+                  eventId: state.uri.queryParameters['eventId'],
+                ),
           ),
           GoRoute(
             path: Routes.clubBlockedStudents,

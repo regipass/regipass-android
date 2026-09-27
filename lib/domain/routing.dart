@@ -70,6 +70,10 @@ class Routes {
   static const String clubBlockedStudents = '/club/account/blocked';
   static const String clubNotifications = '/club/notifications';
 
+  /// İP-KN: Bildirimler (etkinlik seç → otomatik / elle bildirim).
+  /// Web'de club-notifications.html. [clubNotifications] ise gelen kutusudur.
+  static const String clubEventNotifications = '/club/event-notifications';
+
   static const String adminHome = '/admin'; // admin-dashboard.html
   static const String adminStats = '/admin/stats';
 
