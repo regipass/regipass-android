@@ -32,6 +32,7 @@ import 'club_block_dialog.dart';
 import 'club_providers.dart';
 import 'event_feedback_summary_card.dart';
 import 'event_notify_card.dart';
+import 'event_report_card.dart';
 import 'club_session_qr_screen.dart';
 import 'club_shell.dart';
 import 'registrations_export.dart';
@@ -1932,6 +1933,10 @@ class _Body extends ConsumerWidget {
         EventSectionTitle(context.t('eventNotify.title')),
         const SizedBox(height: 10),
         EventNotifyCard(event: event, compact: true),
+
+        // İP-R: etkinlik raporu (PDF + Excel).
+        const SizedBox(height: 22),
+        EventReportCard(event: event),
 
         // İP-D: etkinlik bitince katılımcıların kimliksiz değerlendirmesi.
         if (!event.cancelled &&

@@ -11,6 +11,15 @@ library;
 const Map<String, Map<String, String>>
 kExtraTranslations = <String, Map<String, String>>{
   'tr': <String, String>{
+    // İP-R: rapor
+    'report.title': 'Etkinlik Raporu',
+    'report.button': 'Rapor indir',
+    'report.pdf': 'PDF',
+    'report.excel': 'Excel',
+    'report.help': 'Katılım oranı, oturum yoklaması, bölüm / sınıf dağılımı ve değerlendirme özeti. PDF kişisel bilgi içermez; katılımcı listesi Excel\'de.',
+    'report.preparing': 'Rapor hazırlanıyor...',
+    'report.done': 'Rapor indirildi.',
+    'report.error': 'Rapor hazırlanamadı. İnternet bağlantını kontrol edip tekrar dene.',
     // İP-D: değerlendirme
     'feedback.locale': 'tr-TR',
     'feedback.decimal': ',',
@@ -1393,6 +1402,15 @@ kExtraTranslations = <String, Map<String, String>>{
     'registration.ticket.paymentPendingHint': 'Ödemen henüz onaylanmadı: kapıda giriş yapılamaz. Kulüp ödemeni onaylayınca bilet geçerli olur.',
   },
   'en': <String, String>{
+    // İP-R: rapor
+    'report.title': 'Event Report',
+    'report.button': 'Download report',
+    'report.pdf': 'PDF',
+    'report.excel': 'Excel',
+    'report.help': 'Attendance rate, session attendance, department / year breakdown and rating summary. The PDF has no personal data; the attendee list is in Excel.',
+    'report.preparing': 'Preparing report...',
+    'report.done': 'Report downloaded.',
+    'report.error': 'Couldn\'t prepare the report. Check your connection and try again.',
     // İP-D: değerlendirme
     'feedback.locale': 'en-GB',
     'feedback.decimal': '.',
