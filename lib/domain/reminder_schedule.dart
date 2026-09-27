@@ -87,7 +87,15 @@ List<ReminderState> reminderStates({
   );
   return kReminderKeys.map((String key) {
     final int? at = s[key];
-    final int? sentAt = (sent[key] ?? 0) > 0 ? sent[key] : null;
+    // Kulüp girişi / ilk oturumu açınca "Başladı" o an gider
+    // (functions/eventReminders.js#progressNotices).
+    int? sentAt = (sent[key] ?? 0) > 0 ? sent[key] : null;
+    if (sentAt == null && key == 'atStart') {
+      final int alt = (sent['entryOpen'] ?? 0) > 0
+          ? sent['entryOpen']!
+          : (sent['session_1'] ?? 0);
+      if (alt > 0) sentAt = alt;
+    }
     ReminderStatus status = ReminderStatus.off;
     if (sentAt != null) {
       status = ReminderStatus.sent;

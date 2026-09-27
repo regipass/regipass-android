@@ -13,6 +13,11 @@ kExtraTranslations = <String, Map<String, String>>{
   'tr': <String, String>{
     // İP-B: etkinlik bildirimleri
     'autoNotify.title': 'Otomatik bildirimler',
+    'autoNotify.needStart': 'Başlangıç saati gerekli',
+    'autoNotify.needEnd': 'Bitiş saati gerekli',
+    'autoNotify.warnStart': 'Başlangıç saati girmezsen “1 saat önce” ve “Başladığında” bildirimleri gitmez.',
+    'autoNotify.warnEnd': 'Bitiş saati girmezsen “Teşekkür” bildirimi gitmez.',
+    'autoNotify.warnBoth': 'Başlangıç ve bitiş saati girmezsen “1 saat önce”, “Başladığında” ve “Teşekkür” bildirimleri gitmez.',
     'autoNotify.help':
         'Kayıtlı öğrencilere Regipass kendiliğinden bildirim gönderir. Saat '
         'girilmezse yalnızca "1 gün önce" gider.',
@@ -1297,6 +1302,11 @@ kExtraTranslations = <String, Map<String, String>>{
   'en': <String, String>{
     // İP-B: event notifications
     'autoNotify.title': 'Automatic notifications',
+    'autoNotify.needStart': 'Start time required',
+    'autoNotify.needEnd': 'End time required',
+    'autoNotify.warnStart': 'Without a start time, the “1 hour before” and “At start” notifications are not sent.',
+    'autoNotify.warnEnd': 'Without an end time, the “Thank you” notification is not sent.',
+    'autoNotify.warnBoth': 'Without start and end times, the “1 hour before”, “At start” and “Thank you” notifications are not sent.',
     'autoNotify.help':
         'Regipass notifies registered students automatically. Without a start '
         'time only the "1 day before" reminder is sent.',
