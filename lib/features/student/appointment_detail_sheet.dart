@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
 import '../../domain/checkin_qr.dart';
+import '../../domain/event_feedback.dart';
 import '../../domain/event_utils.dart';
 import '../../domain/routing.dart';
 import '../../l10n/app_strings.dart';
@@ -15,6 +16,7 @@ import '../shared/common_widgets.dart';
 import '../shared/event_widgets.dart';
 import '../shared/qr_code_view.dart';
 import '../shared/ticket_image.dart';
+import 'event_feedback_card.dart';
 import 'student_providers.dart';
 
 /// student-appointments.js / student-qr-generate.js içindeki detay
@@ -28,6 +30,7 @@ Future<void> showAppointmentSheet(
   BuildContext context, {
   required String registrationId,
   bool autoGenerateQr = false,
+  bool focusFeedback = false,
 }) => showModalBottomSheet<void>(
   context: context,
   isScrollControlled: true,
@@ -38,6 +41,7 @@ Future<void> showAppointmentSheet(
   builder: (_) => AppointmentDetailSheet(
     registrationId: registrationId,
     autoGenerateQr: autoGenerateQr,
+    focusFeedback: focusFeedback,
   ),
 );
 
@@ -45,11 +49,15 @@ class AppointmentDetailSheet extends ConsumerStatefulWidget {
   const AppointmentDetailSheet({
     required this.registrationId,
     this.autoGenerateQr = false,
+    this.focusFeedback = false,
     super.key,
   });
 
   final String registrationId;
   final bool autoGenerateQr;
+
+  /// İP-D: değerlendirme formu başta ve açık gelir.
+  final bool focusFeedback;
 
   @override
   ConsumerState<AppointmentDetailSheet> createState() =>
@@ -178,6 +186,17 @@ class _AppointmentDetailSheetState
     return null;
   }
 
+  Widget _feedbackCard(RegistrationWithEvent item, {bool startEditing = false}) =>
+      EventFeedbackCard(
+        eventId: item.registration.eventId,
+        window: feedbackWindowFor(
+          item.event,
+          item.registration,
+          DateTime.now().millisecondsSinceEpoch,
+        ),
+        startEditing: startEditing,
+      );
+
   @override
   Widget build(BuildContext context) {
     final List<RegistrationWithEvent> items =
@@ -303,8 +322,19 @@ class _AppointmentDetailSheetState
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
 
+                    // İP-D: bildirimden gelindiyse değerlendirme en üstte.
+                    if (widget.focusFeedback) ...<Widget>[
+                      const SizedBox(height: 16),
+                      _feedbackCard(item, startEditing: true),
+                    ],
+
                     const SizedBox(height: 20),
                     _SessionProgress(item: item),
+
+                    if (!widget.focusFeedback) ...<Widget>[
+                      const SizedBox(height: 16),
+                      _feedbackCard(item),
+                    ],
 
                     if (item.event != null) ...<Widget>[
                       const SizedBox(height: 20),

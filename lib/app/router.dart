@@ -154,6 +154,7 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
             builder: (BuildContext context, GoRouterState state) =>
                 StudentAppointmentsScreen(
                   openRegistrationId: state.uri.queryParameters['open'],
+                  feedbackEventId: state.uri.queryParameters['feedbackEventId'],
                 ),
           ),
           GoRoute(

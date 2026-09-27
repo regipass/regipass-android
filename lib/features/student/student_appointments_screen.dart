@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme.dart';
+import '../../domain/event_feedback.dart';
 import '../../domain/event_utils.dart';
 import '../../l10n/app_strings.dart';
+import '../../services/event_feedback_service.dart';
 import '../shared/common_widgets.dart';
 import 'appointment_detail_sheet.dart';
 import 'student_providers.dart';
@@ -16,12 +18,20 @@ import 'student_shell.dart';
 /// yapılır: böylece üst çubuk her ekranda aynı kalır ve seçim marka rengiyle
 /// içerik alanında vurgulanır.
 class StudentAppointmentsScreen extends ConsumerStatefulWidget {
-  const StudentAppointmentsScreen({this.openRegistrationId, super.key});
+  const StudentAppointmentsScreen({
+    this.openRegistrationId,
+    this.feedbackEventId,
+    super.key,
+  });
 
   /// Açılır açılmaz detay penceresi gösterilecek kaydın kimliği
   /// (`/student/appointments?open=...`). QR okutma ekranı, giriş onaylandıktan
   /// sonra öğrenciyi buraya bu parametreyle döndürür.
   final String? openRegistrationId;
+
+  /// İP-D: değerlendirme bildiriminden gelindi (`?feedbackEventId=...`):
+  /// o etkinliğin penceresi değerlendirme formu açık gelir.
+  final String? feedbackEventId;
 
   @override
   ConsumerState<StudentAppointmentsScreen> createState() =>
@@ -42,14 +52,24 @@ class _StudentAppointmentsScreenState
   /// `initState` yeterli değil: kayıt listesi asenkron gelir ve pencere,
   /// içeriğini bu listeden okur.
   void _openRequestedSheet(List<RegistrationWithEvent> items) {
-    final String? target = widget.openRegistrationId;
+    final String? feedbackEventId = widget.feedbackEventId;
+    final bool forFeedback =
+        feedbackEventId != null && feedbackEventId.isNotEmpty;
+    final String? target = forFeedback
+        ? 'feedback:$feedbackEventId'
+        : widget.openRegistrationId;
     if (target == null || target.isEmpty || _autoOpened == target) return;
 
     RegistrationWithEvent? match;
     for (final RegistrationWithEvent item in items) {
-      if (item.registration.id == target) match = item;
+      if (forFeedback
+          ? item.registration.eventId == feedbackEventId
+          : item.registration.id == target) {
+        match = item;
+      }
     }
     if (match == null) return;
+    final String registrationId = match.registration.id;
 
     _autoOpened = target;
     final bool closed = match.isClosed;
@@ -58,7 +78,11 @@ class _StudentAppointmentsScreenState
       if (!mounted) return;
       // Pencere kapanınca kaydın durduğu sekme açık kalsın.
       if (_showPast != closed) setState(() => _showPast = closed);
-      showAppointmentSheet(context, registrationId: target);
+      showAppointmentSheet(
+        context,
+        registrationId: registrationId,
+        focusFeedback: forFeedback,
+      );
     });
   }
 
@@ -316,7 +340,10 @@ class AppointmentCard extends StatelessWidget {
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                       const SizedBox(height: 8),
-                      Row(
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: <Widget>[
                           StatusPill(
                             label: context.t(item.statusBadge.key),
@@ -326,8 +353,7 @@ class AppointmentCard extends StatelessWidget {
                               _ => FeedbackTone.success,
                             },
                           ),
-                          if (item.isMultiSession) ...<Widget>[
-                            const SizedBox(width: 6),
+                          if (item.isMultiSession)
                             StatusPill(
                               label:
                                   '${item.registration.sessionsAttended}/${item.sessionCount}',
@@ -335,7 +361,8 @@ class AppointmentCard extends StatelessWidget {
                                   ? FeedbackTone.success
                                   : FeedbackTone.info,
                             ),
-                          ],
+                          // İP-D: "Değerlendir" ya da verilen yıldızlar.
+                          _FeedbackBadge(item: item),
                         ],
                       ),
                     ],
@@ -347,6 +374,36 @@ class AppointmentCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Kartta değerlendirme durumu (İP-D).
+class _FeedbackBadge extends ConsumerWidget {
+  const _FeedbackBadge({required this.item});
+
+  final RegistrationWithEvent item;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final MyFeedback? mine = ref
+        .watch(myFeedbackProvider)
+        .value?[item.registration.eventId];
+    final FeedbackWindow window = feedbackWindowFor(
+      item.event,
+      item.registration,
+      DateTime.now().millisecondsSinceEpoch,
+    );
+    return switch (feedbackBadge(window, mine)) {
+      FeedbackBadge.rate => StatusPill(
+        label: '★ ${context.t('feedback.cardRate')}',
+        tone: FeedbackTone.warning,
+      ),
+      FeedbackBadge.rated => Text(
+        starText(mine!.rating),
+        style: const TextStyle(color: Color(0xFFF59E0B), letterSpacing: 1.5),
+      ),
+      FeedbackBadge.none => const SizedBox.shrink(),
+    };
   }
 }
 
