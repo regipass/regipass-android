@@ -1058,6 +1058,14 @@ class EventRepository {
 /// Modelden ayrı bir tip: `AppEvent` okunan dokümanı temsil eder ve kulüp
 /// kimliği/durum alanlarını da içerir; taslak ise yalnızca formun yazdığı
 /// alanları taşır, böylece düzenlemede yanlışlıkla durum sıfırlanamaz.
+/// İP-B: otomatik bildirim anahtarları; varsayılan hepsi açık.
+const Map<String, bool> kDefaultAutoNotifications = <String, bool>{
+  'dayBefore': true,
+  'hourBefore': true,
+  'atStart': true,
+  'afterEnd': true,
+};
+
 class EventDraft {
   const EventDraft({
     required this.title,
@@ -1089,6 +1097,7 @@ class EventDraft {
     this.contactMode = 'club',
     this.contactPhone = '',
     this.contactEmail = '',
+    this.autoNotifications = kDefaultAutoNotifications,
   });
 
   final String title;
@@ -1128,6 +1137,9 @@ class EventDraft {
   final String contactPhone;
   final String contactEmail;
 
+  /// İP-B: otomatik bildirimler (functions/eventReminders.js REMINDER_KEYS).
+  final Map<String, bool> autoNotifications;
+
   EventDraft copyWith({String? imageUrl}) => EventDraft(
     title: title,
     description: description,
@@ -1158,6 +1170,7 @@ class EventDraft {
     contactMode: contactMode,
     contactPhone: contactPhone,
     contactEmail: contactEmail,
+      autoNotifications: autoNotifications,
   );
 
   Map<String, dynamic> toMap() => <String, dynamic>{
@@ -1188,6 +1201,7 @@ class EventDraft {
     'eventEndTime': eventEndTime,
     'eventStartAtMs': eventStartAtMs,
     'eventEndAtMs': eventEndAtMs,
+    'autoNotifications': autoNotifications,
     'sessionCount': sessionCount,
     'checkinMode': checkinMode,
     'certificateThresholdPercent': certificateThresholdPercent,

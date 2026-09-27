@@ -63,6 +63,9 @@ class AppEvent {
     required this.eventStartTime,
     required this.eventEndTime,
     required this.eventEndAtMs,
+    this.eventStartAtMs,
+    this.autoNotifications = const <String, bool>{},
+    this.notificationsSent = const <String, int>{},
     required this.certificateTemplateUrl,
     required this.certificateTemplateName,
     required this.certificateTemplateType,
@@ -155,6 +158,9 @@ class AppEvent {
       eventStartTime: asString(data['eventStartTime']),
       eventEndTime: asString(data['eventEndTime']),
       eventEndAtMs: asEpochMilliseconds(data['eventEndAtMs']),
+      eventStartAtMs: asEpochMilliseconds(data['eventStartAtMs']),
+      autoNotifications: _readBoolMap(data['autoNotifications']),
+      notificationsSent: _readIntMap(data['notificationsSent']),
       certificateTemplateUrl: asString(data['certificateTemplateUrl']),
       certificateTemplateName: asString(data['certificateTemplateName']),
       certificateTemplateType: asString(data['certificateTemplateType']),
@@ -343,6 +349,15 @@ class AppEvent {
   /// "etkinlik bitti mi" kararı o durumda gün sonuna düşer (bkz.
   /// `isEventFinished`).
   final int? eventEndAtMs;
+
+  /// Başlangıç anı (gün + başlangıç saati); saat girilmediyse null.
+  final int? eventStartAtMs;
+
+  /// İP-B: kulübün kapattığı otomatik bildirimler (`false`); yoksa açık.
+  final Map<String, bool> autoNotifications;
+
+  /// İP-B: sunucunun gönderdiği otomatik bildirimler → gönderim anı (ms).
+  final Map<String, int> notificationsSent;
 
   /// Kulübün dağıtım için yüklediği SON belge şablonu (yalnızca kulüp görür).
   ///
@@ -731,4 +746,20 @@ class StudentCertificate {
   final String contentType;
   final bool personalized;
   final int issuedAtMs;
+}
+
+Map<String, bool> _readBoolMap(Object? raw) {
+  if (raw is! Map) return const <String, bool>{};
+  return <String, bool>{
+    for (final MapEntry<Object?, Object?> e in raw.entries)
+      if (e.value is bool) '${e.key}': e.value! as bool,
+  };
+}
+
+Map<String, int> _readIntMap(Object? raw) {
+  if (raw is! Map) return const <String, int>{};
+  return <String, int>{
+    for (final MapEntry<Object?, Object?> e in raw.entries)
+      if (e.value is num) '${e.key}': (e.value! as num).toInt(),
+  };
 }

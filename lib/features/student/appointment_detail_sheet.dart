@@ -9,6 +9,7 @@ import '../../domain/routing.dart';
 import '../../l10n/app_strings.dart';
 import '../../state/connectivity.dart';
 import '../../state/providers.dart';
+import '../shared/add_to_calendar_button.dart';
 import '../shared/common_widgets.dart';
 import '../shared/qr_code_view.dart';
 import '../shared/event_widgets.dart';
@@ -304,6 +305,11 @@ class _AppointmentDetailSheetState
                       EventPaidContactBlock(event: item.event!),
                     ],
 
+                    // İP-T: takvime ekle
+                    if (item.event != null) ...<Widget>[
+                      const SizedBox(height: 16),
+                      AddToCalendarButton(event: item.event!),
+                    ],
                     const SizedBox(height: 24),
                     // Oturumlu etkinlik: okutma düğmesi kulüp QR'ı açana
                     // kadar gizlidir, açılınca belirir. Tek oturumlu: eskisi

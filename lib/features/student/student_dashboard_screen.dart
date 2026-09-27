@@ -13,6 +13,7 @@ import '../../l10n/app_strings.dart';
 import '../../models/event.dart';
 import '../../services/registration_service.dart';
 import '../../state/providers.dart';
+import '../shared/add_to_calendar_button.dart';
 import '../shared/common_widgets.dart';
 import '../shared/event_widgets.dart';
 import 'student_providers.dart';
@@ -883,6 +884,10 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
                           // kalıcı olarak da gösteriliyor.
                           const SizedBox(height: 22),
                           EventPaidContactBlock(event: event),
+
+                          // İP-T: takvime ekle
+                          const SizedBox(height: 12),
+                          AddToCalendarButton(event: event),
 
                           // ── Açıklama ────────────────────────────────────────
                           const SizedBox(height: 22),

@@ -115,6 +115,11 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
   TimeOfDay? _startTime;
   TimeOfDay? _endTime;
 
+  /// İP-B: otomatik bildirimler (varsayılan hepsi açık).
+  final Map<String, bool> _autoNotify = Map<String, bool>.of(
+    kDefaultAutoNotifications,
+  );
+
   double? _lat;
   double? _lng;
 
@@ -195,6 +200,9 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
     _sessionCount.text = '${event.sessionCount}';
     _checkinMode = event.resolvedCheckinMode;
     _threshold.text = event.certificateThresholdPercent?.toString() ?? '';
+    for (final String key in kDefaultAutoNotifications.keys) {
+      _autoNotify[key] = event.autoNotifications[key] != false;
+    }
     _locationName.text = event.locationName;
     _locationRadius.text = '${event.effectiveRadius}';
     _lat = event.locationLat;
@@ -787,6 +795,7 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
       contactMode: contactMode,
       contactPhone: contactPhone,
       contactEmail: contactEmail,
+      autoNotifications: Map<String, bool>.of(_autoNotify),
     );
 
     String? createdEventId;
@@ -1307,6 +1316,38 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
                         ),
                       ],
                     ),
+                  ),
+                ),
+                // İP-B: otomatik bildirimler
+                const SizedBox(height: 8),
+                Text(
+                  context.t('autoNotify.title'),
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                Text(
+                  context.t('autoNotify.help'),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                // Kartın zemini süslü bir kutu; onay satırlarının dokunma
+                // izi görünsün diye kendi (saydam) Material'ı var.
+                Material(
+                  type: MaterialType.transparency,
+                  child: Column(
+                    children: <Widget>[
+                      for (final String key in kDefaultAutoNotifications.keys)
+                        CheckboxListTile(
+                          key: Key('autoNotify_$key'),
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          controlAffinity: ListTileControlAffinity.leading,
+                          value: _autoNotify[key] ?? true,
+                          onChanged: _saving
+                              ? null
+                              : (bool? v) =>
+                                    setState(() => _autoNotify[key] = v == true),
+                          title: Text(context.t('autoNotify.$key')),
+                        ),
+                    ],
                   ),
                 ),
               ],

@@ -11,6 +11,59 @@ library;
 const Map<String, Map<String, String>>
 kExtraTranslations = <String, Map<String, String>>{
   'tr': <String, String>{
+    // İP-B: etkinlik bildirimleri
+    'autoNotify.title': 'Otomatik bildirimler',
+    'autoNotify.help':
+        'Kayıtlı öğrencilere Regipass kendiliğinden bildirim gönderir. Saat '
+        'girilmezse yalnızca "1 gün önce" gider.',
+    'autoNotify.dayBefore': '1 gün önce (19:00) hatırlatma',
+    'autoNotify.hourBefore': 'Başlamadan 1 saat önce',
+    'autoNotify.atStart': 'Başladığında (girişini yapmamış olanlara)',
+    'autoNotify.afterEnd': 'Bittikten sonra teşekkür (katılanlara)',
+    'eventNotify.title': 'Bildirimler',
+    'eventNotify.autoHelp':
+        'Otomatik bildirimleri etkinliği düzenleyerek açıp kapatabilirsin.',
+    'eventNotify.status.sent': 'Gönderildi',
+    'eventNotify.status.pending': 'Bekliyor',
+    'eventNotify.status.missed': 'Zamanı geçti',
+    'eventNotify.status.off': 'Kapalı',
+    'eventNotify.send': 'Bildirim gönder',
+    'eventNotify.submit': 'Gönder',
+    'eventNotify.audienceLabel': 'Kime',
+    'eventNotify.audience.registered': 'Tüm kayıtlılar',
+    'eventNotify.audience.checked_in': 'Giriş yapanlar',
+    'eventNotify.audience.not_checked_in': 'Giriş yapmayanlar',
+    'eventNotify.audience.waitlist': 'Bekleme listesi',
+    'eventNotify.titleLabel': 'Başlık',
+    'eventNotify.messageLabel': 'Mesaj',
+    'eventNotify.counting': 'Alıcılar hesaplanıyor…',
+    'eventNotify.willReach': '{{count}} kişiye gidecek.',
+    'eventNotify.sent': 'Bildirim gönderildi: {{count}} kişi.',
+    'eventNotify.historyTitle': 'Gönderilen mesajlar',
+    'eventNotify.historyEmpty': 'Henüz mesaj gönderilmedi.',
+    'eventNotify.historyError': 'Geçmiş yüklenemedi.',
+    'eventNotify.errors.required': 'Başlık ve mesaj yaz.',
+    'eventNotify.errors.title-required': 'Başlık yaz.',
+    'eventNotify.errors.message-required': 'Mesaj yaz.',
+    'eventNotify.errors.too-soon':
+        'Aynı etkinlikte iki mesaj arasında en az 10 dakika olmalı.',
+    'eventNotify.errors.daily-limit':
+        'Bu etkinlik için bugünkü mesaj sınırına (5) ulaştın.',
+    'eventNotify.errors.messaging-closed':
+        'Etkinliğin üzerinden 7 gün geçti; mesaj gönderilemez.',
+    'eventNotify.errors.no-recipients': 'Bu grupta kimse yok.',
+    'eventNotify.errors.event-cancelled':
+        'İptal edilen etkinliğe mesaj gönderilemez.',
+    'eventNotify.errors.club-not-approved':
+        'Kulübün onaylanmadan mesaj gönderemezsin.',
+    'eventNotify.errors.club-banned': 'Kulüp hesabın askıda.',
+    'eventNotify.errors.not-event-club':
+        'Bu etkinlik senin kulübüne ait değil.',
+    // İP-T: takvime ekle
+    'calendar.add': 'Takvime ekle',
+    'calendar.google': 'Google Takvim',
+    'calendar.ics': 'Takvim dosyası (.ics)',
+    'calendar.icsHint': 'Apple Takvim, Outlook ve diğerleri',
     // İP-KB: kulübün öğrenci engeli
     'clubBlock.title': 'Kulüpten engelle',
     'clubBlock.action': 'Kulüpten engelle',
@@ -1200,6 +1253,58 @@ kExtraTranslations = <String, Map<String, String>>{
     'registration.ticket.paymentPendingHint': 'Ödemen henüz onaylanmadı: kapıda giriş yapılamaz. Kulüp ödemeni onaylayınca bilet geçerli olur.',
   },
   'en': <String, String>{
+    // İP-B: event notifications
+    'autoNotify.title': 'Automatic notifications',
+    'autoNotify.help':
+        'Regipass notifies registered students automatically. Without a start '
+        'time only the "1 day before" reminder is sent.',
+    'autoNotify.dayBefore': 'Reminder 1 day before (19:00)',
+    'autoNotify.hourBefore': '1 hour before it starts',
+    'autoNotify.atStart': 'When it starts (to those not checked in)',
+    'autoNotify.afterEnd': 'Thank-you after it ends (to attendees)',
+    'eventNotify.title': 'Notifications',
+    'eventNotify.autoHelp':
+        'Turn automatic notifications on or off by editing the event.',
+    'eventNotify.status.sent': 'Sent',
+    'eventNotify.status.pending': 'Scheduled',
+    'eventNotify.status.missed': 'Missed',
+    'eventNotify.status.off': 'Off',
+    'eventNotify.send': 'Send notification',
+    'eventNotify.submit': 'Send',
+    'eventNotify.audienceLabel': 'To',
+    'eventNotify.audience.registered': 'All registered',
+    'eventNotify.audience.checked_in': 'Checked in',
+    'eventNotify.audience.not_checked_in': 'Not checked in',
+    'eventNotify.audience.waitlist': 'Waitlist',
+    'eventNotify.titleLabel': 'Title',
+    'eventNotify.messageLabel': 'Message',
+    'eventNotify.counting': 'Counting recipients…',
+    'eventNotify.willReach': 'Will reach {{count}} people.',
+    'eventNotify.sent': 'Notification sent to {{count}} people.',
+    'eventNotify.historyTitle': 'Sent messages',
+    'eventNotify.historyEmpty': 'No messages sent yet.',
+    'eventNotify.historyError': 'Could not load history.',
+    'eventNotify.errors.required': 'Enter a title and a message.',
+    'eventNotify.errors.title-required': 'Enter a title.',
+    'eventNotify.errors.message-required': 'Enter a message.',
+    'eventNotify.errors.too-soon':
+        'Wait at least 10 minutes between two messages for the same event.',
+    'eventNotify.errors.daily-limit':
+        'You reached today\'s message limit (5) for this event.',
+    'eventNotify.errors.messaging-closed':
+        'More than 7 days passed since the event; messaging is closed.',
+    'eventNotify.errors.no-recipients': 'Nobody is in this group.',
+    'eventNotify.errors.event-cancelled':
+        'You cannot message a cancelled event.',
+    'eventNotify.errors.club-not-approved':
+        'Your club must be approved to send messages.',
+    'eventNotify.errors.club-banned': 'Your club account is suspended.',
+    'eventNotify.errors.not-event-club': 'This event is not your club\'s.',
+    // İP-T: add to calendar
+    'calendar.add': 'Add to calendar',
+    'calendar.google': 'Google Calendar',
+    'calendar.ics': 'Calendar file (.ics)',
+    'calendar.icsHint': 'Apple Calendar, Outlook and others',
     // İP-KB: club's student block
     'clubBlock.title': 'Block from club',
     'clubBlock.action': 'Block from club',

@@ -336,6 +336,31 @@ class RegistrationService {
     countKey: 'removed',
   );
 
+  // ── İP-B: kulübün etkinlik mesajı ────────────────────────────────────────
+  /// Seçilen gruba bildirim gönderir (ya da [preview] ile yalnızca kaç kişiye
+  /// gideceğini sorar). Gruplar: registered, checked_in, not_checked_in,
+  /// waitlist. Dönüş: alıcı sayısı.
+  Future<int> sendEventMessage({
+    required String eventId,
+    required String audience,
+    required String title,
+    required String message,
+    bool preview = false,
+  }) async {
+    final Map<String, dynamic> out = await _call(
+      'clubSendEventMessage',
+      <String, Object?>{
+        'eventId': eventId,
+        'audience': audience,
+        'title': title,
+        'message': message,
+        'preview': preview,
+      },
+      timeout: const Duration(seconds: 120),
+    );
+    return (out['recipients'] as num?)?.toInt() ?? 0;
+  }
+
   // ── İP-KB: kulübün öğrenci engeli ────────────────────────────────────────
   /// Kulüp, etkinliğine kaydolmuş bir öğrenciyi kendi etkinliklerinden
   /// engeller. Dönüş: silinen gelecek etkinlik kaydı sayısı.

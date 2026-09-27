@@ -29,6 +29,7 @@ import '../shared/event_widgets.dart';
 import '../shared/media_viewer.dart';
 import 'club_block_dialog.dart';
 import 'club_providers.dart';
+import 'event_notify_card.dart';
 import 'club_session_qr_screen.dart';
 import 'club_shell.dart';
 import 'registrations_export.dart';
@@ -1924,6 +1925,12 @@ class _Body extends ConsumerWidget {
         // belge dağıtır, algoritma birebir aynıdır. Değişen yalnızca kapının
         // ne zaman açıldığı — oturumluda kulüp oturumları bitirince, tek
         // oturumluda etkinlik bitince (bkz. `canDistributeCertificates`).
+        // İP-B: otomatik bildirimlerin durumu + kulübün elle mesajı.
+        const SizedBox(height: 22),
+        EventSectionTitle(context.t('eventNotify.title')),
+        const SizedBox(height: 10),
+        EventNotifyCard(event: event),
+
         const SizedBox(height: 22),
         EventSectionTitle(context.t('clubEvents.certificate.title')),
         const SizedBox(height: 10),
