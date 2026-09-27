@@ -1,16 +1,10 @@
-import 'dart:io';
-import 'dart:typed_data';
 
-import 'package:file_picker/file_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:http/http.dart' as http;
 
 import '../../app/theme.dart';
 import '../../core/app_log.dart';
-import '../../core/input_guard.dart';
 import '../../domain/event_feedback.dart';
 import '../../domain/checkin_mode.dart';
 import '../../domain/registration_capacity.dart';
@@ -22,16 +16,15 @@ import '../../l10n/app_strings.dart';
 import '../../models/event.dart';
 import '../../services/door_gate.dart';
 import '../../services/event_repository.dart';
-import '../../services/firebase_refs.dart';
 import '../../services/registration_service.dart';
 import '../../state/providers.dart';
 import '../shared/common_widgets.dart';
 import '../shared/event_widgets.dart';
-import '../shared/media_viewer.dart';
 import 'club_block_dialog.dart';
 import 'club_providers.dart';
 import 'event_feedback_summary_card.dart';
 import 'event_notify_card.dart';
+import 'certificate_panel_card.dart';
 import 'event_report_card.dart';
 import 'club_session_qr_screen.dart';
 import 'club_shell.dart';
@@ -61,22 +54,12 @@ class ClubEventDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
-  /// Belgeyi dosya seçici yerine adresle/yolla vermek isteyenler için kutu.
-  final TextEditingController _link = TextEditingController();
-
   bool _busy = false;
 
   /// Çoklu seçim: toplu "Ödendi" ve toplu kayıt silme için seçilen öğrenciler.
   final Set<String> _selected = <String>{};
   String? _feedback;
   FeedbackTone _tone = FeedbackTone.info;
-
-  /// Otomatik dağıtım bu ekran açıldığından beri çalıştı mı?
-  ///
-  /// Dağıtım pahalı bir iş (öğrenci başına bir Storage yazımı); her kare
-  /// yeniden tetiklenmesin diye tek seferle sınırlanıyor. Kulüp gerekirse
-  /// belge kartındaki "Dağıt" tuşuyla elle tekrarlayabilir.
-  bool _autoDistributed = false;
 
   /// Kontenjan parçaları bu ekran açıldığından beri kurulmaya çalışıldı mı?
   bool _shardBackfillTried = false;
@@ -174,7 +157,6 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
 
   @override
   void dispose() {
-    _link.dispose();
     super.dispose();
   }
 
@@ -829,661 +811,6 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
     });
   }
 
-  // ── Belge dağıtımı ─────────────────────────────────────────────────
-
-  /// Belge kapısının kilit gerekçesi — kapı kapalıyken gösterilen tek metin.
-  ///
-  /// Oturumlu etkinlikte kapıyı kulüp açar (oturumları bitirerek), tek
-  /// oturumluda takvim açar (etkinlik bitince). İki gerekçe de aynı yerden
-  /// okunuyor ki kart altındaki uyarı ile işlem sırasındaki uyarı hiçbir
-  /// zaman ayrışmasın.
-  static String certificateLockReason(BuildContext context, AppEvent event) =>
-      event.isMultiSession
-          ? context.t('clubEvents.certificate.finishSessionsFirst')
-          : context.t('clubEvents.certificate.finishEventFirst');
-
-  /// `true` dönerse yükleme/dağıtım yapılmamalı; uyarı da gösterilmiş olur.
-  ///
-  /// Kapı burada tek noktada tutuluyor: hem düğme kilitleniyor hem de
-  /// (kilidin atlandığı bir yol kalırsa) işlem başlamadan önce uyarı veriliyor.
-  bool _blockedBeforeFinish(AppEvent event) {
-    if (canDistributeCertificates(event)) return false;
-    _setFeedback(certificateLockReason(context, event), FeedbackTone.error);
-    return true;
-  }
-
-  static String _contentTypeFor(String extension) => extension == 'pdf'
-      ? 'application/pdf'
-      : 'image/${extension == 'jpg' ? 'jpeg' : extension}';
-
-  /// Arşivdeki belgenin uzantısı — içerik türünden, olmazsa yolundan.
-  static String _extensionOf(EventDocument document) {
-    final String type = document.contentType.toLowerCase();
-    if (type.contains('pdf')) return 'pdf';
-    if (type.contains('png')) return 'png';
-    if (type.contains('jpeg') || type.contains('jpg')) return 'jpg';
-
-    final String named = document.path.contains('.')
-        ? document.path.split('.').last.toLowerCase()
-        : '';
-    return kCertificateExtensions.contains(named) ? named : 'pdf';
-  }
-
-  /// Cihazdan belge seçtirir; seçici kapanır kapanmaz yükleme başlar.
-  ///
-  /// Araya "onayla" adımı konmuyor: düğmenin adı zaten "Belge Yükle ve
-  /// Dağıt", dosyayı seçmek onayın kendisi.
-  ///
-  /// Dosya **baytlarıyla** okunur (`withData: true`), yolla değil: Android'de
-  /// Drive/OneDrive gibi bulut sağlayıcılarından seçilen belgede
-  /// `PlatformFile.path` boş dönebiliyor ve düğme hiçbir iz bırakmadan
-  /// kapanıyordu. Bayt yolu her sağlayıcıda çalışır; 10 MB'lık sınır zaten
-  /// belleğe rahat sığar.
-  Future<void> _pickCertificate(AppEvent event) async {
-    if (_blockedBeforeFinish(event)) return;
-
-    PlatformFile? picked;
-    try {
-      final FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: kCertificateExtensions,
-        withData: true,
-      );
-      picked = result?.files.singleOrNull;
-    } catch (_) {
-      // Seçici hiç açılamadıysa kullanıcı tepkisiz bir düğme yerine gerekçeyi
-      // görsün.
-      if (mounted) {
-        _setFeedback(
-          context.t('clubEvents.certificate.pickerError'),
-          FeedbackTone.error,
-        );
-      }
-      return;
-    }
-
-    if (picked == null || !mounted) return;
-
-    final PlatformFile file = picked;
-    final String ext = (file.extension ?? '').toLowerCase();
-    if (!kCertificateExtensions.contains(ext)) {
-      _setFeedback(
-        context.t('clubEvents.certificate.invalidType'),
-        FeedbackTone.error,
-      );
-      return;
-    }
-
-    // Bazı platformlarda bayt yerine yalnızca yol gelir; ikisi de yoksa dosya
-    // okunamamış demektir.
-    Uint8List? bytes = file.bytes;
-    if (bytes == null && file.path != null) {
-      try {
-        bytes = await File(file.path!).readAsBytes();
-      } catch (_) {
-        bytes = null;
-      }
-    }
-    if (!mounted) return;
-
-    if (bytes == null) {
-      _setFeedback(
-        context.t('clubEvents.certificate.readError'),
-        FeedbackTone.error,
-      );
-      return;
-    }
-
-    await _uploadAndDistribute(
-      event: event,
-      bytes: bytes,
-      fileName: file.name,
-      extension: ext,
-    );
-  }
-
-  /// Panodan yapıştırılan kaynaktaki belgeyi alıp aynı yoldan dağıtır.
-  ///
-  /// İki biçim de kabul edilir:
-  ///   * `http(s)://.../belge.pdf` — indirilip yüklenir,
-  ///   * cihazdaki bir dosya yolu — bazı dosya yöneticileri "kopyala"
-  ///     dendiğinde panoya adres yerine yolu yazıyor.
-  ///
-  /// Dosya seçicinin açılmadığı ya da belgeyi bulamadığı durumlarda kulübün
-  /// elinde ikinci bir yol kalsın diye var.
-  Future<void> _distributeFromLink(AppEvent event) async {
-    if (_blockedBeforeFinish(event)) return;
-
-    final String raw = _link.text.trim();
-    if (raw.isEmpty) {
-      _setFeedback(
-        context.t('clubEvents.certificate.linkEmpty'),
-        FeedbackTone.error,
-      );
-      return;
-    }
-
-    final Uri? uri = Uri.tryParse(raw);
-    final bool remote = uri != null &&
-        (uri.scheme == 'http' || uri.scheme == 'https') &&
-        uri.host.isNotEmpty;
-
-    Uint8List? bytes;
-    String fileName = raw.split(RegExp(r'[\\/]')).last;
-    String? headerType;
-
-    if (remote) {
-      _setFeedback(context.t('clubEvents.certificate.fetching'));
-      try {
-        final http.Response response = await http.get(uri);
-        if (response.statusCode != 200) throw StateError('http');
-        bytes = response.bodyBytes;
-        headerType = response.headers['content-type'];
-        // Sorgu dizesi ("?token=...") dosya adına karışmasın.
-        final String last =
-            uri.pathSegments.isEmpty ? '' : uri.pathSegments.last;
-        if (last.isNotEmpty) fileName = last;
-      } catch (_) {
-        if (!mounted) return;
-        _setFeedback(
-          context.t('clubEvents.certificate.linkError'),
-          FeedbackTone.error,
-        );
-        return;
-      }
-    } else {
-      try {
-        final File local = File(raw);
-        if (await local.exists()) bytes = await local.readAsBytes();
-      } catch (_) {
-        bytes = null;
-      }
-    }
-
-    if (!mounted) return;
-
-    if (bytes == null) {
-      _setFeedback(
-        context.t('clubEvents.certificate.linkInvalid'),
-        FeedbackTone.error,
-      );
-      return;
-    }
-
-    final String? ext = _resolveExtension(
-      fileName: fileName,
-      contentType: headerType,
-      bytes: bytes,
-    );
-    if (ext == null) {
-      _setFeedback(
-        context.t('clubEvents.certificate.invalidType'),
-        FeedbackTone.error,
-      );
-      return;
-    }
-
-    await _uploadAndDistribute(
-      event: event,
-      bytes: bytes,
-      fileName: fileName.contains('.') ? fileName : '$fileName.$ext',
-      extension: ext,
-    );
-
-    // Adres kutusu yalnızca iş bittiğinde temizlenir; hata aldıysa kulüp
-    // yapıştırdığını kaybetmesin.
-    if (mounted && _tone == FeedbackTone.success) _link.clear();
-  }
-
-  /// Yapıştırılan kaynağın uzantısını çözer.
-  ///
-  /// Sırayla: dosya adındaki uzantı, sunucunun bildirdiği içerik türü, son
-  /// çare olarak dosyanın kendi imzası. Bulut bağlantılarının çoğunda adreste
-  /// uzantı yoktur; imza kontrolü olmasa bu belgeler reddedilirdi.
-  static String? _resolveExtension({
-    required String fileName,
-    required String? contentType,
-    required Uint8List bytes,
-  }) {
-    final String named =
-        fileName.contains('.') ? fileName.split('.').last.toLowerCase() : '';
-    if (kCertificateExtensions.contains(named)) return named;
-
-    final String type = (contentType ?? '').toLowerCase();
-    if (type.contains('pdf')) return 'pdf';
-    if (type.contains('png')) return 'png';
-    if (type.contains('jpeg') || type.contains('jpg')) return 'jpg';
-
-    // İmza baytları: %PDF / PNG / JPEG.
-    if (bytes.length > 4 &&
-        bytes[0] == 0x25 &&
-        bytes[1] == 0x50 &&
-        bytes[2] == 0x44 &&
-        bytes[3] == 0x46) {
-      return 'pdf';
-    }
-    if (bytes.length > 8 && bytes[0] == 0x89 && bytes[1] == 0x50) return 'png';
-    if (bytes.length > 3 && bytes[0] == 0xFF && bytes[1] == 0xD8) return 'jpg';
-
-    return null;
-  }
-
-  /// Kulübün yüklediği belgeyi sisteme alır ve hak kazanan her öğrenciye ayrı
-  /// bir kayıt olarak dağıtır.
-  ///
-  /// Sıra bilerek "önce arşiv, sonra dağıtım": belge her hâlükârda sisteme
-  /// girsin. Eskiden dağıtım döngüsü öndeydi ve orada alınan tek bir hata
-  /// (kural reddi, kopan bağlantı) arşiv yazımına hiç sıra gelmeden işlemi
-  /// bitiriyordu — kulübün elinde yeniden deneyebileceği bir belge kalmıyordu.
-  ///
-  /// Hak sahibi öğrenci yoksa yükleme yine de yapılır: belge etkinliğin
-  /// arşivinde bekler ve hak sahipleri belirlendiğinde (otomatik olarak ya da
-  /// belge kartındaki "Dağıt" tuşuyla) gönderilir.
-  ///
-  /// Web sürümü PDF içinde isim alanı arayıp belgeyi kişiselleştiriyor
-  /// (pdf-lib). Mobilde belge olduğu gibi iletilir; dağıtım, hak sahibi
-  /// hesaplama ve kayıt yapısı web ile birebir aynıdır.
-  Future<void> _uploadAndDistribute({
-    required AppEvent event,
-    required Uint8List bytes,
-    required String fileName,
-    required String extension,
-  }) async {
-    if (bytes.length > kMaxCertificateBytes) {
-      _setFeedback(
-        context.t('clubEvents.certificate.tooLarge'),
-        FeedbackTone.error,
-      );
-      return;
-    }
-
-    final String clubId = ref.read(sessionProvider).user?.uid ?? '';
-    if (clubId.isEmpty) return;
-
-    final String contentType = _contentTypeFor(extension);
-    final String uploading = context.t('clubEvents.certificate.uploading');
-
-    await _run(() async {
-      try {
-        _setFeedback(uploading);
-
-        // Arşiv kopyası. Yol zaman damgalı: sabit bir ad her yüklemede bir
-        // öncekini eziyordu, oysa kulüp aynı etkinliğe birden fazla belge
-        // yükleyebilmeli (katılım belgesi + başarı belgesi gibi).
-        final String templatePath =
-            'certificates/$clubId/${event.id}/'
-            '_belge-${DateTime.now().millisecondsSinceEpoch}.$extension';
-        final Reference templateRef = fbStorage.ref(templatePath);
-        await templateRef.putData(
-          bytes,
-          SettableMetadata(contentType: contentType),
-        );
-
-        final EventDocument document = EventDocument(
-          url: await templateRef.getDownloadURL(),
-          name: fileName,
-          path: templatePath,
-          contentType: contentType,
-          uploadedAtMs: DateTime.now().millisecondsSinceEpoch,
-        );
-
-        await ref
-            .read(eventRepositoryProvider)
-            .addCertificateDocument(event.id, document);
-
-        await _distribute(
-          event: event,
-          clubId: clubId,
-          document: document,
-          bytes: bytes,
-          extension: extension,
-          contentType: contentType,
-          // `event` yükleme öncesinin kopyası: listesi boşsa yeni belge
-          // etkinliğin tek belgesidir, eski kayıt da ancak ondan gelebilir.
-          replacesLegacyRecord: event.certificateDocuments.isEmpty,
-        );
-      } catch (error) {
-        if (!mounted) return;
-        _setFeedback(_describeUploadError(context, error), FeedbackTone.error);
-      }
-    });
-  }
-
-  /// Belgeyi hak kazanan her öğrenciye ayrı bir kayıt olarak yazar.
-  ///
-  /// Bir öğrencide alınan hata dağıtımı DURDURMAZ: tek bir kaydın kuralca
-  /// reddedilmesi ya da o an kopan bağlantı, sıradaki öğrencilerin de belgeyi
-  /// alamaması demekti ve kulüp bunu hiçbir yerden göremiyordu. Sonuçta kaç
-  /// kişiye gittiği ve kaçında hata alındığı açıkça yazılır.
-  Future<void> _distribute({
-    required AppEvent event,
-    required String clubId,
-    required EventDocument document,
-    required Uint8List bytes,
-    required String extension,
-    required String contentType,
-    required bool replacesLegacyRecord,
-    bool auto = false,
-  }) async {
-    final List<EventRegistration> registrations =
-        ref.read(eventRegistrationsProvider(event.id)).value ??
-            const <EventRegistration>[];
-
-    final List<EventRegistration> eligible =
-        certificateEligible(event, registrations);
-
-    int sent = 0;
-    int failed = 0;
-
-    // Öğrenci kopyasının adı belgeye göre ayrışır. Eskiden yalnızca öğrenci
-    // kimliğiydi: kulüp ikinci bir belge yüklediğinde aynı nesnenin üstüne
-    // yazılıyor, birinci belgenin öğrencideki adresi de geçersiz kalıyordu.
-    final String documentKey = document.key;
-
-    // Öğrenciye giden ad da belgenin kendi adı: aynı etkinlikten iki belge
-    // aldığında ikisi de "etkinlik adı.pdf" olsaydı listede ayırt edilemezdi.
-    final String documentName = document.name.contains('.')
-        ? document.name
-        : '${event.title}.$extension';
-
-    // PDF şablonunda isim yazılacak alanı bulup her öğrenciye BASILMIŞ bir
-    // kopya çıkarır (web ile birebir aynı motor, bkz. functions/
-    // certificateEngine.js). Sunucu çağrısı bir bütün olarak başarısız
-    // olursa (ağ, yetki, fonksiyon kapalı) döngü ham baytları kendisi yükler
-    // — dağıtım hiçbir zaman bu adım yüzünden durmaz.
-    final Map<String, PersonalizedCertificate> personalizedByStudent =
-        <String, PersonalizedCertificate>{};
-    if (extension == 'pdf' && eligible.isNotEmpty) {
-      const int chunkSize = 200; // functions/index.js#MAX_STUDENTS_PER_CALL: 300
-      for (int i = 0; i < eligible.length; i += chunkSize) {
-        final List<EventRegistration> chunk = eligible.sublist(
-          i,
-          (i + chunkSize > eligible.length) ? eligible.length : i + chunkSize,
-        );
-        try {
-          final List<PersonalizedCertificate> results = await ref
-              .read(eventRepositoryProvider)
-              .personalizeCertificates(
-                clubId: clubId,
-                eventId: event.id,
-                documentKey: documentKey,
-                templateBytes: bytes,
-                students: chunk
-                    .map(
-                      (EventRegistration reg) => (
-                        studentId: reg.studentId,
-                        fullName: reg.studentName,
-                      ),
-                    )
-                    .toList(),
-              );
-          for (final PersonalizedCertificate result in results) {
-            personalizedByStudent[result.studentId] = result;
-          }
-        } catch (error) {
-          AppLog.warn('certificate.personalize.failed', <String, Object?>{
-            'eventId': event.id,
-            'error': error.toString(),
-          });
-          break; // Bir parça başarısız olduysa kalan parçaları da deneme.
-        }
-      }
-    }
-
-    for (final EventRegistration reg in eligible) {
-      try {
-        final PersonalizedCertificate? personalizedDoc =
-            personalizedByStudent[reg.studentId];
-
-        final String filePath = personalizedDoc?.filePath ??
-            'certificates/$clubId/${event.id}/'
-                '${reg.studentId}-$documentKey.$extension';
-
-        final String fileUrl;
-        if (personalizedDoc != null) {
-          fileUrl = personalizedDoc.fileUrl;
-        } else {
-          final Reference storageRef = fbStorage.ref(filePath);
-          await storageRef.putData(
-            bytes,
-            SettableMetadata(contentType: contentType),
-          );
-          fileUrl = await storageRef.getDownloadURL();
-        }
-
-        await ref.read(eventRepositoryProvider).issueCertificate(
-              eventId: event.id,
-              studentId: reg.studentId,
-              documentKey: documentKey,
-              eventTitle: event.title,
-              clubId: clubId,
-              clubName: event.clubName,
-              fileUrl: fileUrl,
-              filePath: filePath,
-              fileName: documentName,
-              contentType: contentType,
-              personalized: personalizedDoc?.personalized ?? false,
-            );
-
-        // Belge anahtarından önceki kayıt (`{eventId}_{studentId}`) yalnızca
-        // etkinliğin TEK belgesi dağıtılırken siliniyor: o durumda eski kayıt
-        // ancak bu belgeden gelmiş olabilir, silinmezse öğrenci aynı belgeyi
-        // iki satır olarak görürdü. Birden fazla belge varsa eski kaydın hangi
-        // belgeye ait olduğu bilinemez, dokunulmaz.
-        if (replacesLegacyRecord) {
-          await ref.read(eventRepositoryProvider).deleteLegacyCertificate(
-                eventId: event.id,
-                studentId: reg.studentId,
-              );
-        }
-
-        sent += 1;
-      } catch (_) {
-        failed += 1;
-      }
-
-      if (mounted) {
-        _setFeedback(
-          context.t('clubEvents.certificate.sending', <String, Object?>{
-            'done': sent + failed,
-            'total': eligible.length,
-          }),
-        );
-      }
-    }
-
-    // Dağıtım damgası: belgenin kimseye gitmediği başka hiçbir yerden
-    // anlaşılmıyordu ve otomatik dağıtım da bu sayıya bakıyor.
-    if (sent > 0) {
-      try {
-        await ref
-            .read(eventRepositoryProvider)
-            .markCertificateDocumentDistributed(event.id, document, sent);
-      } catch (_) {
-        // Damga yazılamadıysa dağıtımın kendisi geçerli; en fazla otomatik
-        // dağıtım bir kez daha dener.
-      }
-    }
-
-    if (!mounted) return;
-
-    if (failed > 0) {
-      _setFeedback(
-        context.t('clubEvents.certificate.partial', <String, Object?>{
-          'count': sent,
-          'failed': failed,
-        }),
-        FeedbackTone.error,
-      );
-    } else if (sent > 0) {
-      _setFeedback(
-        context.t(
-          auto
-              ? 'clubEvents.certificate.autoSent'
-              : 'clubEvents.certificate.sent',
-          <String, Object?>{'count': sent},
-        ),
-        FeedbackTone.success,
-      );
-    } else if (!auto) {
-      // Kimseye gitmediğini açıkça söyle: kulüp "gönderildi" sanıp dağıtımı
-      // bir daha denemezse belge öğrencilere hiç ulaşmaz.
-      _setFeedback(
-        context.t('clubEvents.certificate.storedOnly'),
-        FeedbackTone.success,
-      );
-    } else {
-      // Otomatik dağıtım başlarken hak sahibi vardı, sıra gelince kalmadı
-      // (kayıt listesi değişmiş). Sessizce geri çekil: ekranda "belge
-      // indiriliyor" yazısı asılı kalmasın.
-      _setFeedback(null);
-    }
-  }
-
-  /// Arşivdeki bir belgeyi hak kazanan öğrencilere (yeniden) gönderir.
-  ///
-  /// Dağıtım eskiden yalnızca yükleme anında, o andaki hak sahibi listesine
-  /// karşı yapılıyordu. Kulüp belgeyi yoklamalar tamamlanmadan yüklediyse (ya
-  /// da yükleme sırasında dağıtım yarıda kaldıysa) belgeyi öğrencilere
-  /// ulaştıracak ikinci bir yol yoktu: kulüp belgeyi siliyor, yeniden
-  /// yüklüyor, sonuç değişmiyordu. Bu yol arşivdeki dosyayı olduğu gibi alıp
-  /// aynı dağıtım algoritmasından geçirir.
-  Future<void> _redistribute(
-    AppEvent event,
-    EventDocument document, {
-    bool auto = false,
-  }) async {
-    if (_blockedBeforeFinish(event)) return;
-
-    final String clubId = ref.read(sessionProvider).user?.uid ?? '';
-    if (clubId.isEmpty) return;
-
-    final String fetching = context.t('clubEvents.certificate.fetching');
-    final String unreadable = context.t('clubEvents.certificate.sourceMissing');
-
-    await _run(() async {
-      try {
-        _setFeedback(fetching);
-
-        final Uint8List? bytes = await _readDocumentBytes(document);
-        if (!mounted) return;
-
-        if (bytes == null) {
-          _setFeedback(unreadable, FeedbackTone.error);
-          return;
-        }
-
-        final String extension = _extensionOf(document);
-
-        await _distribute(
-          event: event,
-          clubId: clubId,
-          document: document,
-          bytes: bytes,
-          extension: extension,
-          contentType: document.contentType.isNotEmpty
-              ? document.contentType
-              : _contentTypeFor(extension),
-          replacesLegacyRecord: event.certificateDocuments.length == 1,
-          auto: auto,
-        );
-      } catch (error) {
-        if (!mounted) return;
-        _setFeedback(_describeUploadError(context, error), FeedbackTone.error);
-      }
-    });
-  }
-
-  /// Arşivdeki belgenin baytları.
-  ///
-  /// Önce Storage yolundan okunur: indirme adresindeki jeton yenilenmiş
-  /// olabilir, yol ise sabittir. Yol yoksa (diziden önce yazılmış kayıtlar)
-  /// adrese düşülür.
-  Future<Uint8List?> _readDocumentBytes(EventDocument document) async {
-    if (document.path.isNotEmpty) {
-      try {
-        final Uint8List? data = await fbStorage
-            .ref(document.path)
-            .getData(kMaxCertificateBytes);
-        if (data != null) return data;
-      } catch (_) {
-        // Yol geçersiz ya da nesne silinmiş: adres denenecek.
-      }
-    }
-
-    final Uri? uri = Uri.tryParse(document.url);
-    if (uri == null || !uri.hasScheme) return null;
-
-    try {
-      final http.Response response = await http.get(uri);
-      if (response.statusCode == 200) return response.bodyBytes;
-    } catch (_) {
-      // Ağ hatası: çağıran taraf "belge okunamadı" der.
-    }
-    return null;
-  }
-
-  /// Etkinlik bittikten sonra bekleyen belgeyi kendiliğinden dağıtır.
-  ///
-  /// Kulüp belgeyi çoğu zaman etkinlik bitmeden hazırlıyor; o an hak sahibi
-  /// olmadığı için belge arşivde bekliyor ve kimseye ulaşmıyordu. Tek oturumlu
-  /// etkinlikte "oturumları bitir" gibi bir adım da olmadığından kulübün
-  /// dağıtımı tetikleyecek hiçbir hareketi yoktu.
-  ///
-  /// Ekran açık kaldığı sürece en fazla bir kez ve yalnızca gerçekten eksik
-  /// varsa çalışır: belge ya hiç dağıtılmamıştır ya da dağıtımdan bu yana yeni
-  /// hak sahibi eklenmiştir. Kayıtlar henüz yüklenmediyse (hak sahibi sayısı 0)
-  /// hiçbir şey yapılmaz, bir sonraki kareye bakılır.
-  ///
-  /// Arşivdeki BÜTÜN eksik belgeler sırayla gönderilir; eskiden yalnızca
-  /// sonuncusuna bakılıyordu ve kulüp iki belge yüklediğinde önceki belge —
-  /// hiç dağıtılmamış olsa bile — kimseye ulaşmıyordu.
-  void _scheduleAutoDistribute(
-    AppEvent event,
-    List<EventRegistration> registrations,
-  ) {
-    if (_autoDistributed || _busy) return;
-    if (!canDistributeCertificates(event)) return;
-    if (event.certificateDocuments.isEmpty) return;
-
-    final int eligible = certificateEligible(event, registrations).length;
-    if (eligible == 0) return;
-
-    final List<EventDocument> pending = event.certificateDocuments
-        .where((EventDocument doc) => doc.distributedCount < eligible)
-        .toList();
-    if (pending.isEmpty) return;
-
-    _autoDistributed = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      for (final EventDocument document in pending) {
-        if (!mounted) return;
-        await _redistribute(event, document, auto: true);
-      }
-    });
-  }
-
-  /// club-documents.js#describeUploadError karşılığı.
-  ///
-  /// Tek bir "hata oluştu" mesajı belge dağıtımında işe yaramıyor: hata
-  /// neredeyse her zaman yayınlanmamış bir kuraldan ya da kapalı bir Storage
-  /// kovasından geliyor ve bunlar birbirinden çok farklı düzeltmeler.
-  static String _describeUploadError(BuildContext context, Object error) {
-    final String code = error is FirebaseException ? error.code : '';
-
-    return switch (code) {
-      'unauthorized' ||
-      'permission-denied' =>
-        context.t('clubEvents.certificate.permissionError'),
-      'unauthenticated' => context.t('clubEvents.certificate.authError'),
-      'quota-exceeded' => context.t('clubEvents.certificate.quotaError'),
-      'retry-limit-exceeded' ||
-      'unknown' =>
-        context.t('clubEvents.certificate.storageError'),
-      _ => context.t('clubEvents.certificate.error'),
-    };
-  }
-
   // ── Katılımcı listesi ──────────────────────────────────────────────
 
   /// Katılımcıları web'dekiyle aynı Excel dosyasına yazıp paylaşım sayfasını
@@ -1557,57 +884,6 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
     });
   }
 
-  /// Yüklenmiş belgeyi uygulama içinde açar (görsel de PDF de).
-  ///
-  /// Eskiden harici tarayıcıya çıkılıyordu; öğrenci tarafındaki belge
-  /// görüntüleyici zaten uygulama içinde açıyor, kulüp tarafı da aynı olsun.
-  Future<void> _openDocument(EventDocument document) => openMedia(
-    context,
-    source: document.url,
-    title: document.name.isNotEmpty
-        ? document.name
-        : context.t('clubEvents.certificate.uploaded'),
-    contentType: document.contentType,
-  );
-
-  /// Yüklenmiş belgeyi hem listeden hem Storage'dan siler.
-  ///
-  /// Storage silme başarısız olsa da liste kaydı kaldırılır: kulüp için
-  /// belirleyici olan listede görünmemesidir, artık kimse o adrese
-  /// ulaşmayacaktır. Öğrencilere daha önce dağıtılmış kopyalar bundan
-  /// etkilenmez — onlar ayrı kayıtlardır.
-  Future<void> _deleteDocument(AppEvent event, EventDocument document) async {
-    final bool ok = await _confirm(
-      context.t('clubEvents.certificate.deleteTitle'),
-      context.t('clubEvents.certificate.deleteConfirm'),
-    );
-    if (!ok || !mounted) return;
-
-    final String done = context.t('clubEvents.certificate.deleted');
-    final String failed = context.t('clubEvents.certificate.deleteError');
-
-    await _run(() async {
-      try {
-        await ref
-            .read(eventRepositoryProvider)
-            .removeCertificateDocument(event.id, document);
-
-        if (document.path.isNotEmpty) {
-          try {
-            await fbStorage.ref(document.path).delete();
-          } catch (_) {
-            // Storage nesnesi zaten yoksa ya da silinemiyorsa liste kaydının
-            // kaldırılmış olması yeterli.
-          }
-        }
-
-        _setFeedback(done, FeedbackTone.success);
-      } catch (_) {
-        _setFeedback(failed, FeedbackTone.error);
-      }
-    });
-  }
-
   /// Kapı listesine en son yazılan kayıt listesi (aynı liste tekrar yazılmasın).
   List<EventRegistration>? _seededRegistrations;
 
@@ -1616,14 +892,7 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
     final AsyncValue<AppEvent?> eventAsync =
         ref.watch(clubEventProvider(widget.eventId));
 
-    // Kayıtlar burada da izleniyor: otomatik dağıtım kararı hak sahibi
-    // sayısına bakıyor ve liste yüklendiğinde yeniden değerlendirilmeli.
-    final List<EventRegistration> registrations =
-        ref.watch(eventRegistrationsProvider(widget.eventId)).value ??
-            const <EventRegistration>[];
-
     final AppEvent? watched = eventAsync.value;
-    if (watched != null) _scheduleAutoDistribute(watched, registrations);
 
     // İP-O: etkinlik bir kez açıldıysa bilet listesi cihaza da yazılır;
     // kapıda internet olmasa da okutma çalışır.
@@ -1677,7 +946,6 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
             busy: _busy,
             feedback: _feedback,
             tone: _tone,
-            linkController: _link,
             onToggleRegistrations: () => _toggleRegistrations(event),
             onAdvanceSession: () => _advanceSession(event),
             onUndoSession: () => _undoSession(event),
@@ -1689,13 +957,6 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
             onScanDoorCheckin: () => _openDoorScanner(event),
             onAllowSessionWithoutCheckin: (bool allow) =>
                 _setAllowSessionWithoutCheckin(event, allow),
-            onDistribute: () => _pickCertificate(event),
-            onDistributeLink: () => _distributeFromLink(event),
-            onOpenDocument: _openDocument,
-            onRedistributeDocument: (EventDocument document) =>
-                _redistribute(event, document),
-            onDeleteDocument: (EventDocument document) =>
-                _deleteDocument(event, document),
             onDownloadExcel: () => _downloadStudentsExcel(event),
             onSetPayment: (EventRegistration reg, bool paid) =>
                 _setPayment(event, reg, paid),
@@ -1722,7 +983,6 @@ class _Body extends ConsumerWidget {
     required this.busy,
     required this.feedback,
     required this.tone,
-    required this.linkController,
     required this.onToggleRegistrations,
     required this.onAdvanceSession,
     required this.onUndoSession,
@@ -1732,11 +992,6 @@ class _Body extends ConsumerWidget {
     required this.onShowDoorQr,
     required this.onScanDoorCheckin,
     required this.onAllowSessionWithoutCheckin,
-    required this.onDistribute,
-    required this.onDistributeLink,
-    required this.onOpenDocument,
-    required this.onRedistributeDocument,
-    required this.onDeleteDocument,
     required this.onDownloadExcel,
     required this.onSetPayment,
     required this.onRemoveRegistration,
@@ -1757,7 +1012,6 @@ class _Body extends ConsumerWidget {
   final bool busy;
   final String? feedback;
   final FeedbackTone tone;
-  final TextEditingController linkController;
   final VoidCallback onToggleRegistrations;
   final VoidCallback onAdvanceSession;
   final VoidCallback onUndoSession;
@@ -1767,11 +1021,6 @@ class _Body extends ConsumerWidget {
   final VoidCallback onShowDoorQr;
   final VoidCallback onScanDoorCheckin;
   final ValueChanged<bool> onAllowSessionWithoutCheckin;
-  final VoidCallback onDistribute;
-  final VoidCallback onDistributeLink;
-  final ValueChanged<EventDocument> onOpenDocument;
-  final ValueChanged<EventDocument> onRedistributeDocument;
-  final ValueChanged<EventDocument> onDeleteDocument;
   final VoidCallback onDownloadExcel;
 
   /// İP-K
@@ -1799,7 +1048,6 @@ class _Body extends ConsumerWidget {
 
     // Belge kapısı: oturumlu etkinlikte "oturumlar bitti mi", tek oturumluda
     // "etkinlik bitti mi".
-    final bool canDistribute = canDistributeCertificates(event);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
@@ -1948,89 +1196,12 @@ class _Body extends ConsumerWidget {
           EventFeedbackSummaryCard(event: event),
         ],
 
+        // İP-8: yeni sertifika paneli. Belge webde ayarlanır (editör yalnızca
+        // webde); burada gönder / geri al / eşik. Eski yükleme akışı kaldırıldı.
         const SizedBox(height: 22),
-        EventSectionTitle(context.t('clubEvents.certificate.title')),
+        EventSectionTitle(context.t('cert.panel.title')),
         const SizedBox(height: 10),
-
-        // Kapı kapalıyken gerekçesi kartın hemen üstünde duruyor ki düğme
-        // "sebepsiz kapalı" görünmesin.
-        if (!canDistribute) ...<Widget>[
-          _NoticeCard(
-            icon: Icons.lock_clock,
-            message: _ClubEventDetailScreenState.certificateLockReason(
-              context,
-              event,
-            ),
-          ),
-          const SizedBox(height: 10),
-        ],
-
-        _ActionCard(
-          icon: Icons.workspace_premium_outlined,
-          title: context.t('clubEvents.certificate.action'),
-          trailingIcon: canDistribute
-              ? Icons.upload_file_outlined
-              : Icons.lock_outline,
-          subtitle: canDistribute
-              ? context.t('clubEvents.certificate.subtitle')
-              : context.t(
-                  event.isMultiSession
-                      ? 'clubEvents.certificate.lockedSubtitle'
-                      : 'clubEvents.certificate.lockedSubtitleSingle',
-                ),
-          onPressed: busy || !canDistribute ? null : onDistribute,
-        ),
-
-        // Dosya seçicinin yanındaki ikinci yol: kulüp belgeyi bir yerden
-        // kopyaladıysa (bulut bağlantısı ya da dosya yolu) doğrudan buraya
-        // yapıştırıp aynı işi yapabilir. Kapı kapalıyken bu yol da açılmaz,
-        // aksi hâlde kilit tek yönlü kalırdı.
-        if (canDistribute) ...<Widget>[
-          const SizedBox(height: 12),
-          _CertificateLinkField(
-            controller: linkController,
-            enabled: !busy,
-            onSubmit: onDistributeLink,
-          ),
-        ],
-
-        // Yüklenmiş belgeler: kaç tane olursa olsun hepsi görünür, her biri
-        // kendi tuşlarıyla yeniden dağıtılabilir ya da silinebilir.
-        if (event.hasCertificateDocuments) ...<Widget>[
-          const SizedBox(height: 16),
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: Text(
-                  context.t('clubEvents.certificate.uploadedTitle'),
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: context.ink,
-                  ),
-                ),
-              ),
-              StatusPill(label: '${event.certificateDocuments.length}'),
-            ],
-          ),
-          // Buradaki açıklama metni kaldırıldı: "öğrencide yalnızca son belge
-          // durur" uyarısıydı ve artık doğru değil — her belge öğrenciye ayrı
-          // bir kayıt olarak gidiyor (bkz. `EventDocument.key`). Kartların
-          // kendi "kaç kişiye gitti" satırı zaten aynı işi yapıyor.
-          const SizedBox(height: 10),
-          for (final EventDocument document in event.certificateDocuments)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _UploadedDocumentCard(
-                document: document,
-                enabled: !busy,
-                canDistribute: canDistribute,
-                onOpen: () => onOpenDocument(document),
-                onRedistribute: () => onRedistributeDocument(document),
-                onDelete: () => onDeleteDocument(document),
-              ),
-            ),
-        ],
+        CertificatePanelCard(event: event, registrations: list),
 
         // ── Ücretli etkinlik onay kaydı ────────────────────────────
         // Yalnızca ücretli etkinlikte görünür: kulübün oluşturma anında,
@@ -2413,254 +1584,6 @@ class _SessionPanel extends StatelessWidget {
   }
 }
 
-/// Bir eylemin neden kapalı olduğunu anlatan uyarı kartı.
-class _NoticeCard extends StatelessWidget {
-  const _NoticeCard({required this.icon, required this.message});
-
-  final IconData icon;
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    final Color accent = context.isDarkMode
-        ? BrandColors.infoOnDark
-        : BrandColors.info;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: context.isDarkMode
-            ? BrandColors.infoBgDark
-            : BrandColors.infoBg,
-        borderRadius: BorderRadius.circular(BrandShape.controlRadius),
-        border: Border.all(color: accent.withValues(alpha: 0.35)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Icon(icon, size: 19, color: accent),
-          const SizedBox(width: 11),
-          Expanded(
-            child: Text(
-              message,
-              style: TextStyle(fontSize: 12.5, height: 1.45, color: accent),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Yüklenmiş tek belge kartı — dokununca açılır, sağ üstündeki tuşlarla
-/// yeniden dağıtılır ya da silinir.
-///
-/// Tuşlar kartın **dışına taşan** yuvarlak düğmeler: liste uzadığında hangi
-/// belgeye ait oldukları tartışmasız kalsın ve yanlışlıkla kartın kendisine
-/// (yani "aç") basılmasın diye kart gövdesinden ayrı duruyorlar.
-///
-/// Kartın alt satırı belgenin kaç öğrenciye gittiğini yazar: "yükledim, iş
-/// bitti" sanılan ama aslında kimseye ulaşmamış belgeler tek bakışta
-/// görünsün.
-class _UploadedDocumentCard extends StatelessWidget {
-  const _UploadedDocumentCard({
-    required this.document,
-    required this.enabled,
-    required this.canDistribute,
-    required this.onOpen,
-    required this.onRedistribute,
-    required this.onDelete,
-  });
-
-  final EventDocument document;
-  final bool enabled;
-
-  /// Belge kapısı açık mı (oturumlar bitti / etkinlik bitti).
-  final bool canDistribute;
-
-  final VoidCallback onOpen;
-  final VoidCallback onRedistribute;
-  final VoidCallback onDelete;
-
-  bool get _isPdf => document.contentType.contains('pdf');
-
-  /// Alt satır: dağıtıldıysa kaç kişiye gittiği, dağıtılmadıysa beklediği.
-  String _statusLabel(BuildContext context) => document.isDistributed
-      ? context.t('clubEvents.certificate.distributedCount', <String, Object?>{
-          'count': document.distributedCount,
-        })
-      : context.t('clubEvents.certificate.notDistributed');
-
-  @override
-  Widget build(BuildContext context) {
-    final String name = document.name.isNotEmpty
-        ? document.name
-        : context.t('clubEvents.certificate.uploaded');
-
-    return Stack(
-      clipBehavior: Clip.none,
-      children: <Widget>[
-        Material(
-          color: context.surface,
-          borderRadius: BorderRadius.circular(BrandShape.controlRadius),
-          child: InkWell(
-            onTap: onOpen,
-            borderRadius: BorderRadius.circular(BrandShape.controlRadius),
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(14, 13, 62, 13),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(BrandShape.controlRadius),
-                boxShadow: BrandShape.card,
-              ),
-              child: Row(
-                children: <Widget>[
-                  Icon(
-                    _isPdf
-                        ? Icons.picture_as_pdf_outlined
-                        : Icons.image_outlined,
-                    size: 22,
-                    color: context.brandInk,
-                  ),
-                  const SizedBox(width: 13),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text(
-                          name,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w700,
-                            height: 1.3,
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        Row(
-                          children: <Widget>[
-                            Icon(
-                              Icons.visibility_outlined,
-                              size: 13,
-                              color: context.inkMuted,
-                            ),
-                            const SizedBox(width: 5),
-                            Expanded(
-                              child: Text(
-                                document.uploadedAtMs > 0
-                                    ? formatDateTime(
-                                        document.uploadedAtMs,
-                                        locale: context.lang,
-                                      )
-                                    : context.t(
-                                        'clubEvents.certificate.view',
-                                      ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 3),
-                        Row(
-                          children: <Widget>[
-                            Icon(
-                              document.isDistributed
-                                  ? Icons.check_circle_outline
-                                  : Icons.schedule_send_outlined,
-                              size: 13,
-                              color: document.isDistributed
-                                  ? BrandColors.success
-                                  : context.inkMuted,
-                            ),
-                            const SizedBox(width: 5),
-                            Expanded(
-                              child: Text(
-                                _statusLabel(context),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        Positioned(
-          top: -8,
-          right: -6,
-          child: Row(
-            children: <Widget>[
-              // Yeniden dağıt: belgeyi arşivden alıp o anki hak sahiplerine
-              // gönderir. Yükleme anında hak sahibi olmayan (ya da sonradan
-              // yoklamaya giren) öğrencilere belgenin ulaşmasının tek yolu
-              // buydu; eskiden kulüp belgeyi silip yeniden yüklemekten başka
-              // bir şey yapamıyor, sonuç değişmiyordu.
-              _DocumentCircleButton(
-                icon: Icons.send_outlined,
-                color: context.brandInk,
-                tooltip: context.t('clubEvents.certificate.redistribute'),
-                onTap: enabled && canDistribute ? onRedistribute : null,
-              ),
-              const SizedBox(width: 6),
-              _DocumentCircleButton(
-                icon: Icons.delete_outline,
-                color: BrandColors.danger,
-                tooltip: context.t('clubEvents.certificate.delete'),
-                onTap: enabled ? onDelete : null,
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Belge kartının üstüne taşan yuvarlak tuş.
-class _DocumentCircleButton extends StatelessWidget {
-  const _DocumentCircleButton({
-    required this.icon,
-    required this.color,
-    required this.tooltip,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final Color color;
-  final String tooltip;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final bool enabled = onTap != null;
-
-    return Material(
-      color: enabled ? color : context.inkMuted,
-      shape: const CircleBorder(),
-      clipBehavior: Clip.antiAlias,
-      elevation: 2,
-      child: InkWell(
-        onTap: onTap,
-        child: Tooltip(
-          message: tooltip,
-          child: Padding(
-            padding: const EdgeInsets.all(6),
-            child: Icon(icon, size: 17, color: BrandColors.white),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 /// Kontenjan doluluk göstergesi.
 ///
 /// Kulübün "kaç kişi kaldı" sorusunun tek yanıtı burası: kayıt sayısını
@@ -2833,70 +1756,6 @@ class _ActionCard extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// Belge adresi/yolu kutusu — gönderme tuşu kutunun kendi içinde.
-///
-/// Dosya seçici bazı cihazlarda (özellikle bulut sağlayıcılarında) belgeyi hiç
-/// döndürmüyor. Kulüp belgeyi zaten bir yerden kopyalamış oluyor; buraya
-/// yapıştırmak aynı yükleme yolunu ikinci bir kapıdan açar.
-///
-/// Kutunun altındaki açıklama, ayrı "yapıştır" tuşu ve tam genişlikte "yükle
-/// ve dağıt" düğmesi kaldırıldı: üçü birden bölümü, asıl düğme olan "Belge
-/// Yükle ve Dağıt" kartından daha kalabalık gösteriyordu. Yapıştırma zaten
-/// kutuya uzun basınca çıkan sistem menüsünde var; gönderme tuşu da yalnızca
-/// yazılacak bir şey olduğunda görünür.
-class _CertificateLinkField extends StatelessWidget {
-  const _CertificateLinkField({
-    required this.controller,
-    required this.enabled,
-    required this.onSubmit,
-  });
-
-  final TextEditingController controller;
-  final bool enabled;
-  final VoidCallback onSubmit;
-
-  @override
-  Widget build(BuildContext context) {
-    // Kutu boşken gönderme tuşu hiç çizilmesin diye metin dinleniyor.
-    return ListenableBuilder(
-      listenable: controller,
-      builder: (BuildContext context, _) {
-        final bool hasText = controller.text.trim().isNotEmpty;
-
-        return TextField(
-          controller: controller,
-          enabled: enabled,
-          keyboardType: TextInputType.url,
-          textInputAction: TextInputAction.send,
-          onSubmitted: (_) {
-            if (enabled && hasText) onSubmit();
-          },
-          inputFormatters: guardedInput(InputLimits.url),
-          decoration: InputDecoration(
-            labelText: context.t('clubEvents.certificate.linkLabel'),
-            // Boşken `null`: tuş yer kaplamadan tamamen kaybolur.
-            suffixIcon: hasText
-                ? Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: _DocumentCircleButton(
-                      icon: Icons.arrow_upward_rounded,
-                      color: BrandColors.red,
-                      tooltip: context.t('clubEvents.certificate.linkAction'),
-                      onTap: enabled ? onSubmit : null,
-                    ),
-                  )
-                : null,
-            suffixIconConstraints: const BoxConstraints(
-              minWidth: 40,
-              minHeight: 40,
-            ),
-          ),
-        );
-      },
     );
   }
 }

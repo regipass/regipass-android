@@ -324,6 +324,9 @@ class EventRepository {
         'doorQrPublished': false,
         if (firstOpen)
           'entryStartedAtMs': DateTime.now().millisecondsSinceEpoch,
+        // İP-2: "Check-in'i Bitir" anı (web club-events.js ile aynı). Yeniden
+        // açılınca silinir; sertifika Gönder düğmesi bitirilene kadar kilitli.
+        'entryFinishedAtMs': open ? null : DateTime.now().millisecondsSinceEpoch,
         'entryOpenUpdatedAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
         if (open && !live.registrationClosed) ...<String, dynamic>{

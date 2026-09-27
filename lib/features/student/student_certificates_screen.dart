@@ -1,15 +1,19 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../app/theme.dart';
+import '../../domain/certificate_rules.dart';
 import '../../domain/event_utils.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/event.dart';
+import '../../services/certificate_service.dart';
 import '../../state/providers.dart';
 import '../shared/common_widgets.dart';
 import '../shared/media_viewer.dart';
@@ -27,6 +31,14 @@ class StudentCertificatesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<StudentCertificate>> certificates =
         ref.watch(studentCertificatesProvider);
+    // İP-9: yeni sistemin belgeleri (event_certificates) aynı listede, üstte.
+    final String? uid = ref.watch(currentUidProvider);
+    final List<Map<String, Object?>> fresh = uid == null
+        ? const <Map<String, Object?>>[]
+        : (ref.watch(studentNewCertificatesProvider(uid)).value ?? const <Map<String, Object?>>[]);
+    final List<Map<String, Object?>> sortedFresh = List<Map<String, Object?>>.of(fresh)
+      ..sort((Map<String, Object?> a, Map<String, Object?> b) =>
+          ((b['issuedAtMs'] as num?) ?? 0).compareTo((a['issuedAtMs'] as num?) ?? 0));
 
     return Scaffold(
       appBar: StudentAppBar(title: context.t('studentCertificates.title')),
@@ -40,7 +52,7 @@ class StudentCertificatesScreen extends ConsumerWidget {
           ),
         ),
         data: (List<StudentCertificate> list) {
-          if (list.isEmpty) {
+          if (list.isEmpty && sortedFresh.isEmpty) {
             return ListView(
               padding: const EdgeInsets.all(20),
               children: <Widget>[
@@ -54,12 +66,154 @@ class StudentCertificatesScreen extends ConsumerWidget {
 
           return ListView.separated(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-            itemCount: list.length,
+            itemCount: sortedFresh.length + list.length,
             separatorBuilder: (_, _) => const SizedBox(height: 10),
-            itemBuilder: (BuildContext context, int index) =>
-                _CertificateRow(certificate: list[index]),
+            itemBuilder: (BuildContext context, int index) => index < sortedFresh.length
+                ? _NewCertificateRow(certificate: sortedFresh[index])
+                : _CertificateRow(certificate: list[index - sortedFresh.length]),
           );
         },
+      ),
+    );
+  }
+}
+
+/// Yeni sistemin belgesi (İP-9): indir (sunucu yeniden üretir), LinkedIn'e
+/// ekle, doğrulama bağlantısını kopyala, doğrulama sayfasında tam ad izni.
+/// Web: js/pages/student-certificates.js#buildNewCertificateRow.
+class _NewCertificateRow extends ConsumerStatefulWidget {
+  const _NewCertificateRow({required this.certificate});
+
+  final Map<String, Object?> certificate;
+
+  @override
+  ConsumerState<_NewCertificateRow> createState() => _NewCertificateRowState();
+}
+
+class _NewCertificateRowState extends ConsumerState<_NewCertificateRow> {
+  bool _busy = false;
+
+  Map<String, Object?> get _c => widget.certificate;
+  Map<Object?, Object?> get _printed =>
+      _c['printed'] is Map ? _c['printed'] as Map<Object?, Object?> : const <Object?, Object?>{};
+  String get _code => '${_c['code'] ?? ''}';
+  String get _eventId => '${_c['eventId'] ?? ''}';
+
+  void _snack(String message) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+
+  String _reason(Object error) {
+    final String key = 'cert.reason.${certificateErrorReason(error)}';
+    final String text = context.t(key);
+    return text == key ? context.t('cert.reason.generic') : text;
+  }
+
+  Future<void> _download() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final CertificateFile file = await ref.read(certificateServiceProvider).download(_eventId);
+      if (!mounted) return;
+      await openMedia(
+        context,
+        source: file.path,
+        title: '${_printed['eventTitle'] ?? ''}',
+        contentType: 'application/pdf',
+      );
+    } catch (error) {
+      if (mounted) _snack(_reason(error));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _linkedIn() async {
+    final Uri uri = linkedInAddUri(
+      code: _code,
+      issuedAtMs: ((_c['issuedAtMs'] as num?) ?? 0).toInt(),
+      clubName: '${_printed['clubName'] ?? ''}',
+      eventTitle: '${_printed['eventTitle'] ?? ''}',
+      lang: context.lang,
+    );
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  Future<void> _copy() async {
+    await Clipboard.setData(ClipboardData(text: certificateVerifyUrl(_code)));
+    if (mounted) _snack(context.t('studentCertificates.copied'));
+  }
+
+  Future<void> _toggleFullName() async {
+    final bool allow = _c['fullNameConsent'] != true;
+    try {
+      await ref.read(certificateServiceProvider).setFullName(_eventId, allow);
+      if (mounted) {
+        _snack(context.t(allow ? 'studentCertificates.fullNameOn' : 'studentCertificates.fullNameOff'));
+      }
+    } catch (error) {
+      if (mounted) _snack(_reason(error));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool revoked = _c['status'] == CertStatus.revoked;
+    final int issuedAt = ((_c['issuedAtMs'] as num?) ?? 0).toInt();
+    final String club = '${_printed['clubName'] ?? '-'}';
+    final String meta = revoked
+        ? '$club • ${context.t('studentCertificates.revoked')}'
+        : '$club • ${issuedAt > 0 ? formatDeadline(issuedAt, locale: context.lang) : '-'}';
+    return Card(
+      margin: EdgeInsets.zero,
+      child: ListTile(
+        key: ValueKey<String>('new-cert-$_code'),
+        onTap: revoked ? null : _download,
+        leading: Icon(Icons.workspace_premium_outlined,
+            color: revoked ? context.inkMuted : BrandColors.red),
+        title: Text('${_printed['eventTitle'] ?? context.t('studentCertificates.fallbackTitle')}',
+            style: TextStyle(color: revoked ? context.inkMuted : null)),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(meta, style: TextStyle(color: revoked ? BrandColors.danger : null)),
+            Text(_code,
+                style: TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 11.5,
+                  color: context.inkMuted,
+                  letterSpacing: 0.5,
+                )),
+          ],
+        ),
+        trailing: revoked
+            ? null
+            : _busy
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                : PopupMenuButton<String>(
+                    tooltip: context.t('studentCertificates.menuLabel'),
+                    onSelected: (String value) {
+                      switch (value) {
+                        case 'download':
+                          _download();
+                        case 'linkedin':
+                          _linkedIn();
+                        case 'copy':
+                          _copy();
+                        case 'fullname':
+                          _toggleFullName();
+                      }
+                    },
+                    itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                      PopupMenuItem<String>(value: 'download', child: Text(context.t('studentCertificates.menu.download'))),
+                      PopupMenuItem<String>(value: 'linkedin', child: Text(context.t('studentCertificates.menu.linkedin'))),
+                      PopupMenuItem<String>(value: 'copy', child: Text(context.t('studentCertificates.menu.copyLink'))),
+                      CheckedPopupMenuItem<String>(
+                        value: 'fullname',
+                        checked: _c['fullNameConsent'] == true,
+                        child: Text(context.t('studentCertificates.menu.fullName')),
+                      ),
+                    ],
+                  ),
       ),
     );
   }
