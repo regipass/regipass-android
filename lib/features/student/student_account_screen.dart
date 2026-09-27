@@ -18,6 +18,7 @@ import '../shared/account_settings_sheet.dart';
 import '../shared/common_widgets.dart';
 import '../shared/gender_picker.dart';
 import '../shared/legal_consent.dart';
+import 'followed_clubs_section.dart';
 import '../shared/live_phone_field.dart';
 import '../shared/phone_field.dart';
 import '../shared/profile_photo.dart';
@@ -636,6 +637,12 @@ class _StudentAccountScreenState extends ConsumerState<StudentAccountScreen> {
           ],
 
           const SizedBox(height: 24),
+
+          // İP-TK: takip edilen kulüpler (düzenleme kipinde gizli).
+          if (!_editing) ...<Widget>[
+            const FollowedClubsSection(),
+            const SizedBox(height: 24),
+          ],
 
           TextButton.icon(
             onPressed: _logout,

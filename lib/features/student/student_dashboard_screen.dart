@@ -13,7 +13,10 @@ import '../../l10n/app_strings.dart';
 import '../../models/event.dart';
 import '../../services/registration_service.dart';
 import '../../state/providers.dart';
+import '../../domain/club_follow.dart';
+import '../../services/club_follow_service.dart';
 import '../shared/add_to_calendar_button.dart';
+import '../shared/club_follow_button.dart';
 import '../shared/common_widgets.dart';
 import '../shared/event_widgets.dart';
 import 'post_registration_sheet.dart';
@@ -96,6 +99,9 @@ class _StudentDashboardScreenState
         : ref.watch(eventByIdProvider(requestedEventId)).value;
 
     final String name = _welcomeName(context, session);
+    final FollowFilter followFilter = ref.watch(followFilterProvider);
+    final Set<String> followedIds =
+        ref.watch(followedClubIdsProvider).value ?? const <String>{};
 
     return Scaffold(
       appBar: StudentAppBar(
@@ -116,19 +122,37 @@ class _StudentDashboardScreenState
               ),
             ],
           ),
-          data: (List<AppEvent> list) {
+          data: (List<AppEvent> all) {
             // Hedef kitle listesinde görünmese bile kodu gerçekten okutmuş
             // giriş yapmış kullanıcı etkinliğin detayını görür; kayıt yetkisi
             // yine RegistrationService + Firestore kurallarıyla doğrulanır.
-            _openRequestedEvent(context, list, directEvent);
+            _openRequestedEvent(context, all, directEvent);
+            // İP-TK: "Tümü | Takip ettiklerim".
+            final List<AppEvent> list = filterByFollow<AppEvent>(
+              all,
+              followFilter,
+              followedIds,
+              (AppEvent e) => e.clubId,
+            );
+            final Widget filterBar = _FollowFilterBar(
+              value: followFilter,
+              onChanged: (FollowFilter f) =>
+                  ref.read(followFilterProvider.notifier).select(f),
+            );
             if (list.isEmpty) {
+              final bool following = followFilter == FollowFilter.following;
               return ListView(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                 children: <Widget>[
+                  filterBar,
+                  const SizedBox(height: 14),
                   EmptyState(
-                    message:
-                        '${context.t('dashboard.empty.title')}\n${context.t('dashboard.empty.desc')}',
-                    icon: Icons.event_busy_outlined,
+                    message: following
+                        ? '${context.t('follow.empty.title')}\n${context.t('follow.empty.desc')}'
+                        : '${context.t('dashboard.empty.title')}\n${context.t('dashboard.empty.desc')}',
+                    icon: following
+                        ? Icons.group_add_outlined
+                        : Icons.event_busy_outlined,
                   ),
                 ],
               );
@@ -136,10 +160,11 @@ class _StudentDashboardScreenState
 
             return ListView.separated(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-              itemCount: list.length,
+              itemCount: list.length + 1,
               separatorBuilder: (_, _) => const SizedBox(height: 14),
               itemBuilder: (BuildContext context, int index) {
-                final AppEvent event = list[index];
+                if (index == 0) return filterBar;
+                final AppEvent event = list[index - 1];
                 return _EventCard(
                   event: event,
                   priority: getStudentEventPriority(
@@ -177,6 +202,43 @@ class _StudentDashboardScreenState
     if (email.isNotEmpty) return email.split('@').first;
 
     return context.t('dashboard.userFallback');
+  }
+}
+
+/// Keşfet filtresi (İP-TK) — web: dashboard.html #discoverFilter.
+class _FollowFilterBar extends StatelessWidget {
+  const _FollowFilterBar({required this.value, required this.onChanged});
+
+  final FollowFilter value;
+  final ValueChanged<FollowFilter> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: SegmentedButton<FollowFilter>(
+        key: const ValueKey<String>('follow-filter'),
+        showSelectedIcon: false,
+        style: SegmentedButton.styleFrom(
+          visualDensity: VisualDensity.compact,
+          selectedBackgroundColor: BrandColors.red.withValues(alpha: 0.12),
+          selectedForegroundColor: context.brandInk,
+        ),
+        segments: <ButtonSegment<FollowFilter>>[
+          ButtonSegment<FollowFilter>(
+            value: FollowFilter.all,
+            label: Text(context.t('follow.filterAll')),
+          ),
+          ButtonSegment<FollowFilter>(
+            value: FollowFilter.following,
+            icon: const Icon(Icons.favorite_border, size: 16),
+            label: Text(context.t('follow.filterFollowing')),
+          ),
+        ],
+        selected: <FollowFilter>{value},
+        onSelectionChanged: (Set<FollowFilter> s) => onChanged(s.first),
+      ),
+    );
   }
 }
 
@@ -1264,6 +1326,11 @@ class _ClubHeader extends StatelessWidget {
             ],
           ),
         ),
+        // İP-TK: kulübü takip et / bırak.
+        if (event.clubId.isNotEmpty) ...<Widget>[
+          const SizedBox(width: 8),
+          ClubFollowButton(clubId: event.clubId),
+        ],
       ],
     );
   }

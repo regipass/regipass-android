@@ -8,6 +8,7 @@ import '../../domain/routing.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/event.dart';
 import '../../models/profiles.dart';
+import '../../services/club_follow_service.dart';
 import '../../state/providers.dart';
 import '../shared/common_widgets.dart';
 import '../shared/event_widgets.dart';
@@ -83,6 +84,8 @@ class _ClubDashboardScreenState extends ConsumerState<ClubDashboardScreen> {
               return ListView(
                 padding: const EdgeInsets.all(20),
                 children: <Widget>[
+                  const ClubFollowerCountChip(),
+                  const SizedBox(height: 14),
                   EmptyState(
                     message: context.t('clubDashboard.empty'),
                     icon: Icons.event_busy_outlined,
@@ -95,10 +98,12 @@ class _ClubDashboardScreenState extends ConsumerState<ClubDashboardScreen> {
 
             return ListView.separated(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-              itemCount: list.length,
+              itemCount: list.length + 1,
               separatorBuilder: (_, _) => const SizedBox(height: 14),
               itemBuilder: (BuildContext context, int index) {
-                final AppEvent event = list[index];
+                // İP-TK: takipçi sayısı (liste yok; yalnızca sayı).
+                if (index == 0) return const ClubFollowerCountChip();
+                final AppEvent event = list[index - 1];
                 return EventSummaryCard(
                   event: event,
                   priority: getStudentEventPriority(event, pseudo),
@@ -112,6 +117,45 @@ class _ClubDashboardScreenState extends ConsumerState<ClubDashboardScreen> {
               },
             );
           },
+        ),
+      ),
+    );
+  }
+}
+
+/// Kulübün takipçi sayısı (İP-TK) — web: club-dashboard.html #clubFollowerStat.
+class ClubFollowerCountChip extends ConsumerWidget {
+  const ClubFollowerCountChip({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final int? count = ref.watch(clubFollowerCountProvider).value;
+    if (count == null) return const SizedBox.shrink();
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        key: const ValueKey<String>('club-follower-count'),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: context.surface,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: context.hairline),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Icon(Icons.favorite_border, size: 16, color: context.brandInk),
+            const SizedBox(width: 6),
+            Text(
+              '$count',
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(width: 5),
+            Text(
+              context.t('follow.club.followers'),
+              style: TextStyle(color: context.inkMuted),
+            ),
+          ],
         ),
       ),
     );
