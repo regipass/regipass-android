@@ -55,4 +55,24 @@ void main() {
       ReminderStatus.off,
     ]);
   });
+
+  test(
+    'giriş başladı bildirimi gittiyse "Başladığında" gönderildi sayılır',
+    () {
+      final int start = DateTime.utc(2026, 9, 30, 11).millisecondsSinceEpoch;
+      final List<ReminderState> states = reminderStates(
+        eventDateAtMs: start,
+        eventStartAtMs: start,
+        eventEndAtMs: start + 3600000,
+        cancelled: false,
+        sent: <String, int>{'entryOpen': start - 600000},
+        nowMs: start + 60000,
+      );
+      final ReminderState atStart = states.firstWhere(
+        (ReminderState s) => s.key == 'atStart',
+      );
+      expect(atStart.status, ReminderStatus.sent);
+      expect(atStart.sentAtMs, start - 600000);
+    },
+  );
 }
