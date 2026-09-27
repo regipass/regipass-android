@@ -16,6 +16,7 @@ import '../../state/providers.dart';
 import '../shared/add_to_calendar_button.dart';
 import '../shared/common_widgets.dart';
 import '../shared/event_widgets.dart';
+import 'post_registration_sheet.dart';
 import 'student_providers.dart';
 import 'student_shell.dart';
 
@@ -473,6 +474,21 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
         if (join && mounted) await _joinWaitlist(skipBusy: true);
         return;
       }
+
+      // İP-T2: başarılı kayıtta "takvime ekleyelim mi / bileti kaydet".
+      if (result.outcome == RegistrationOutcome.registered &&
+          !await postRegistrationSkipped() &&
+          mounted) {
+        await showPostRegistrationSheet(
+          context,
+          event: latest,
+          message: result.paymentPending
+              ? '${context.t('dashboard.alerts.registerSuccess')}\n${context.t('registration.alerts.paymentPendingNote')}'
+              : context.t('dashboard.alerts.registerSuccess'),
+        );
+        return;
+      }
+      if (!mounted) return;
 
       _toast(switch (result.outcome) {
         RegistrationOutcome.registered => result.paymentPending

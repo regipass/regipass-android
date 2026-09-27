@@ -7,12 +7,14 @@ import '../../domain/checkin_qr.dart';
 import '../../domain/event_utils.dart';
 import '../../domain/routing.dart';
 import '../../l10n/app_strings.dart';
+import '../../models/event.dart';
 import '../../state/connectivity.dart';
 import '../../state/providers.dart';
 import '../shared/add_to_calendar_button.dart';
 import '../shared/common_widgets.dart';
-import '../shared/qr_code_view.dart';
 import '../shared/event_widgets.dart';
+import '../shared/qr_code_view.dart';
+import '../shared/ticket_image.dart';
 import 'student_providers.dart';
 
 /// student-appointments.js / student-qr-generate.js içindeki detay
@@ -59,6 +61,8 @@ class _AppointmentDetailSheetState
   bool _qrVisible = false;
   bool _qrLoading = false;
   String? _qrData;
+  String _qrTicketCode = '';
+  bool _ticketSaving = false;
 
   /// Giriş onaylandığı anda açık QR'ı kapatmak için önceki katılım sayısı.
   int? _lastSeenAttendance;
@@ -132,8 +136,36 @@ class _AppointmentDetailSheetState
 
     setState(() {
       _qrData = token;
+      _qrTicketCode = ticketCode;
       _qrLoading = false;
     });
+  }
+
+  Future<void> _saveTicketImage(BuildContext buttonContext, RegistrationWithEvent item) async {
+    final AppEvent? event = item.event;
+    if (event == null) return;
+    final RenderBox? box = buttonContext.findRenderObject() as RenderBox?;
+    final Rect? origin = box == null ? null : box.localToGlobal(Offset.zero) & box.size;
+    setState(() => _ticketSaving = true);
+    try {
+      await shareTicketImage(
+        event: event,
+        registrationId: item.registration.id,
+        studentId: item.registration.studentId,
+        ticketCode: _qrTicketCode,
+        studentName: ref.read(studentProfileProvider).value?.fullName ?? '',
+        origin: origin,
+        english: context.lang == 'en',
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.t('postRegistration.ticketError'))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _ticketSaving = false);
+    }
   }
 
   RegistrationWithEvent? _currentItem() {
@@ -398,6 +430,22 @@ class _AppointmentDetailSheetState
                               style: const TextStyle(color: BrandColors.white),
                             ),
                           ),
+                          // İP-T2: bilet resim olarak kaydedilebilir (QR sabit).
+                          if (item.event != null) ...<Widget>[
+                            const SizedBox(height: 14),
+                            Builder(
+                              builder: (BuildContext b) => OutlinedButton.icon(
+                                key: const Key('saveTicketImage'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: BrandColors.white,
+                                  side: const BorderSide(color: BrandColors.white),
+                                ),
+                                icon: const Icon(Icons.download_outlined),
+                                label: Text(context.t('postRegistration.ticketSave')),
+                                onPressed: _ticketSaving ? null : () => _saveTicketImage(b, item),
+                              ),
+                            ),
+                          ],
                         ],
                       ],
                     ),
