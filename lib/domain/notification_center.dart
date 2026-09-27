@@ -158,15 +158,18 @@ List<SendHistoryItem> mergeSendHistory(
   }
   if (type != 'manual') {
     for (final AppEvent e in events) {
-      for (final String key in kReminderKeys) {
-        final int at = e.notificationsSent[key] ?? 0;
-        if (at > 0) {
+      for (final MapEntry<String, int> sent in e.notificationsSent.entries) {
+        final bool known =
+            kReminderKeys.contains(sent.key) ||
+            sent.key == 'entryOpen' ||
+            RegExp(r'^session_\d+$').hasMatch(sent.key);
+        if (sent.value > 0 && known) {
           out.add(
             SendHistoryItem(
-              atMs: at,
+              atMs: sent.value,
               eventId: e.id,
               eventTitle: titles[e.id]!,
-              reminderKey: key,
+              reminderKey: sent.key,
             ),
           );
         }

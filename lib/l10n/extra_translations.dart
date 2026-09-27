@@ -50,6 +50,8 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubNotify.filter.auto': 'Otomatik',
     'clubNotify.cancelled': 'İptal edildi',
     'clubNotify.notFound': 'Etkinlik bulunamadı.',
+    'clubNotify.entryOpen': 'Giriş başladı',
+    'clubNotify.sessionStarted': '{{n}}. oturum başladı',
     'eventNotify.autoHelp':
         'Otomatik bildirimleri etkinliği düzenleyerek açıp kapatabilirsin.',
     'eventNotify.status.sent': 'Gönderildi',
@@ -1339,6 +1341,8 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubNotify.filter.auto': 'Automatic',
     'clubNotify.cancelled': 'Cancelled',
     'clubNotify.notFound': 'Event not found.',
+    'clubNotify.entryOpen': 'Check-in opened',
+    'clubNotify.sessionStarted': 'Session {{n}} started',
     'eventNotify.autoHelp':
         'Turn automatic notifications on or off by editing the event.',
     'eventNotify.status.sent': 'Sent',
