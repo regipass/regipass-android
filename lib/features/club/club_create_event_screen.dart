@@ -979,6 +979,25 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
     );
   }
 
+  /// Saat girilmeden gidemeyecek bildirim için ipucu anahtarı (yoksa null).
+  String? _autoNotifyNeed(String key) {
+    if ((key == 'hourBefore' || key == 'atStart') && _startTime == null) {
+      return 'autoNotify.needStart';
+    }
+    if (key == 'afterEnd' && _endTime == null) return 'autoNotify.needEnd';
+    return null;
+  }
+
+  String? _autoNotifyWarning() {
+    final bool needStart = _startTime == null &&
+        ((_autoNotify['hourBefore'] ?? true) || (_autoNotify['atStart'] ?? true));
+    final bool needEnd = _endTime == null && (_autoNotify['afterEnd'] ?? true);
+    if (needStart && needEnd) return 'autoNotify.warnBoth';
+    if (needStart) return 'autoNotify.warnStart';
+    if (needEnd) return 'autoNotify.warnEnd';
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     // Düzenleme modunda mevcut etkinlik bir kez forma doldurulur; sonraki
@@ -1346,10 +1365,31 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
                               : (bool? v) =>
                                     setState(() => _autoNotify[key] = v == true),
                           title: Text(context.t('autoNotify.$key')),
+                          subtitle: _autoNotifyNeed(key) == null
+                              ? null
+                              : Text(
+                                  context.t(_autoNotifyNeed(key)!),
+                                  style: const TextStyle(
+                                    color: Color(0xFF9A5B00),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                         ),
                     ],
                   ),
                 ),
+                if (_autoNotifyWarning() != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      context.t(_autoNotifyWarning()!),
+                      key: const Key('autoNotifyWarning'),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Color(0xFF9A5B00),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
               ],
             ),
             const SizedBox(height: 14),
