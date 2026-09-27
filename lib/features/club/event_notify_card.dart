@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme.dart';
+import '../../domain/message_templates.dart';
 import '../../domain/reminder_schedule.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/event.dart';
@@ -23,6 +24,7 @@ const List<String> kEventMessageAudiences = <String>[
   'registered',
   'checked_in',
   'not_checked_in',
+  'payment_pending',
   'waitlist',
 ];
 
@@ -133,7 +135,7 @@ class EventNotifyCard extends ConsumerWidget {
             key: const Key('eventNotifySend'),
             onPressed: () => showDialog<void>(
               context: context,
-              builder: (_) => _SendMessageDialog(eventId: event.id),
+              builder: (_) => _SendMessageDialog(event: event),
             ),
             icon: const Icon(Icons.campaign_outlined),
             label: Text(context.t('eventNotify.send')),
@@ -177,9 +179,9 @@ class EventNotifyCard extends ConsumerWidget {
 }
 
 class _SendMessageDialog extends ConsumerStatefulWidget {
-  const _SendMessageDialog({required this.eventId});
+  const _SendMessageDialog({required this.event});
 
-  final String eventId;
+  final AppEvent event;
 
   @override
   ConsumerState<_SendMessageDialog> createState() => _SendMessageDialogState();
@@ -188,42 +190,95 @@ class _SendMessageDialog extends ConsumerStatefulWidget {
 class _SendMessageDialogState extends ConsumerState<_SendMessageDialog> {
   final TextEditingController _title = TextEditingController();
   final TextEditingController _message = TextEditingController();
+  final FocusNode _titleFocus = FocusNode();
+  final FocusNode _messageFocus = FocusNode();
+  TextEditingController? _lastField;
   String _audience = 'registered';
-  int? _count;
+  String _templateId = '';
+  EventMessageResult? _preview;
+  bool _counting = true;
   bool _sending = false;
   String? _error;
   int _previewSeq = 0;
+  late final Map<String, String> _context = eventTagContext(
+    title: widget.event.title,
+    clubName: widget.event.clubName,
+    eventDateAtMs: widget.event.eventDateAtMs,
+    eventStartAtMs: widget.event.eventStartAtMs,
+    eventEndAtMs: widget.event.eventEndAtMs,
+    locationName: widget.event.locationName,
+  );
 
   @override
   void initState() {
     super.initState();
-    _preview();
+    _lastField = _message;
+    _titleFocus.addListener(() {
+      if (_titleFocus.hasFocus) _lastField = _title;
+    });
+    _messageFocus.addListener(() {
+      if (_messageFocus.hasFocus) _lastField = _message;
+    });
+    _title.addListener(_onText);
+    _message.addListener(_onText);
+    _refreshPreview();
   }
 
   @override
   void dispose() {
     _title.dispose();
     _message.dispose();
+    _titleFocus.dispose();
+    _messageFocus.dispose();
     super.dispose();
   }
 
-  Future<void> _preview() async {
+  void _onText() => setState(() {});
+
+  Future<void> _refreshPreview() async {
     final int seq = ++_previewSeq;
-    setState(() => _count = null);
+    setState(() => _counting = true);
     try {
-      final int n = await ref
+      final EventMessageResult r = await ref
           .read(registrationServiceProvider)
-          .sendEventMessage(
-            eventId: widget.eventId,
-            audience: _audience,
-            title: 'preview',
-            message: 'preview',
-            preview: true,
-          );
-      if (mounted && seq == _previewSeq) setState(() => _count = n);
+          .previewEventMessage(eventId: widget.event.id, audience: _audience);
+      if (mounted && seq == _previewSeq) {
+        setState(() {
+          _preview = r;
+          _counting = false;
+        });
+      }
     } on RegistrationFailure catch (_) {
-      if (mounted && seq == _previewSeq) setState(() => _count = 0);
+      if (mounted && seq == _previewSeq) setState(() => _counting = false);
     }
+  }
+
+  void _applyTemplate(String? id) {
+    final MessageTemplate? t = kMessageTemplates
+        .where((MessageTemplate x) => x.id == id)
+        .firstOrNull;
+    setState(() => _templateId = id ?? '');
+    if (t == null) return;
+    _title.text = t.title;
+    _message.text = t.message;
+    if (_audience != t.audience) {
+      setState(() => _audience = t.audience);
+      _refreshPreview();
+    }
+    final int at = t.message.indexOf(kFillMark);
+    if (at >= 0) {
+      _messageFocus.requestFocus();
+      _message.selection = TextSelection(baseOffset: at, extentOffset: at + 1);
+    }
+  }
+
+  void _insertTag(String tag) {
+    final TextEditingController c = _lastField ?? _message;
+    final TextSelection sel = c.selection;
+    final int start = sel.isValid ? sel.start : c.text.length;
+    final int end = sel.isValid ? sel.end : c.text.length;
+    c.text = c.text.replaceRange(start, end, tag);
+    c.selection = TextSelection.collapsed(offset: start + tag.length);
   }
 
   Future<void> _send() async {
@@ -233,25 +288,36 @@ class _SendMessageDialogState extends ConsumerState<_SendMessageDialog> {
       setState(() => _error = context.t('eventNotify.errors.required'));
       return;
     }
+    if (unknownMessageTags(title + message).isNotEmpty) {
+      setState(() => _error = context.t('eventNotify.errors.unknown-tag'));
+      return;
+    }
+    if (hasFillMark(title + message)) {
+      setState(() => _error = context.t('eventNotify.errors.fill'));
+      return;
+    }
     setState(() {
       _sending = true;
       _error = null;
     });
     try {
-      final int n = await ref
+      final EventMessageResult r = await ref
           .read(registrationServiceProvider)
           .sendEventMessage(
-            eventId: widget.eventId,
+            eventId: widget.event.id,
             audience: _audience,
             title: title,
             message: message,
+            templateId: _templateId,
           );
       if (!mounted) return;
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            context.t('eventNotify.sent', <String, Object?>{'count': n}),
+            context.t('eventNotify.sent', <String, Object?>{
+              'count': r.recipients,
+            }),
           ),
         ),
       );
@@ -266,8 +332,36 @@ class _SendMessageDialogState extends ConsumerState<_SendMessageDialog> {
     }
   }
 
+  String _quotaText(BuildContext context) {
+    final EventMessageResult? p = _preview;
+    if (p == null) return '';
+    final List<String> parts = <String>[
+      context.t('eventNotify.quota', <String, Object?>{
+        'left': p.remainingToday,
+        'limit': p.dailyLimit,
+      }),
+    ];
+    final int? next = p.nextAllowedAtMs;
+    final int now = DateTime.now().millisecondsSinceEpoch;
+    if (next != null && next > now) {
+      parts.add(
+        context.t('eventNotify.nextIn', <String, Object?>{
+          'minutes': ((next - now) / 60000).ceil(),
+        }),
+      );
+    }
+    return parts.join(' · ');
+  }
+
   @override
   Widget build(BuildContext context) {
+    final TextTheme text = Theme.of(context).textTheme;
+    final Map<String, String> sample = <String, String>{
+      ..._context,
+      'ad': 'Ayşe',
+    };
+    final String previewTitle = renderMessageTags(_title.text, sample);
+    final String previewBody = renderMessageTags(_message.text, sample);
     return AlertDialog(
       title: Text(context.t('eventNotify.send')),
       content: SingleChildScrollView(
@@ -276,6 +370,24 @@ class _SendMessageDialogState extends ConsumerState<_SendMessageDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             DropdownButtonFormField<String>(
+              key: const Key('eventNotifyTemplate'),
+              initialValue: _templateId,
+              isExpanded: true,
+              decoration: InputDecoration(
+                labelText: context.t('eventNotify.templateLabel'),
+              ),
+              items: <DropdownMenuItem<String>>[
+                DropdownMenuItem<String>(
+                  value: '',
+                  child: Text(context.t('eventNotify.templateNone')),
+                ),
+                for (final MessageTemplate t in kMessageTemplates)
+                  DropdownMenuItem<String>(value: t.id, child: Text(t.label)),
+              ],
+              onChanged: _sending ? null : _applyTemplate,
+            ),
+            DropdownButtonFormField<String>(
+              key: ValueKey<String>('aud_$_audience'),
               initialValue: _audience,
               isExpanded: true,
               decoration: InputDecoration(
@@ -294,21 +406,27 @@ class _SendMessageDialogState extends ConsumerState<_SendMessageDialog> {
                   : (String? v) {
                       if (v == null) return;
                       setState(() => _audience = v);
-                      _preview();
+                      _refreshPreview();
                     },
             ),
             const SizedBox(height: 6),
             Text(
-              _count == null
+              _counting
                   ? context.t('eventNotify.counting')
                   : context.t('eventNotify.willReach', <String, Object?>{
-                      'count': _count,
+                      'count': _preview?.recipients ?? 0,
                     }),
-              style: Theme.of(context).textTheme.bodySmall,
+              style: text.bodySmall,
             ),
+            if (_quotaText(context).isNotEmpty)
+              Text(
+                _quotaText(context),
+                style: text.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+              ),
             TextField(
               key: const Key('eventNotifyTitle'),
               controller: _title,
+              focusNode: _titleFocus,
               maxLength: 80,
               decoration: InputDecoration(
                 labelText: context.t('eventNotify.titleLabel'),
@@ -317,6 +435,7 @@ class _SendMessageDialogState extends ConsumerState<_SendMessageDialog> {
             TextField(
               key: const Key('eventNotifyMessage'),
               controller: _message,
+              focusNode: _messageFocus,
               maxLength: 500,
               minLines: 3,
               maxLines: 6,
@@ -324,8 +443,55 @@ class _SendMessageDialogState extends ConsumerState<_SendMessageDialog> {
                 labelText: context.t('eventNotify.messageLabel'),
               ),
             ),
-            if (_error != null)
+            Text(context.t('eventNotify.tagsLabel'), style: text.labelMedium),
+            const SizedBox(height: 4),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: <Widget>[
+                for (final MessageTag t in kMessageTags)
+                  ActionChip(
+                    key: Key('tag_${t.key}'),
+                    label: Text(t.tag),
+                    tooltip: context.t(t.labelKey),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: _sending ? null : () => _insertTag(t.tag),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Theme.of(context).dividerColor),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    context.t('eventNotify.previewLabel'),
+                    style: text.labelSmall,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    previewTitle.isEmpty ? '—' : previewTitle,
+                    style: text.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Text(
+                    previewBody.isEmpty ? '—' : previewBody,
+                    style: text.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+            if (_error != null) ...<Widget>[
+              const SizedBox(height: 8),
               FeedbackBanner(message: _error, tone: FeedbackTone.error),
+            ],
           ],
         ),
       ),

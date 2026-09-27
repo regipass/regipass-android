@@ -1,0 +1,434 @@
+[
+ {
+  "event": {
+   "title": "Söyleşi",
+   "clubName": "Ege Farma",
+   "eventDateAtMs": 1790715600000,
+   "eventStartAtMs": 1790766000000,
+   "eventEndAtMs": 1790773200000,
+   "locationName": "B-204"
+  },
+  "ad": "Ayşe",
+  "text": "Merhaba {ad}, {etkinlik} {tarih} {saat} {yer} {Kulüp} {isim} {x}",
+  "context": {
+   "etkinlik": "Söyleşi",
+   "kulup": "Ege Farma",
+   "tarih": "30 Eylül",
+   "saat": "14:00–16:00",
+   "yer": "B-204"
+  },
+  "rendered": "Merhaba Ayşe, Söyleşi 30 Eylül 14:00–16:00 B-204 Ege Farma Ayşe {x}"
+ },
+ {
+  "event": {
+   "title": "Söyleşi",
+   "clubName": "Ege Farma",
+   "eventDateAtMs": 1790715600000,
+   "eventStartAtMs": 1790766000000,
+   "eventEndAtMs": 1790773200000,
+   "locationName": "B-204"
+  },
+  "ad": "",
+  "text": "Merhaba {ad}, {etkinlik} {tarih} {saat} {yer} {Kulüp} {isim} {x}",
+  "context": {
+   "etkinlik": "Söyleşi",
+   "kulup": "Ege Farma",
+   "tarih": "30 Eylül",
+   "saat": "14:00–16:00",
+   "yer": "B-204"
+  },
+  "rendered": "Merhaba, Söyleşi 30 Eylül 14:00–16:00 B-204 Ege Farma {x}"
+ },
+ {
+  "event": {
+   "title": "Söyleşi",
+   "clubName": "Ege Farma",
+   "eventDateAtMs": 1790715600000,
+   "eventStartAtMs": 1790766000000,
+   "eventEndAtMs": 1790773200000,
+   "locationName": "B-204"
+  },
+  "ad": "Ayşe",
+  "text": "Merhaba {ad}, yarın görüşürüz!",
+  "context": {
+   "etkinlik": "Söyleşi",
+   "kulup": "Ege Farma",
+   "tarih": "30 Eylül",
+   "saat": "14:00–16:00",
+   "yer": "B-204"
+  },
+  "rendered": "Merhaba Ayşe, yarın görüşürüz!"
+ },
+ {
+  "event": {
+   "title": "Söyleşi",
+   "clubName": "Ege Farma",
+   "eventDateAtMs": 1790715600000,
+   "eventStartAtMs": 1790766000000,
+   "eventEndAtMs": 1790773200000,
+   "locationName": "B-204"
+  },
+  "ad": "",
+  "text": "Merhaba {ad}, yarın görüşürüz!",
+  "context": {
+   "etkinlik": "Söyleşi",
+   "kulup": "Ege Farma",
+   "tarih": "30 Eylül",
+   "saat": "14:00–16:00",
+   "yer": "B-204"
+  },
+  "rendered": "Merhaba, yarın görüşürüz!"
+ },
+ {
+  "event": {
+   "title": "Söyleşi",
+   "clubName": "Ege Farma",
+   "eventDateAtMs": 1790715600000,
+   "eventStartAtMs": 1790766000000,
+   "eventEndAtMs": 1790773200000,
+   "locationName": "B-204"
+  },
+  "ad": "Ayşe",
+  "text": "{etkinlik}: salon",
+  "context": {
+   "etkinlik": "Söyleşi",
+   "kulup": "Ege Farma",
+   "tarih": "30 Eylül",
+   "saat": "14:00–16:00",
+   "yer": "B-204"
+  },
+  "rendered": "Söyleşi: salon"
+ },
+ {
+  "event": {
+   "title": "Söyleşi",
+   "clubName": "Ege Farma",
+   "eventDateAtMs": 1790715600000,
+   "eventStartAtMs": 1790766000000,
+   "eventEndAtMs": 1790773200000,
+   "locationName": "B-204"
+  },
+  "ad": "",
+  "text": "{etkinlik}: salon",
+  "context": {
+   "etkinlik": "Söyleşi",
+   "kulup": "Ege Farma",
+   "tarih": "30 Eylül",
+   "saat": "14:00–16:00",
+   "yer": "B-204"
+  },
+  "rendered": "Söyleşi: salon"
+ },
+ {
+  "event": {
+   "title": "Söyleşi",
+   "clubName": "Ege Farma",
+   "eventDateAtMs": 1790715600000,
+   "eventStartAtMs": 1790766000000,
+   "eventEndAtMs": 1790773200000,
+   "locationName": "B-204"
+  },
+  "ad": "Ayşe",
+  "text": "Teşekkürler {ad}! — {kulüp}",
+  "context": {
+   "etkinlik": "Söyleşi",
+   "kulup": "Ege Farma",
+   "tarih": "30 Eylül",
+   "saat": "14:00–16:00",
+   "yer": "B-204"
+  },
+  "rendered": "Teşekkürler Ayşe! — Ege Farma"
+ },
+ {
+  "event": {
+   "title": "Söyleşi",
+   "clubName": "Ege Farma",
+   "eventDateAtMs": 1790715600000,
+   "eventStartAtMs": 1790766000000,
+   "eventEndAtMs": 1790773200000,
+   "locationName": "B-204"
+  },
+  "ad": "",
+  "text": "Teşekkürler {ad}! — {kulüp}",
+  "context": {
+   "etkinlik": "Söyleşi",
+   "kulup": "Ege Farma",
+   "tarih": "30 Eylül",
+   "saat": "14:00–16:00",
+   "yer": "B-204"
+  },
+  "rendered": "Teşekkürler! — Ege Farma"
+ },
+ {
+  "event": {
+   "title": "Saatsiz",
+   "clubName": "K",
+   "eventDateAtMs": 1790715600000
+  },
+  "ad": "Ayşe",
+  "text": "Merhaba {ad}, {etkinlik} {tarih} {saat} {yer} {Kulüp} {isim} {x}",
+  "context": {
+   "etkinlik": "Saatsiz",
+   "kulup": "K",
+   "tarih": "30 Eylül",
+   "saat": "",
+   "yer": ""
+  },
+  "rendered": "Merhaba Ayşe, Saatsiz 30 Eylül K Ayşe {x}"
+ },
+ {
+  "event": {
+   "title": "Saatsiz",
+   "clubName": "K",
+   "eventDateAtMs": 1790715600000
+  },
+  "ad": "",
+  "text": "Merhaba {ad}, {etkinlik} {tarih} {saat} {yer} {Kulüp} {isim} {x}",
+  "context": {
+   "etkinlik": "Saatsiz",
+   "kulup": "K",
+   "tarih": "30 Eylül",
+   "saat": "",
+   "yer": ""
+  },
+  "rendered": "Merhaba, Saatsiz 30 Eylül K {x}"
+ },
+ {
+  "event": {
+   "title": "Saatsiz",
+   "clubName": "K",
+   "eventDateAtMs": 1790715600000
+  },
+  "ad": "Ayşe",
+  "text": "Merhaba {ad}, yarın görüşürüz!",
+  "context": {
+   "etkinlik": "Saatsiz",
+   "kulup": "K",
+   "tarih": "30 Eylül",
+   "saat": "",
+   "yer": ""
+  },
+  "rendered": "Merhaba Ayşe, yarın görüşürüz!"
+ },
+ {
+  "event": {
+   "title": "Saatsiz",
+   "clubName": "K",
+   "eventDateAtMs": 1790715600000
+  },
+  "ad": "",
+  "text": "Merhaba {ad}, yarın görüşürüz!",
+  "context": {
+   "etkinlik": "Saatsiz",
+   "kulup": "K",
+   "tarih": "30 Eylül",
+   "saat": "",
+   "yer": ""
+  },
+  "rendered": "Merhaba, yarın görüşürüz!"
+ },
+ {
+  "event": {
+   "title": "Saatsiz",
+   "clubName": "K",
+   "eventDateAtMs": 1790715600000
+  },
+  "ad": "Ayşe",
+  "text": "{etkinlik}: salon",
+  "context": {
+   "etkinlik": "Saatsiz",
+   "kulup": "K",
+   "tarih": "30 Eylül",
+   "saat": "",
+   "yer": ""
+  },
+  "rendered": "Saatsiz: salon"
+ },
+ {
+  "event": {
+   "title": "Saatsiz",
+   "clubName": "K",
+   "eventDateAtMs": 1790715600000
+  },
+  "ad": "",
+  "text": "{etkinlik}: salon",
+  "context": {
+   "etkinlik": "Saatsiz",
+   "kulup": "K",
+   "tarih": "30 Eylül",
+   "saat": "",
+   "yer": ""
+  },
+  "rendered": "Saatsiz: salon"
+ },
+ {
+  "event": {
+   "title": "Saatsiz",
+   "clubName": "K",
+   "eventDateAtMs": 1790715600000
+  },
+  "ad": "Ayşe",
+  "text": "Teşekkürler {ad}! — {kulüp}",
+  "context": {
+   "etkinlik": "Saatsiz",
+   "kulup": "K",
+   "tarih": "30 Eylül",
+   "saat": "",
+   "yer": ""
+  },
+  "rendered": "Teşekkürler Ayşe! — K"
+ },
+ {
+  "event": {
+   "title": "Saatsiz",
+   "clubName": "K",
+   "eventDateAtMs": 1790715600000
+  },
+  "ad": "",
+  "text": "Teşekkürler {ad}! — {kulüp}",
+  "context": {
+   "etkinlik": "Saatsiz",
+   "kulup": "K",
+   "tarih": "30 Eylül",
+   "saat": "",
+   "yer": ""
+  },
+  "rendered": "Teşekkürler! — K"
+ },
+ {
+  "event": {
+   "title": "Yersiz",
+   "clubName": "",
+   "eventStartAtMs": 1790766000000
+  },
+  "ad": "Ayşe",
+  "text": "Merhaba {ad}, {etkinlik} {tarih} {saat} {yer} {Kulüp} {isim} {x}",
+  "context": {
+   "etkinlik": "Yersiz",
+   "kulup": "",
+   "tarih": "30 Eylül",
+   "saat": "14:00",
+   "yer": ""
+  },
+  "rendered": "Merhaba Ayşe, Yersiz 30 Eylül 14:00 Ayşe {x}"
+ },
+ {
+  "event": {
+   "title": "Yersiz",
+   "clubName": "",
+   "eventStartAtMs": 1790766000000
+  },
+  "ad": "",
+  "text": "Merhaba {ad}, {etkinlik} {tarih} {saat} {yer} {Kulüp} {isim} {x}",
+  "context": {
+   "etkinlik": "Yersiz",
+   "kulup": "",
+   "tarih": "30 Eylül",
+   "saat": "14:00",
+   "yer": ""
+  },
+  "rendered": "Merhaba, Yersiz 30 Eylül 14:00 {x}"
+ },
+ {
+  "event": {
+   "title": "Yersiz",
+   "clubName": "",
+   "eventStartAtMs": 1790766000000
+  },
+  "ad": "Ayşe",
+  "text": "Merhaba {ad}, yarın görüşürüz!",
+  "context": {
+   "etkinlik": "Yersiz",
+   "kulup": "",
+   "tarih": "30 Eylül",
+   "saat": "14:00",
+   "yer": ""
+  },
+  "rendered": "Merhaba Ayşe, yarın görüşürüz!"
+ },
+ {
+  "event": {
+   "title": "Yersiz",
+   "clubName": "",
+   "eventStartAtMs": 1790766000000
+  },
+  "ad": "",
+  "text": "Merhaba {ad}, yarın görüşürüz!",
+  "context": {
+   "etkinlik": "Yersiz",
+   "kulup": "",
+   "tarih": "30 Eylül",
+   "saat": "14:00",
+   "yer": ""
+  },
+  "rendered": "Merhaba, yarın görüşürüz!"
+ },
+ {
+  "event": {
+   "title": "Yersiz",
+   "clubName": "",
+   "eventStartAtMs": 1790766000000
+  },
+  "ad": "Ayşe",
+  "text": "{etkinlik}: salon",
+  "context": {
+   "etkinlik": "Yersiz",
+   "kulup": "",
+   "tarih": "30 Eylül",
+   "saat": "14:00",
+   "yer": ""
+  },
+  "rendered": "Yersiz: salon"
+ },
+ {
+  "event": {
+   "title": "Yersiz",
+   "clubName": "",
+   "eventStartAtMs": 1790766000000
+  },
+  "ad": "",
+  "text": "{etkinlik}: salon",
+  "context": {
+   "etkinlik": "Yersiz",
+   "kulup": "",
+   "tarih": "30 Eylül",
+   "saat": "14:00",
+   "yer": ""
+  },
+  "rendered": "Yersiz: salon"
+ },
+ {
+  "event": {
+   "title": "Yersiz",
+   "clubName": "",
+   "eventStartAtMs": 1790766000000
+  },
+  "ad": "Ayşe",
+  "text": "Teşekkürler {ad}! — {kulüp}",
+  "context": {
+   "etkinlik": "Yersiz",
+   "kulup": "",
+   "tarih": "30 Eylül",
+   "saat": "14:00",
+   "yer": ""
+  },
+  "rendered": "Teşekkürler Ayşe! —"
+ },
+ {
+  "event": {
+   "title": "Yersiz",
+   "clubName": "",
+   "eventStartAtMs": 1790766000000
+  },
+  "ad": "",
+  "text": "Teşekkürler {ad}! — {kulüp}",
+  "context": {
+   "etkinlik": "Yersiz",
+   "kulup": "",
+   "tarih": "30 Eylül",
+   "saat": "14:00",
+   "yer": ""
+  },
+  "rendered": "Teşekkürler! —"
+ }
+]

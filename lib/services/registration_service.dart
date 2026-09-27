@@ -337,29 +337,36 @@ class RegistrationService {
   );
 
   // ── İP-B: kulübün etkinlik mesajı ────────────────────────────────────────
-  /// Seçilen gruba bildirim gönderir (ya da [preview] ile yalnızca kaç kişiye
-  /// gideceğini sorar). Gruplar: registered, checked_in, not_checked_in,
-  /// waitlist. Dönüş: alıcı sayısı.
-  Future<int> sendEventMessage({
+  /// Seçilen gruba bildirim gönderir. Gruplar: registered, checked_in,
+  /// not_checked_in, payment_pending, waitlist. Metinde akıllı etiketler
+  /// ({ad}, {etkinlik}, …) olabilir; sunucu her öğrenciye doldurur.
+  Future<EventMessageResult> sendEventMessage({
     required String eventId,
     required String audience,
     required String title,
     required String message,
-    bool preview = false,
-  }) async {
-    final Map<String, dynamic> out = await _call(
-      'clubSendEventMessage',
-      <String, Object?>{
-        'eventId': eventId,
-        'audience': audience,
-        'title': title,
-        'message': message,
-        'preview': preview,
-      },
-      timeout: const Duration(seconds: 120),
-    );
-    return (out['recipients'] as num?)?.toInt() ?? 0;
-  }
+    String templateId = '',
+  }) async => EventMessageResult.fromMap(
+    await _call('clubSendEventMessage', <String, Object?>{
+      'eventId': eventId,
+      'audience': audience,
+      'title': title,
+      'message': message,
+      'templateId': templateId,
+    }, timeout: const Duration(seconds: 120)),
+  );
+
+  /// Göndermeden: kaç kişiye gideceği ve kota durumu.
+  Future<EventMessageResult> previewEventMessage({
+    required String eventId,
+    required String audience,
+  }) async => EventMessageResult.fromMap(
+    await _call('clubSendEventMessage', <String, Object?>{
+      'eventId': eventId,
+      'audience': audience,
+      'preview': true,
+    }),
+  );
 
   // ── İP-KB: kulübün öğrenci engeli ────────────────────────────────────────
   /// Kulüp, etkinliğine kaydolmuş bir öğrenciyi kendi etkinliklerinden
@@ -417,4 +424,32 @@ class RegistrationService {
       notified: (out['notified'] as num?)?.toInt() ?? 0,
     );
   }
+}
+
+/// Kulüp mesajı gönderimi / önizlemesi sonucu (alıcı sayısı + kota).
+class EventMessageResult {
+  const EventMessageResult({
+    required this.recipients,
+    required this.dailyLimit,
+    required this.remainingToday,
+    this.nextAllowedAtMs,
+  });
+
+  factory EventMessageResult.fromMap(Map<String, dynamic> map) {
+    final Object? q = map['quota'];
+    final Map<String, dynamic> quota = q is Map
+        ? Map<String, dynamic>.from(q)
+        : const <String, dynamic>{};
+    return EventMessageResult(
+      recipients: (map['recipients'] as num?)?.toInt() ?? 0,
+      dailyLimit: (quota['dailyLimit'] as num?)?.toInt() ?? 5,
+      remainingToday: (quota['remainingToday'] as num?)?.toInt() ?? 5,
+      nextAllowedAtMs: (quota['nextAllowedAtMs'] as num?)?.toInt(),
+    );
+  }
+
+  final int recipients;
+  final int dailyLimit;
+  final int remainingToday;
+  final int? nextAllowedAtMs;
 }
