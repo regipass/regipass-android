@@ -111,4 +111,23 @@ void main() {
     expect(mergeSendHistory(events, msgs, type: 'manual'), hasLength(1));
     expect(mergeSendHistory(events, msgs, type: 'auto'), hasLength(2));
   });
+
+  test('giriş ve oturum bildirimleri de listelenir', () {
+    final List<AppEvent> events = <AppEvent>[
+      ev('e1', <String, dynamic>{
+        'notificationsSent': <String, dynamic>{
+          'entryOpen': now - h,
+          'session_2': now,
+          'bilinmeyen': now,
+        },
+      }),
+    ];
+    expect(
+      mergeSendHistory(
+        events,
+        const <ClubMessageRecord>[],
+      ).map((SendHistoryItem i) => i.reminderKey),
+      <String>['session_2', 'entryOpen'],
+    );
+  });
 }

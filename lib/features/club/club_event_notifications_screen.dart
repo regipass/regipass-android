@@ -55,6 +55,17 @@ final clubAllMessagesProvider = StreamProvider<List<ClubMessageRecord>>((
       );
 });
 
+/// Otomatik gönderimin adı: dört zamanlı an, giriş başladı, N. oturum başladı.
+String _autoLabel(BuildContext context, String key) {
+  if (key == 'entryOpen') return context.t('clubNotify.entryOpen');
+  if (key.startsWith('session_')) {
+    return context.t('clubNotify.sessionStarted', <String, Object?>{
+      'n': key.substring(8),
+    });
+  }
+  return context.t('autoNotify.$key');
+}
+
 String _when(int ms, {bool time = true}) {
   if (ms <= 0) return '';
   final DateTime d = DateTime.fromMillisecondsSinceEpoch(ms);
@@ -254,9 +265,7 @@ class _ClubEventNotificationsScreenState
                     color: i.isAuto ? BrandColors.info : BrandColors.success,
                   ),
                   title: Text(
-                    i.isAuto
-                        ? context.t('autoNotify.${i.reminderKey}')
-                        : m!.title,
+                    i.isAuto ? _autoLabel(context, i.reminderKey!) : m!.title,
                   ),
                   subtitle: Text(
                     <String>[
