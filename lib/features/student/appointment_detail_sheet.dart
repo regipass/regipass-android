@@ -16,6 +16,7 @@ import '../shared/common_widgets.dart';
 import '../shared/event_widgets.dart';
 import '../shared/qr_code_view.dart';
 import '../shared/ticket_image.dart';
+import '../shared/wallet_buttons.dart';
 import 'event_feedback_card.dart';
 import 'student_providers.dart';
 
@@ -474,6 +475,12 @@ class _AppointmentDetailSheetState
                                 label: Text(context.t('postRegistration.ticketSave')),
                                 onPressed: _ticketSaving ? null : () => _saveTicketImage(b, item),
                               ),
+                            ),
+                            // İP-W: cüzdana ekle (app_config/wallet kapalıyken görünmez).
+                            WalletButtons(
+                              registrationId: item.registration.id,
+                              cancelled: item.isCancelled,
+                              paymentPending: item.paymentPending,
                             ),
                           ],
                         ],

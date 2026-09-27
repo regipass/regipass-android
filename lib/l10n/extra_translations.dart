@@ -11,6 +11,15 @@ library;
 const Map<String, Map<String, String>>
 kExtraTranslations = <String, Map<String, String>>{
   'tr': <String, String>{
+    // İP-W: cüzdan
+    'wallet.addApple': 'Apple Cüzdan\'a ekle',
+    'wallet.addGoogle': 'Google Cüzdan\'a ekle',
+    'wallet.preparing': 'Hazırlanıyor...',
+    'wallet.error.disabled': 'Cüzdana ekleme şu an kullanılamıyor.',
+    'wallet.error.paymentPending': 'Ödemen onaylanınca bileti cüzdana ekleyebilirsin.',
+    'wallet.error.cancelled': 'İptal edilen etkinliğin bileti cüzdana eklenemez.',
+    'wallet.error.past': 'Geçmiş etkinliğin bileti cüzdana eklenemez.',
+    'wallet.error.generic': 'Bilet hazırlanamadı. İnternet bağlantını kontrol edip tekrar dene.',
     // İP-R: rapor
     'report.title': 'Etkinlik Raporu',
     'report.button': 'Rapor indir',
@@ -1402,6 +1411,15 @@ kExtraTranslations = <String, Map<String, String>>{
     'registration.ticket.paymentPendingHint': 'Ödemen henüz onaylanmadı: kapıda giriş yapılamaz. Kulüp ödemeni onaylayınca bilet geçerli olur.',
   },
   'en': <String, String>{
+    // İP-W: cüzdan
+    'wallet.addApple': 'Add to Apple Wallet',
+    'wallet.addGoogle': 'Add to Google Wallet',
+    'wallet.preparing': 'Preparing...',
+    'wallet.error.disabled': 'Adding to wallet isn\'t available right now.',
+    'wallet.error.paymentPending': 'You can add the ticket once your payment is confirmed.',
+    'wallet.error.cancelled': 'Tickets for cancelled events can\'t be added.',
+    'wallet.error.past': 'Tickets for past events can\'t be added.',
+    'wallet.error.generic': 'Couldn\'t prepare the ticket. Check your connection and try again.',
     // İP-R: rapor
     'report.title': 'Event Report',
     'report.button': 'Download report',
