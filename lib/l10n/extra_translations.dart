@@ -935,7 +935,8 @@ kExtraTranslations = <String, Map<String, String>>{
     'admin.ban.banButton': 'Engelle',
     'admin.ban.unbanButton': 'Engeli Kaldır',
     'admin.ban.confirmBan':
-        '{{name}} engellensin mi? Oturumu kapatılır ve giriş yapamaz.',
+        '{{name}} engellensin mi? Oturumu kapatılır ve giriş yapamaz; gelecek '
+        'etkinliklerdeki kayıtları silinip yerleri boşalır.',
     'admin.ban.confirmUnban': '{{name}} için engel kaldırılsın mı?',
     'admin.ban.tab.students': 'Öğrenciler',
     'admin.ban.tab.clubs': 'Kulüpler',
@@ -2112,7 +2113,8 @@ kExtraTranslations = <String, Map<String, String>>{
     'admin.ban.banButton': 'Block',
     'admin.ban.unbanButton': 'Unblock',
     'admin.ban.confirmBan':
-        'Block {{name}}? They will be signed out and cannot log in.',
+        'Block {{name}}? They will be signed out and cannot log in; their '
+        'upcoming registrations are removed and the seats freed.',
     'admin.ban.confirmUnban': 'Remove the block for {{name}}?',
     'admin.ban.tab.students': 'Students',
     'admin.ban.tab.clubs': 'Clubs',
