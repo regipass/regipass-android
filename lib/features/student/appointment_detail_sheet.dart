@@ -460,6 +460,10 @@ class _AppointmentDetailSheetState
                                 key: const Key('saveTicketImage'),
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor: BrandColors.white,
+                                  // Temadaki dolu (beyaz) zemin koyu katmanda
+                                  // yazıyı görünmez yapıyordu; saydam zeminde de
+                                  // arkadaki metin sızıyordu → koyu dolu zemin.
+                                  backgroundColor: BrandColors.blackDeep,
                                   side: const BorderSide(color: BrandColors.white),
                                 ),
                                 icon: const Icon(Icons.download_outlined),
