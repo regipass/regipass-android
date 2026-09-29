@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app/demo_mode.dart';
 import '../../domain/checkin_qr.dart';
 
 /// QR'ı cihazda çizen kutu (İP-O / O3).
@@ -15,11 +16,13 @@ class QrCodeView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Ekran görüntüsü kipinde (yalnız demo) QR herkese regipass.com açar.
+    final String shown = kShotsMode ? kShotsQrData : data;
     return RepaintBoundary(
       child: CustomPaint(
-        key: ValueKey<String>(data),
+        key: ValueKey<String>(shown),
         size: Size.square(size),
-        painter: QrMatrixPainter(buildQrMatrix(data)),
+        painter: QrMatrixPainter(buildQrMatrix(shown)),
       ),
     );
   }

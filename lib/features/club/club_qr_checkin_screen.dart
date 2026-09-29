@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,12 +7,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../app/demo_mode.dart';
 import '../../app/theme.dart';
 import '../../domain/door_gate.dart';
 import '../../l10n/app_strings.dart';
 import '../../services/door_gate.dart';
 import '../../state/connectivity.dart';
 import '../shared/common_widgets.dart';
+import '../shared/qr_code_view.dart';
 import 'club_providers.dart';
 import 'club_shell.dart';
 
@@ -131,6 +134,39 @@ class _ClubQrCheckinScreenState extends ConsumerState<ClubQrCheckinScreen>
     WidgetsBinding.instance.addObserver(this);
     _activeEventId = widget.eventId ?? '';
     unawaited(_init());
+    if (kShotsMode) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _showShotsSample());
+    }
+  }
+
+  /// Yalnız ekran görüntüsü kipi (demo_mode.dart): simülatörde kamera
+  /// olmadığından örnek bir başarılı okutma gösterilir. Hiçbir şey yazılmaz.
+  void _showShotsSample() {
+    if (!mounted) return;
+    final int now = DateTime.now().millisecondsSinceEpoch;
+    _show(
+      GateOutcome(
+        result: GateResult.checkedIn,
+        scannedAtMs: now,
+        registration: GateRegistration(
+          id: 'demo-shots',
+          eventId: _activeEventId,
+          studentId: '',
+          studentName: 'Arda Güler',
+          studentPhotoUrl: '',
+          studentDepartment: 'Bilgisayar Mühendisliği',
+          studentUniversity: 'Kuzeyşehir Üniversitesi',
+          studentClassYear: '3. Sınıf',
+          ticketCode: '',
+          checkedInAtMs: now,
+        ),
+      ),
+    );
+    _collapseTimer?.cancel();
+    setState(() {
+      _recent.first.status = _SendStatus.sent;
+      _flashTone = GateTone.none;
+    });
   }
 
   Future<void> _init() async {
@@ -256,9 +292,9 @@ class _ClubQrCheckinScreenState extends ConsumerState<ClubQrCheckinScreen>
       _show(next);
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.t('gate.markPaidFailed'))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.t('gate.markPaidFailed'))));
     } finally {
       if (mounted) setState(() => _markingPaid = false);
     }
@@ -376,20 +412,24 @@ class _ClubQrCheckinScreenState extends ConsumerState<ClubQrCheckinScreen>
       body: Stack(
         fit: StackFit.expand,
         children: <Widget>[
-          MobileScanner(
-            controller: _controller,
-            onDetect: _onDetect,
-            errorBuilder:
-                (BuildContext context, MobileScannerException error) => Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: FeedbackBanner(
-                      message: context.t('scan.permissionDenied'),
-                      tone: FeedbackTone.error,
-                    ),
-                  ),
-                ),
-          ),
+          if (kShotsMode)
+            const _ShotsCameraScene()
+          else
+            MobileScanner(
+              controller: _controller,
+              onDetect: _onDetect,
+              errorBuilder:
+                  (BuildContext context, MobileScannerException error) =>
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: FeedbackBanner(
+                            message: context.t('scan.permissionDenied'),
+                            tone: FeedbackTone.error,
+                          ),
+                        ),
+                      ),
+            ),
 
           // Okuma çerçevesi
           Align(
@@ -544,6 +584,94 @@ class _ClubQrCheckinScreenState extends ConsumerState<ClubQrCheckinScreen>
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Ekran görüntüsü kipi: kamerada elde tutulan bir telefon ve bilet QR'ı
+/// (QR herkese https://regipass.com açar).
+class _ShotsCameraScene extends StatelessWidget {
+  const _ShotsCameraScene();
+
+  static const String _bg =
+      'https://regipass-demos.web.app/demo-assets/events/ctf-1.jpg';
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: <Widget>[
+        ImageFiltered(
+          imageFilter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+          child: Image.network(_bg, fit: BoxFit.cover),
+        ),
+        const ColoredBox(color: Color(0x80000000)),
+        Align(
+          alignment: const Alignment(0, -0.28),
+          child: Transform.rotate(
+            angle: -0.12,
+            child: ImageFiltered(
+              imageFilter: ImageFilter.blur(sigmaX: 0.6, sigmaY: 0.6),
+              child: Container(
+                width: 250,
+                height: 500,
+                padding: const EdgeInsets.all(9),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF15181E),
+                  borderRadius: BorderRadius.circular(40),
+                  boxShadow: const <BoxShadow>[
+                    BoxShadow(
+                      color: Color(0x99000000),
+                      blurRadius: 30,
+                      offset: Offset(10, 18),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(32),
+                  child: ColoredBox(
+                    color: const Color(0xFFF1EFEF),
+                    child: Center(
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 14),
+                        padding: const EdgeInsets.fromLTRB(14, 18, 14, 16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(22),
+                        ),
+                        child: const Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            Text(
+                              'Giriş Biletin',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF161A1D),
+                              ),
+                            ),
+                            SizedBox(height: 12),
+                            QrCodeView(data: kShotsQrData, size: 170),
+                            SizedBox(height: 10),
+                            Text(
+                              'Kapıda bu bileti kulüp görevlisine göster.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

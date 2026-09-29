@@ -9,10 +9,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 import 'app/app.dart';
+import 'app/demo_mode.dart';
 import 'app/system_ui.dart';
 import 'app/theme.dart';
 import 'features/landing/splash_screen.dart';
-import 'firebase_options.dart';
 import 'services/notification_read_store.dart';
 import 'services/notification_service.dart';
 import 'services/role_session_store.dart';
@@ -57,7 +57,7 @@ void main() {
 /// reCAPTCHA'ya düşer. Konsol tarafındaki koşullar için:
 /// `docs/telefon-dogrulama-recaptcha.md`.
 Future<void> _initFirebase() async {
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await Firebase.initializeApp(options: appFirebaseOptions);
 
   try {
     await FirebaseAuth.instance.setSettings(

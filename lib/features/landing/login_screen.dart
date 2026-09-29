@@ -1,14 +1,17 @@
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/demo_mode.dart';
 import '../../app/system_ui.dart';
 import '../../app/theme.dart';
 import '../../core/input_guard.dart';
 import '../../core/sanitize.dart';
 import '../../domain/routing.dart';
 import '../../l10n/app_strings.dart';
+import '../../services/firebase_refs.dart';
 import '../../state/connectivity.dart';
 import '../../state/providers.dart';
 import '../auth/auth_actions.dart';
@@ -112,6 +115,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
   }
 
+  /// Demo: sunucu hazır hesaba jeton verir, şifre yok (demo_mode.dart).
+  Future<void> _signInDemo(String role) => _run(() async {
+    final HttpsCallableResult<dynamic> res = await fbFunctions
+        .httpsCallable(
+          'demoSignIn',
+          options: HttpsCallableOptions(timeout: const Duration(seconds: 25)),
+        )
+        .call(<String, dynamic>{'role': role});
+    final String token =
+        '${(res.data as Map<dynamic, dynamic>)['token'] ?? ''}';
+    final UserCredential result = await fbAuth.signInWithCustomToken(token);
+    if (result.user != null) await completePostAuth(ref, result.user!);
+  });
+
   Future<void> _signInWithGoogle() => _run(() async {
     final UserCredential result = await ref
         .read(authRepositoryProvider)
@@ -182,7 +199,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           const SizedBox(height: 28),
                           _buildCard(context),
                           const SizedBox(height: 18),
-                          _RegisterLink(enabled: !_loading),
+                          if (!kDemoMode) _RegisterLink(enabled: !_loading),
                         ],
                       ),
                     ),
@@ -201,6 +218,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     // silinen kayıt) sebebi burada yazar; aksi hâlde kullanıcı hesabının
     // neden kaybolduğunu hiç öğrenemezdi. İlk giriş denemesinde temizlenir.
     final String? noticeKey = ref.watch(signOutNoticeProvider);
+
+    if (kDemoMode) return _buildDemoCard(context);
 
     return AuthGlassCard(
       child: Column(
@@ -306,6 +325,52 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               context.t('auth.forgotPassword'),
               style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDemoCard(BuildContext context) {
+    return AuthGlassCard(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Text(
+            context.t('demo.title'),
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.w800,
+              color: context.authColors.text,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            context.t('demo.desc'),
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              height: 1.5,
+              color: context.authColors.muted,
+            ),
+          ),
+          const SizedBox(height: 18),
+          if (_feedback != null) ...<Widget>[
+            AuthFeedback(message: _feedback!, tone: _tone),
+            const SizedBox(height: 14),
+          ],
+          AuthPrimaryButton(
+            label: context.t('demo.student'),
+            loading: _loading,
+            onPressed: () => _signInDemo('student'),
+          ),
+          const SizedBox(height: 12),
+          AuthSocialButton(
+            label: context.t('demo.club'),
+            icon: Icons.groups_outlined,
+            enabled: !_loading,
+            onPressed: () => _signInDemo('club'),
           ),
         ],
       ),
