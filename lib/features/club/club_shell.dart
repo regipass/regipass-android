@@ -359,8 +359,9 @@ class _NavTab extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontSize: 10.5,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+              fontSize: 11,
+              height: 1.2,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               color: color,
             ),
           ),
@@ -550,7 +551,7 @@ class ClubAppBar extends StatelessWidget implements PreferredSizeWidget {
       titleSpacing: showBack ? 0 : 16,
       title: Row(
         children: <Widget>[
-          const BrandMark(size: 30),
+          const BrandMark(size: 30, color: BrandColors.red),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -562,8 +563,10 @@ class ClubAppBar extends StatelessWidget implements PreferredSizeWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 16,
+                    fontFamily: BrandFonts.heading,
+                    fontSize: 16.5,
                     fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
                   ),
                 ),
                 if (subtitle != null && subtitle!.isNotEmpty)
@@ -571,7 +574,11 @@ class ClubAppBar extends StatelessWidget implements PreferredSizeWidget {
                     subtitle!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 11.5, color: context.inkMuted),
+                    style: TextStyle(
+                      fontSize: 12,
+                      height: 1.3,
+                      color: context.inkMuted,
+                    ),
                   ),
               ],
             ),

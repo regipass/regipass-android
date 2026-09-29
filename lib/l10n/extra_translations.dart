@@ -12,7 +12,7 @@ const Map<String, Map<String, String>>
 kExtraTranslations = <String, Map<String, String>>{
   'tr': <String, String>{
     // İP-8 / İP-9: yeni sertifika sistemi (web language.js ile aynı metinler)
-    'cert.panel.title': 'Sertifika',
+    'cert.panel.title': 'Katılım Belgesi',
     'cert.editor.sampleName': 'Ad Soyad',
     'cert.gate.open': 'Hak kazanan ve henüz belge almamış herkese gönderebilirsin.',
     'cert.list.open': 'Aç',
@@ -20,9 +20,9 @@ kExtraTranslations = <String, Map<String, String>>{
     'cert.mobile.editOnWeb': 'Belgeyi düzenlemek için regipass.com web sitesini kullanın.',
     'cert.mobile.preview': 'Örnek belgeyi gör',
     'cert.mobile.send': 'Gönder',
-    'cert.mobile.webOnly': 'Bu etkinlik için henüz belge ayarlanmadı. Örnek sertifikayı yüklemek ve düzenlemek için regipass.com web sitesini kullanın.',
+    'cert.mobile.webOnly': 'Bu etkinlik için henüz belge ayarlanmadı. Örnek belgeyi yüklemek ve düzenlemek için regipass.com web sitesini kullanın.',
     'cert.panel.allSent': 'Herkese gönderildi',
-    'cert.panel.loading': 'Sertifika bilgileri yükleniyor…',
+    'cert.panel.loading': 'Katılım belgesi bilgileri yükleniyor…',
     'cert.panel.outdated': 'Şablon gönderimden sonra değişti. {{n}} belge eski sürümde.',
     'cert.panel.reissue': 'Güncel sürümü yeniden gönder',
     'cert.panel.revokeAll': 'Tüm gönderimi geri al',
@@ -30,21 +30,21 @@ kExtraTranslations = <String, Map<String, String>>{
     'cert.panel.sendN': '{{n}} kişiye gönder',
     'cert.panel.sendNew': '{{n}} yeni kişiye gönder',
     'cert.panel.sending': 'Gönderiliyor… {{done}}/{{total}}',
-    'cert.reason.already-running': 'Bu etkinlikte bir gönderim ya da geri alma zaten sürüyor. Bitince tekrar dene.',
+    'cert.reason.already-running': 'Bu etkinlikte bir gönderim ya da geri alma işlemi sürüyor. Bitince tekrar dene.',
     'cert.reason.bad-color': 'Renk kodu geçersiz.',
     'cert.reason.bad-font': 'Yazı tipi geçersiz.',
-    'cert.reason.bad-page': 'Bir alan olmayan bir sayfada.',
+    'cert.reason.bad-page': 'Bir alan, şablonda olmayan bir sayfada.',
     'cert.reason.bad-size': 'Punto 6 ile 96 arasında olmalı.',
     'cert.reason.bad-threshold': 'Eşik 0 ile 100 arasında olmalı.',
-    'cert.reason.box-outside-page': 'Bir alan sayfanın dışına taşıyor.',
-    'cert.reason.box-too-small': 'Bir alan çok küçük.',
+    'cert.reason.box-outside-page': 'Bir alan sayfanın dışına taşıyor; kutuyu sayfanın içine çek.',
+    'cert.reason.box-too-small': 'Bir alan çok küçük; kutuyu biraz büyüt.',
     'cert.reason.certificate-not-found': 'Belge bulunamadı.',
     'cert.reason.certificate-not-issued': 'Bu belge henüz gönderilmedi.',
     'cert.reason.certificate-revoked': 'Bu belge geri alındı.',
-    'cert.reason.checkin-not-started': 'Gönder kilitli: önce check-in\'i başlatıp bitir (“Check-in\'i Bitir”).',
-    'cert.reason.checkin-open': 'Gönder kilitli: check-in hâlâ açık. Bitirince (“Check-in\'i Bitir”) açılır.',
-    'cert.reason.club-banned': 'Hesabın engelli olduğu için bu işlem yapılamaz.',
-    'cert.reason.code-collision': 'Kod üretilemedi, tekrar dene.',
+    'cert.reason.checkin-not-started': 'Gönderim kilitli: önce kapı girişini başlat, etkinlik bitince “Kapı Girişini Bitir”e bas.',
+    'cert.reason.checkin-open': 'Gönderim kilitli: kapı girişi hâlâ açık. “Kapı Girişini Bitir”e bastığında açılır.',
+    'cert.reason.club-banned': 'Kulüp hesabın engelli olduğu için bu işlem yapılamıyor.',
+    'cert.reason.code-collision': 'Belge kodu üretilemedi. Tekrar dene.',
     'cert.reason.config-not-saved': 'Önce belgeyi editörde ayarlayıp kaydet.',
     'cert.reason.empty-text': 'Serbest metin alanı boş olamaz.',
     'cert.reason.event-cancelled': 'Etkinlik iptal edildiği için belge gönderilemez.',
@@ -54,18 +54,18 @@ kExtraTranslations = <String, Map<String, String>>{
     'cert.reason.missing-student-name': '“Öğrenci adı” alanı sayfada olmalı.',
     'cert.reason.name-missing': 'profilde ad yok',
     'cert.reason.not-allowed': 'Bu belgeyi açma yetkin yok.',
-    'cert.reason.not-event-club': 'Bu etkinlik senin kulübüne ait değil.',
+    'cert.reason.not-event-club': 'Bu etkinlik kulübüne ait değil.',
     'cert.reason.render-failed': 'belge üretilemedi',
-    'cert.reason.sessions-not-finished': 'Gönder kilitli: önce etkinlik ekranında “Oturumları Bitir”e bas.',
+    'cert.reason.sessions-not-finished': 'Gönderim kilitli: önce etkinlik ekranında “Oturumları Bitir”e bas.',
     'cert.reason.student-name-missing': 'profilde ad yok',
-    'cert.reason.template-empty': 'PDF\'te sayfa yok.',
+    'cert.reason.template-empty': 'PDF\'te hiç sayfa yok.',
     'cert.reason.template-encrypted': 'Bu PDF şifreli. Şifresiz bir kopyasını yükle.',
-    'cert.reason.template-missing': 'Şablon bulunamadı. Örnek sertifikayı yeniden yükle.',
+    'cert.reason.template-missing': 'Şablon bulunamadı. Örnek belgeni yeniden yükle.',
     'cert.reason.template-too-large': 'Dosya çok büyük (en çok 10 MB).',
-    'cert.reason.template-unreadable': 'Bu PDF okunamadı. Farklı bir dışa aktarımla tekrar dene.',
+    'cert.reason.template-unreadable': 'Bu PDF okunamadı. Dosyayı farklı bir programdan yeniden dışa aktarıp tekrar dene.',
     'cert.reason.template-unsupported': 'Bu dosya türü desteklenmiyor. PDF, PNG ya da JPG yükle.',
     'cert.reason.too-many-fields': 'En çok 20 alan eklenebilir.',
-    'cert.revoke.text': 'Belgeler öğrencilerin ekranından kalkar, doğrulama sayfası bunları “İptal edildi” gösterir. Sonra yeniden gönderebilirsin; yeni belgeler yeni kodla üretilir.',
+    'cert.revoke.text': 'Belgeler öğrencilerin ekranından kalkar ve doğrulama sayfasında “İptal edildi” olarak görünür. İstersen sonra yeniden gönderebilirsin; yeni belgeler yeni kodla üretilir.',
     'cert.revoke.title': 'Etkinliğin bütün belgeleri iptal edilsin mi?',
     'cert.revoke.yes': 'Evet, hepsini geri al',
     'cert.stat.eligible': 'Hak kazanan',
@@ -100,16 +100,16 @@ kExtraTranslations = <String, Map<String, String>>{
     'wallet.error.paymentPending': 'Ödemen onaylanınca bileti cüzdana ekleyebilirsin.',
     'wallet.error.cancelled': 'İptal edilen etkinliğin bileti cüzdana eklenemez.',
     'wallet.error.past': 'Geçmiş etkinliğin bileti cüzdana eklenemez.',
-    'wallet.error.generic': 'Bilet hazırlanamadı. İnternet bağlantını kontrol edip tekrar dene.',
+    'wallet.error.generic': 'Bilet hazırlanamadı. İnternetini kontrol edip tekrar dene.',
     // İP-R: rapor
     'report.title': 'Etkinlik Raporu',
-    'report.button': 'Rapor indir',
+    'report.button': 'Raporu İndir',
     'report.pdf': 'PDF',
     'report.excel': 'Excel',
-    'report.help': 'Katılım oranı, oturum yoklaması, bölüm / sınıf dağılımı ve değerlendirme özeti. PDF kişisel bilgi içermez; katılımcı listesi Excel\'de.',
+    'report.help': 'Katılım oranı, oturum yoklaması, bölüm/sınıf dağılımı ve değerlendirme özeti. PDF kişisel bilgi içermez; katılımcı listesi Excel dosyasında.',
     'report.preparing': 'Rapor hazırlanıyor...',
     'report.done': 'Rapor indirildi.',
-    'report.error': 'Rapor hazırlanamadı. İnternet bağlantını kontrol edip tekrar dene.',
+    'report.error': 'Rapor hazırlanamadı. İnternetini kontrol edip tekrar dene.',
     // İP-D: değerlendirme
     'feedback.locale': 'tr-TR',
     'feedback.decimal': ',',
@@ -133,19 +133,19 @@ kExtraTranslations = <String, Map<String, String>>{
     'feedback.thanks': 'Teşekkürler! Değerlendirmen kulübe isimsiz iletildi.',
     'feedback.anonymousNote': 'Kulüp adını görmez; yalnızca puanları ve yorumları isimsiz görür. Diğer öğrenciler hiç görmez.',
     'feedback.cardRate': 'Değerlendir',
-    'feedback.error.notCheckedIn': 'Yalnızca etkinliğe giriş yapanlar değerlendirebilir.',
+    'feedback.error.notCheckedIn': 'Yalnızca etkinliğe giriş yapanlar değerlendirme yapabilir.',
     'feedback.error.notFinished': 'Etkinlik bitince değerlendirebilirsin.',
     'feedback.error.closed': 'Değerlendirme süresi (14 gün) doldu.',
     'feedback.error.cancelled': 'İptal edilen etkinlik değerlendirilemez.',
     'feedback.error.badRating': '1 ile 5 arasında yıldız seç.',
     'feedback.error.banned': 'Hesabın askıya alındığı için değerlendirme yapamazsın.',
     'feedback.error.notOwner': 'Bu etkinliğin değerlendirmelerini yalnızca düzenleyen kulüp görür.',
-    'feedback.error.generic': 'Gönderilemedi. İnternet bağlantını kontrol edip tekrar dene.',
+    'feedback.error.generic': 'Gönderilemedi. İnternetini kontrol edip tekrar dene.',
     'feedback.club.title': 'Değerlendirmeler',
-    'feedback.club.empty': 'Henüz değerlendirme yok. Etkinliğe giriş yapan öğrencilere etkinlik bitince değerlendirme isteği gider; 14 gün boyunca puan verebilirler.',
+    'feedback.club.empty': 'Henüz değerlendirme yok. Etkinlik bitince giriş yapan öğrencilerden değerlendirme istenir; 14 gün boyunca puan verebilirler.',
     'feedback.club.count': '{{n}} değerlendirme',
     'feedback.club.comments': 'Yorumlar',
-    'feedback.club.commentsHidden': 'Yorumlar en az {{n}} değerlendirme olunca görünür (kimin yazdığı tahmin edilmesin diye).',
+    'feedback.club.commentsHidden': 'Yorumlar, kimin yazdığı tahmin edilmesin diye en az {{n}} değerlendirme olunca görünür.',
     'feedback.club.anonymous': 'Değerlendirmeler isimsizdir; kimin hangi puanı verdiği gösterilmez.',
     'feedback.club.loadError': 'Değerlendirmeler yüklenemedi. Pencereyi kapatıp yeniden aç.',
     // İP-TK: kulüp takip
@@ -173,7 +173,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'follow.error.banned': 'Hesabın askıya alındığı için kulüp takip edemezsin.',
     'follow.error.studentOnly': 'Kulüpleri yalnızca öğrenci hesapları takip edebilir.',
     'follow.error.signIn': 'Takip etmek için giriş yapmalısın.',
-    'follow.error.generic': 'İşlem yapılamadı. İnternet bağlantını kontrol edip tekrar dene.',
+    'follow.error.generic': 'İşlem yapılamadı. İnternetini kontrol edip tekrar dene.',
     // İP-B: etkinlik bildirimleri
     'autoNotify.title': 'Otomatik bildirimler',
     'profileChange.pendingTitle': 'Değişikliğin yönetici onayında',
@@ -361,12 +361,11 @@ kExtraTranslations = <String, Map<String, String>>{
         'Kod hatalı ya da süresi geçti. Uygulamadaki güncel kodu yaz.',
     'auth.totp.unsupported': 'Bu hesapta doğrulayıcı uygulama kayıtlı değil.',
     'admin.ban.clubImpact':
-        'Bu kulübün {{events}} gelecek etkinliği İPTAL edilecek; {{people}} '
-        'kayıtlı kişiye bildirim gidecek. Kulüp hesabı giriş yapamayacak.',
+        'Bu kulübün gelecekteki {{events}} etkinliği İPTAL edilecek ve {{people}} kayıtlı kişiye bildirim gidecek. Kulüp hesabı giriş yapamayacak.',
     'admin.ban.reasonLabel': 'Gerekçe',
     'admin.ban.reasonHelper':
         'Zorunlu. İşlem kaydına yazılır; öğrencilere gösterilmez.',
-    'admin.ban.reasonRequired': 'Engellemek için gerekçe yazmalısın.',
+    'admin.ban.reasonRequired': 'Engellemek için bir gerekçe yaz.',
     // register.js içinde sabit metin olarak duruyordu
     'auth.error.roleAlreadyExists':
         'Bu hesap türü zaten var. Lütfen giriş yap.',
@@ -381,7 +380,7 @@ kExtraTranslations = <String, Map<String, String>>{
     // Onay özeti — bilgi formunun altında ve hesap kartlarında.
     'legal.consent.summaryTitle': 'Onayladığın metinler',
     'legal.consent.acceptedAt': 'Onay zamanı',
-    'legal.consent.tileLabel': 'Metin onayı',
+    'legal.consent.tileLabel': 'Sözleşme ve KVKK onayı',
     'legal.consent.notRecorded': 'Kayıt yok',
     'legal.consent.marketingOn': 'pazarlama izni verildi',
     'legal.consent.marketingOff': 'pazarlama izni verilmedi',
@@ -517,13 +516,13 @@ kExtraTranslations = <String, Map<String, String>>{
     'studentAccount.edit': 'Bilgileri Düzenle',
     // Kulüp hesabının üst çubuğu da aynı sözlükten okuyor; oradaki
     // "Hesabim"/"Duzenle" yazımları burada düzeltiliyor.
-    'clubAccount.title': 'Hesabım',
+    'clubAccount.title': 'Kulüp Hesabım',
     'clubAccount.edit': 'Bilgileri Düzenle',
     'clubAccount.section.manager': 'Yetkili Bilgileri',
     'clubAccount.section.club': 'Kulüp Bilgileri',
     'studentAppointments.title': 'Etkinliklerim',
-    'studentAppointments.activeTitle': 'Aktif Etkinliklerim',
-    'studentAppointments.pastTitle': 'Geçmiş Etkinliklerim',
+    'studentAppointments.activeTitle': 'Yaklaşan',
+    'studentAppointments.pastTitle': 'Geçmiş',
 
     // Hesap ayarları
     'settings.appearance': 'Görünüm',
@@ -546,7 +545,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'phoneVerify.error.browserAlreadyOpen':
         'Devam eden bir doğrulama var. Birkaç saniye sonra tekrar dene.',
     'phoneVerify.error.network':
-        'İnternet bağlantını kontrol edip tekrar dene.',
+        'Bağlantı kurulamadı. İnternetini kontrol edip tekrar dene.',
     'phoneVerify.error.deviceCheckFailed':
         'SMS gönderilemedi. Lütfen daha sonra tekrar dene.',
     // Bir e-postaya artık tek rol bağlanabildiği için kayıt akışında çıkan
@@ -585,7 +584,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'eventModal.info': 'Etkinlik Bilgileri',
     'eventModal.club': 'Kulüp',
     'eventModal.eventDate': 'Etkinlik Tarihi',
-    'eventModal.deadline': 'Son Başvuru',
+    'eventModal.deadline': 'Son Kayıt',
     'eventModal.fee': 'Ücret',
     'eventModal.free': 'Ücretsiz',
     'eventModal.quota': 'Kontenjan',
@@ -645,7 +644,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'scan.missingEventInfo': 'QR kod eksik ya da bozuk.',
     'scan.notSessionQr': 'Bu QR bir oturum giriş kodu değil.',
     'clubScan.needsDoorCheckin':
-        '{{name}} kapıda giriş yapmamış — yoklama için önce check-in gerekiyor.',
+        '{{name}} henüz kapı girişi yapmamış; önce kapı girişi gerekiyor.',
     'scan.notDoorQr': 'Bu QR bir kapı giriş kodu değil.',
     'scan.doorClosed': 'Kapı girişi henüz açık değil.',
     'scan.needsDoorCheckin': 'Önce kapıdaki giriş QR\'ını okutman gerekiyor.',
@@ -711,7 +710,7 @@ kExtraTranslations = <String, Map<String, String>>{
 
     'clubEvents.title': 'Etkinlik',
     'clubEvents.edit': 'Düzenle',
-    'clubEvents.status.closed': 'Başvuru Kapalı',
+    'clubEvents.status.closed': 'Kayıtlar Kapalı',
     'clubEvents.group.active': 'Aktif',
     'clubEvents.group.upcoming': 'Gelecek',
     'clubEvents.group.past': 'Geçmiş',
@@ -722,7 +721,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubEvents.feedback.loadError':
         'Etkinlikler yüklenemedi. Lütfen tekrar dene.',
     'clubEvents.feedback.updateError':
-        'İşlem tamamlanamadı. Lütfen tekrar dene.',
+        'İşlem tamamlanamadı. Tekrar dene.',
     'clubEvents.feedback.deleted': 'Etkinlik kaldırıldı.',
     'clubEvents.feedback.deleteError':
         'Etkinlik silinemedi. Lütfen tekrar dene.',
@@ -757,7 +756,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubEvents.registrations.blockedRunning':
         'Etkinlik başladığı için kayıtlar durduruldu ve şu anda yeniden açılamaz.\n\n'
         'Yeniden açmak için etkinliği en başa döndürmen gerekiyor: önce kapı '
-        'check-in\'ini bitir, sonra oturumları tek tek en başa (0) geri al. '
+        'girişini bitir, sonra oturumları tek tek en başa (0) geri al. '
         'Etkinlik başa döndüğünde kayıtlar yeniden açılabilir olur.',
 
     'clubEvents.session.title': 'Oturumlar',
@@ -769,7 +768,7 @@ kExtraTranslations = <String, Map<String, String>>{
     // İlerleme artık çubukla anlatılıyor; bu metinler yalnızca durumu söyler,
     // "2/4" gibi bir sayı taşımaz.
     'clubEvents.session.blockedByCheckin':
-        'Önce kapı check-in\'ini bitir — oturum başlatılamaz',
+        'Önce kapı girişini bitir; oturum ancak sonra başlatılabilir.',
     'clubEvents.session.stateNotStarted': 'Oturumlar henüz başlamadı',
     'clubEvents.session.stateActive': 'Oturum devam ediyor',
     'clubEvents.session.stateLastActive': 'Son oturum devam ediyor',
@@ -787,15 +786,15 @@ kExtraTranslations = <String, Map<String, String>>{
         'QR girişleri, sen yeniden başlatana kadar durur.',
     'clubEvents.session.undoToStartConfirmWithCheckin':
         'Etkinliği "oturum başlatılmadı" durumuna döndürmek istiyor musun? '
-        'Check-in de "başlatılmadı" durumuna döner ve etkinlik yeniden '
-        'keşfette görünür; oturumları tekrar başlatmadan önce check-in\'i '
+        'Kapı girişi de "başlatılmadı" durumuna döner ve etkinlik yeniden '
+        'keşfette görünür; oturumları tekrar başlatmadan önce kapı girişini '
         'baştan başlatıp bitirmen gerekir.',
     'clubEvents.session.undone':
         '{{session}}. oturuma dönüldü. Bu oturumun QR\'ı yeniden geçerli.',
     'clubEvents.session.undoneToStart':
         'Oturumlar başlangıca alındı. QR girişleri şimdilik durdu.',
     'clubEvents.session.undoneToStartWithCheckin':
-        'Oturumlar ve check-in başlangıca alındı. Etkinlik, standartlara '
+        'Oturumlar ve kapı girişi başlangıca alındı. Etkinlik, standartlara '
         'uyan öğrencilerin keşfinde tekrar görünür.',
     'clubEvents.session.finish': 'Oturumları Bitir',
     'clubEvents.session.reopen': 'Oturumları Tekrar Aç',
@@ -824,26 +823,26 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubEvents.session.qrHint':
         'Bu kodu ekrana yansıt; öğrenciler kendi telefonlarından okutsun.',
     'clubEvents.session.qrError': 'QR görseli yüklenemedi.',
-    'clubEvents.entry.stateNotStarted': 'Check-in başlatılmadı',
-    'clubEvents.entry.stateRunning': 'Check-in açık',
-    'clubEvents.entry.stateFinished': 'Check-in bitti',
+    'clubEvents.entry.stateNotStarted': 'Kapı girişi başlatılmadı',
+    'clubEvents.entry.stateRunning': 'Kapı girişi açık',
+    'clubEvents.entry.stateFinished': 'Kapı girişi bitti',
     'clubEvents.entry.tally': ' — {{attended}}/{{total}} öğrenci giriş yaptı',
-    'clubEvents.entry.start': 'Check-in\'i Başlat',
-    'clubEvents.entry.finish': 'Check-in\'i Bitir',
-    'clubEvents.entry.restart': 'Check-in\'i Yeniden Başlat',
+    'clubEvents.entry.start': 'Kapı Girişini Başlat',
+    'clubEvents.entry.finish': 'Kapı Girişini Bitir',
+    'clubEvents.entry.restart': 'Kapı Girişini Yeniden Başlat',
     'clubEvents.entry.title': 'Kapı Girişi',
     'clubEvents.entry.subtitle':
-        'Kapıda gösterilen QR. Öğrenciler kendi telefonlarından okutur.',
-    'clubEvents.entry.open': 'Giriş QR\'ını Aç',
+        'Bu QR\'ı kapıda göster; öğrenciler kendi telefonlarından okutur.',
+    'clubEvents.entry.open': 'Kapı QR\'ını Aç',
     'clubEvents.entry.show': 'Kapıda Tek QR Giriş',
-    'clubEvents.entry.close': 'Girişi Kapat',
-    'clubEvents.entry.qrTitle': 'Etkinlik Giriş QR\'ı',
+    'clubEvents.entry.close': 'Kapıyı Kapat',
+    'clubEvents.entry.qrTitle': 'Kapı Girişi QR\'ı',
     'clubEvents.entry.qrHint':
-        'Öğrenciler bu kodu kendi telefonlarıyla okutur. Giriş açık kaldığı sürece kayıtları onaylanır.',
+        'Öğrenciler bu QR\'ı kendi telefonlarıyla okutur; kapı girişi açık olduğu sürece girişleri kaydedilir.',
     'clubEvents.session.allowWithoutCheckin':
-        'Check-in yapmayanlar da yoklamaya katılsın',
+        'Kapı girişi yapmayanlar da yoklamaya katılabilsin',
     'clubEvents.session.allowWithoutCheckinHint':
-        'Kapı girişini kaçıran öğrenciler oturum QR\'ını doğrudan okutabilir.',
+        'Kapıda girişi kaçıran öğrenciler de oturum yoklamalarına katılabilir.',
 
     'clubEvents.scan.action': 'Öğrenci QR\'ı Okut',
     'clubEvents.scan.subtitle':
@@ -953,22 +952,22 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubCreateEvent.eyebrow': 'Etkinlik Yönetimi',
     'clubCreateEvent.section.basics': 'Temel Bilgiler',
     'clubCreateEvent.section.basicsDesc':
-        'Etkinliğin adı, ne anlattığı ve neyi hedeflediği.',
+        'Etkinliğin adı, içeriği ve hedefi.',
     'clubCreateEvent.section.participation': 'Katılım ve Ücret',
     'clubCreateEvent.section.participationDesc':
         'Kontenjan, ücret ve oturum ayarları.',
     'clubCreateEvent.section.schedule': 'Tarih ve Saat',
     'clubCreateEvent.section.scheduleDesc':
-        'Etkinlik günü, saat aralığı ve son başvuru tarihi.',
+        'Etkinlik günü, saat aralığı ve son kayıt tarihi.',
     'clubCreateEvent.section.audience': 'Hedef Kitle',
     'clubCreateEvent.section.audienceDesc':
-        'Etkinliği kimlerin göreceğini ve kaydolabileceğini belirler.',
+        'Etkinliği kimlerin göreceğini ve kimlerin kaydolabileceğini belirler.',
     'clubCreateEvent.section.location': 'Etkinlik Konumu',
     'clubCreateEvent.section.locationDesc':
-        'Haritadan seçilen konum, QR ile giriş kontrolünde kullanılır.',
+        'Seçtiğin konum, QR ile giriş ve yoklamada konum doğrulaması için kullanılır.',
     'clubCreateEvent.section.media': 'Görsel',
     'clubCreateEvent.section.mediaDesc':
-        'Etkinliğe tek bir kapak görseli eklenir.',
+        'Etkinliğin kapak görseli.',
     'clubCreateEvent.scope.label': 'Kapsam',
     'clubCreateEvent.scope.departmentOnly': 'Sadece Bölüme Özel',
     'clubCreateEvent.scope.universityAndDepartment':
@@ -1003,9 +1002,9 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubCreateEvent.location.captured': 'Konum alındı.',
     'clubCreateEvent.location.error': 'Konum alınamadı.',
     'clubCreateEvent.location.missingCoordinates': 'Konumu haritadan da seç.',
-    'clubCreateEvent.feedback.invalidEventDate': 'Etkinlik tarihini seç.',
+    'clubCreateEvent.feedback.invalidEventDate': 'Geçerli bir etkinlik tarihi seç.',
     'clubCreateEvent.feedback.deadlineAfterEventDate':
-        'Son başvuru tarihi etkinlik tarihinden sonra olamaz.',
+        'Son kayıt tarihi etkinlik tarihinden sonra olamaz.',
     'clubCreateEvent.feedback.invalidTimeRange':
         'Bitiş saati başlangıç saatinden sonra olmalı.',
     'clubCreateEvent.feedback.saving': 'Etkinlik kaydediliyor...',
@@ -1013,23 +1012,23 @@ kExtraTranslations = <String, Map<String, String>>{
     // Üretilen sözlükte "Etkinlik Adi" olarak kalmıştı.
     'form.eventTitle': 'Etkinlik Adı',
     'form.sessionCount': 'Oturum Sayısı',
-    'form.checkinMode': 'Check-in / Yoklama Modu',
-    'checkinMode.checkin_attendance': 'Check-in + Yoklama',
+    'form.checkinMode': 'Kapı Girişi / Yoklama Modu',
+    'checkinMode.checkin_attendance': 'Kapı Girişi + Yoklama',
     'checkinMode.attendance_only': 'Sadece Yoklama',
-    'checkinMode.checkin_only': 'Sadece Check-in',
+    'checkinMode.checkin_only': 'Sadece Kapı Girişi',
     'checkinMode.checkin_attendanceDesc':
-        'Kapıda konum doğrulamalı QR ile giriş yapılır; yoklama için önce bu giriş gerekir.',
+        'Öğrenciler kapıda giriş yapar; oturum yoklamalarına yalnızca giriş yapanlar katılabilir.',
     'checkinMode.attendance_onlyDesc':
-        'Kapı girişi yoktur; oturum QR\'ları doğrudan çalışır.',
+        'Kapı girişi yok; oturum yoklamaları doğrudan başlar.',
     'checkinMode.checkin_onlyDesc':
-        'Oturum yoklaması yoktur; kapıda QR okutulunca giriş tamamlanır.',
+        'Oturum yoklaması yok; kapı girişi yeterli.',
     'clubCreateEvent.feedback.sessionCountRequired':
         'Yoklamalı etkinlikte oturum sayısı en az 2 olmalı.',
     'clubCreateEvent.subtitle':
-        'Etkinlik bilgilerini doldur, hemen yayınlayalım.',
+        'Bilgileri doldur, etkinliğin dakikalar içinde yayında olsun.',
     'clubCreateEvent.editTitle': 'Etkinliği Düzenle',
     'form.eventDate': 'Etkinlik Tarihi',
-    'form.deadline': 'Son Başvuru Tarihi',
+    'form.deadline': 'Son Kayıt Tarihi',
     'form.startTime': 'Başlangıç',
     'form.endTime': 'Bitiş',
     'form.afterTimeHint': '{{time}} sonrası',
@@ -1037,11 +1036,11 @@ kExtraTranslations = <String, Map<String, String>>{
 
     // Üretilen sözlükte Türkçe karakterleri düşmüş örnek metinler
     // ("Ornek: ..."). Bu ekranda ipucu olarak göründükleri için düzeltiliyor.
-    'placeholder.eventTitleExample': 'Örnek: AI Kariyer Buluşması',
-    'placeholder.eventPurposeExample': 'Bu etkinliğin temel hedefi nedir?',
-    'placeholder.quotaExample': 'Örnek: 120',
-    'placeholder.sessionCountExample': 'Örnek: 5',
-    'placeholder.certificateThresholdExample': 'Örnek: 80',
+    'placeholder.eventTitleExample': 'Örn. Yapay Zekâ Kariyer Buluşması',
+    'placeholder.eventPurposeExample': 'Bu etkinlikle neyi hedefliyorsun?',
+    'placeholder.quotaExample': 'Örn. 120',
+    'placeholder.sessionCountExample': 'Örn. 5',
+    'placeholder.certificateThresholdExample': 'Örn. 80',
     'clubCreateEvent.feedback.imageTooLargeDetail':
         'Görsel çok büyük ({{size}} KB). En fazla {{limit}} KB olabilir.',
     'form.imageUrl': 'Görsel Adresi',
@@ -1056,7 +1055,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'dashboard.scope.departmentOnly': 'Bölüme Özel',
 
     'clubDocuments.subtitle':
-        'Kulübünün onaylanması için dört belgeyi de yüklemen gerekiyor.',
+        'Kulübünün doğrulanması için aşağıdaki belgeleri yükle. Belgeler incelendikten sonra kulüp paneline erişimin açılır.',
     'clubDocuments.establishment': 'Kuruluş Belgesi',
     'clubDocuments.advisor': 'Danışman Onay Belgesi',
     'clubDocuments.studentCerts': 'Öğrenci Belgeleri',
@@ -1082,9 +1081,9 @@ kExtraTranslations = <String, Map<String, String>>{
         'Öğrenci etkinlik konumunun dışında — {{distance}} uzakta (en fazla {{radius}} m).',
     'clubScan.success': '{{name}} için giriş onaylandı.',
     'clubScan.noDoorCheckin':
-        'Bu etkinlikte kapı check-in\'i yok — oturum QR\'ını gösterin, öğrenciler okutsun.',
+        'Bu etkinlikte kapı girişi yok; oturum QR\'ını göster, öğrenciler okutsun.',
     'clubScan.doorClosed':
-        'Kapı kapalı. Önce etkinlik ekranından check-in\'i başlat.',
+        'Kapı kapalı. Önce etkinlik ekranından kapı girişini başlat.',
     'clubScan.sessionSuccess':
         '{{name}} için {{current}}. oturum girişi onaylandı (katılım {{attended}}/{{total}}).',
 
@@ -1184,7 +1183,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'admin.ban.filter.all': 'Tümü',
     'admin.ban.filter.active': 'Aktif',
     'admin.ban.filter.banned': 'Engelli',
-    'admin.ban.bannedLabel': 'Engelli',
+    'admin.ban.bannedLabel': 'Engellendi',
     'admin.ban.confirmClubBan':
         '{{name}} engellensin mi? Kulüp giriş yapamaz; belgeleri silinmez.',
     'admin.ban.confirmClubUnban':
@@ -1192,8 +1191,8 @@ kExtraTranslations = <String, Map<String, String>>{
         'inceleme kuyruğuna, durmuyorsa belge yükleme adımına döner.',
     'admin.ban.banSuccess': '{{name}} engellendi.',
     'admin.ban.unbanSuccess': '{{name}} için engel kaldırıldı.',
-    'admin.ban.banError': 'Engelleme tamamlanamadı. Lütfen tekrar dene.',
-    'admin.ban.unbanError': 'Engel kaldırılamadı. Lütfen tekrar dene.',
+    'admin.ban.banError': 'Engelleme yapılamadı. Tekrar dene.',
+    'admin.ban.unbanError': 'Engel kaldırılamadı. Tekrar dene.',
 
     // Kulübe yönetici notu (club_message_panel.dart)
     'admin.clubs.ban': 'Kulübü Engelle',
@@ -1204,17 +1203,16 @@ kExtraTranslations = <String, Map<String, String>>{
         'yaz; kulüp bu mesajı onay bekleme ekranında görecek. Başvuru '
         'kuyrukta kalır.',
     'admin.message.placeholder':
-        'Örn: Akademik danışman onayı okunmuyor, tekrar yükleyin.',
+        'Örn. Akademik danışman onayı okunmuyor, lütfen yeniden yükleyin.',
     'admin.message.send': 'Mesajı Gönder',
     'admin.message.sent': 'Mesaj kulübe iletildi.',
     'admin.message.empty': 'Göndermeden önce bir mesaj yaz.',
-    'admin.message.error': 'Mesaj gönderilemedi. Lütfen tekrar dene.',
+    'admin.message.error': 'Mesaj gönderilemedi. Tekrar dene.',
     'admin.message.none': 'Bu kulübe henüz mesaj gönderilmedi.',
     'admin.message.logTitle': 'Gönderilen mesajlar',
     'clubPending.messages.title': 'Yöneticiden Mesaj',
     'clubPending.messages.hint':
-        'Başvurunla ilgili yöneticinin ilettiği notlar aşağıda. Eksik bir '
-        'belge belirtildiyse düzeltip yeniden yükleyebilirsin.',
+        'Başvurunla ilgili yönetici notları aşağıda. Eksik bir belge varsa düzeltip yeniden yükleyebilirsin.',
 
     // Kulüp / yönetici tarafı (bu turda iskelet)
     // Bağlantı durumu
@@ -1275,7 +1273,7 @@ kExtraTranslations = <String, Map<String, String>>{
         'Hesabında doğrulanmış bir telefon numarası yok.',
     'accountSecurity.error.phoneMismatch': 'Bu numara hesabına ait değil.',
     'accountSecurity.error.wrongPassword': 'Mevcut şifren hatalı.',
-    'accountSecurity.error.generic': 'İşlem tamamlanamadı. Lütfen tekrar dene.',
+    'accountSecurity.error.generic': 'İşlem tamamlanamadı. Tekrar dene.',
 
     'changePassword.subtitle': 'Güvenliğin için önce mevcut şifreni gir.',
     'changePassword.subtitleVerified':
@@ -1357,16 +1355,16 @@ kExtraTranslations = <String, Map<String, String>>{
     'gate.result.not-ticket': 'REGIPASS BİLETİ DEĞİL',
     'gate.result.unknown-event': 'ETKİNLİK BULUNAMADI',
     'gate.hint.in': 'Sıradakini okutabilirsin',
-    'gate.hint.legacy': 'Eski uygulama bileti (kodsuz) — kimliği kontrol et',
+    'gate.hint.legacy': 'Eski uygulama bileti (kodsuz): kimliği kontrol et',
     'gate.hint.already': 'İlk giriş {{time}} · sayı değişmedi',
-    'gate.hint.invalid-ticket': 'Bilet kodu uyuşmuyor — öğrenci bileti uygulamadan yeniden açsın',
+    'gate.hint.invalid-ticket': 'Bilet kodu eşleşmiyor; öğrenci biletini uygulamadan yeniden açsın',
     'gate.hint.not-registered': 'Bu öğrencinin etkinliğe kaydı yok',
     'gate.hint.other-event': 'Bu bilet başka bir etkinliğe ait',
     'gate.hint.not-owner': 'Etkinlik bu kulübe ait değil',
     'gate.hint.no-door': 'Sadece yoklama: oturum QR\'ını göster, öğrenciler okutsun',
     'gate.hint.past-event': 'Etkinliğin günü geçti',
     'gate.hint.not-ticket': 'Öğrenciden Regipass biletini açmasını iste',
-    'gate.hint.unknown-event': 'Etkinlik bulunamadı. İnternet yoksa: bu etkinliğin listesi cihaza hiç inmemiş',
+    'gate.hint.unknown-event': 'Etkinlik bulunamadı. İnternet yoksa bu etkinliğin bilet listesi cihaza henüz inmemiş olabilir.',
     'gate.hint.conflict': 'Başka cihazda {{time}} girmişti — ilk okuma geçerli',
     'gate.hint.rejected': 'Sunucu kabul etmedi — bu girişi kontrol et',
     'gate.conflictToast': '{{name}}: başka cihaz daha önce okutmuştu ({{time}}).',
@@ -1375,7 +1373,7 @@ kExtraTranslations = <String, Map<String, String>>{
     // İP-K: kayıt, bekleme listesi, ödeme, etkinlik iptali (web language.js ile aynı anahtarlar)
     'gate.hint.event-cancelled': 'Etkinlik iptal edildi, biletler geçersiz',
     'gate.hint.paidAtGate': 'Ödeme kapıda onaylandı, giriş alındı',
-    'gate.hint.payment-pending': 'Ödeme onaylanmamış — giriş yapılamaz',
+    'gate.hint.payment-pending': 'Ödeme onaylanmamış; giriş yapılamaz',
     'gate.markPaid': 'Ödendi olarak işaretle ve içeri al',
     'gate.markPaidFailed': 'İşaretlenemedi (internet gerekli). Tekrar dene.',
     'gate.markingPaid': 'İşaretleniyor...',
@@ -1387,11 +1385,11 @@ kExtraTranslations = <String, Map<String, String>>{
     'registration.actions.registerSeatOpen': 'Yer Açıldı — Hemen Kaydol',
     'registration.actions.registeredPaymentPending': 'Kayıtlısın · Ödeme Bekleniyor',
     'registration.actions.waitlistPosition': 'Bekleme listesinde {{position}}. sıradasın',
-    'registration.alerts.fullOfferWaitlist': 'Bu etkinliğin kontenjanı doldu. Bekleme listesine girmek ister misin? Yer açılırsa bildirim gelir; ilk kayıt olan yeri alır.',
+    'registration.alerts.fullOfferWaitlist': 'Bu etkinliğin kontenjanı doldu. Bekleme listesine girmek ister misin? Yer açılırsa bildirim alırsın; ilk kaydolan yeri alır.',
     'registration.alerts.leaveWaitlistConfirm': 'Bekleme listesinden çıkmak istediğine emin misin?',
     'registration.alerts.paymentPendingNote': 'Kaydın "Ödeme bekleniyor" durumunda. Kulüp ödemeni aldığını işaretleyince kaydın kesinleşir ve bildirim alırsın. Ödeme onaylanmadan kapıda giriş yapılamaz.',
-    'registration.alerts.seatsAvailableNow': 'Bu arada yer açıldı. Hemen kayıt olabilirsin.',
-    'registration.alerts.waitlistJoined': 'Bekleme listesine eklendin: {{position}}. sıradasın. Yer açılınca bildirim gelir; ilk kayıt olan yeri alır.',
+    'registration.alerts.seatsAvailableNow': 'Bu arada yer açıldı. Hemen kaydolabilirsin.',
+    'registration.alerts.waitlistJoined': 'Bekleme listesine eklendin: {{position}}. sıradasın. Yer açılınca bildirim alırsın; ilk kaydolan yeri alır.',
     'registration.club.addSeats': '+{{n}} yer aç',
     'registration.club.addSeatsConfirm': 'Kontenjan {{from}} → {{to}} olacak. Bekleme listesindekilere "yer açıldı" bildirimi gider; ilk kayıt olan alır.',
     'registration.club.cancelEventAction': 'Etkinliği İptal Et',
@@ -1407,7 +1405,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'registration.club.paymentTitle': 'Ödeme',
     'registration.club.quotaNow': 'Kontenjan {{n}} oldu.',
     'registration.club.quotaSetupDone': 'Kontenjan kuruldu, kayıtlar açıldı.',
-    'registration.club.quotaSetupFailed': 'Kontenjan kurulamadı; etkinlik kayda kapalı. Etkinliği düzenleyip yeniden kaydederek tekrar deneyebilirsin.',
+    'registration.club.quotaSetupFailed': 'Kontenjan ayarlanamadı, etkinlik şu an kayda kapalı. Etkinliği düzenleyip yeniden kaydet.',
     'registration.club.quotaSetupStatus': 'Kontenjan Kuruluyor',
     'registration.club.reasonLabel': 'Gerekçe (isteğe bağlı, öğrencilere gösterilir)',
     'registration.club.removeAction': 'Kaydı sil',
@@ -1421,31 +1419,31 @@ kExtraTranslations = <String, Map<String, String>>{
     'registration.club.waitlistCount': 'Bekleme listesinde {{count}} kişi var',
     'registration.club.waitlistEmpty': 'Kontenjan doldu. Bekleme listesi henüz boş.',
     'registration.errors.banned': 'Hesabın engellendiği için kayıt yapılamıyor.',
-    'registration.errors.below-registered': 'Kontenjan kayıtlı öğrenci sayısının ({{registered}}) altına indirilemez. Önce kayıtları azaltmalı ya da daha yüksek bir kontenjan girmelisin.',
-    'registration.errors.busy': 'Şu anda çok yoğun. Birkaç saniye sonra tekrar dene.',
-    'registration.errors.cancel-locked': 'Oturumlar başladığı için kaydını artık kendin silemezsin; kulüple iletişime geç.',
+    'registration.errors.below-registered': 'Kontenjan, kayıtlı öğrenci sayısının ({{registered}}) altına indirilemez. Daha yüksek bir kontenjan gir.',
+    'registration.errors.busy': 'Şu an yoğunluk var. Birkaç saniye sonra tekrar dene.',
+    'registration.errors.cancel-locked': 'Oturumlar başladığı için kaydını artık kendin iptal edemezsin. Gerekirse kulüple iletişime geç.',
     'registration.errors.club-banned': 'Bu kulübün etkinliklerine şu anda kayıt alınmıyor.',
-    'registration.errors.deadline-passed': 'Son başvuru tarihi geçti.',
+    'registration.errors.deadline-passed': 'Son kayıt tarihi geçti.',
     'registration.errors.event-cancelled': 'Bu etkinlik iptal edildi.',
     'registration.errors.event-hidden': 'Bu etkinlik artık yayında değil.',
     'registration.errors.event-not-found': 'Etkinlik bulunamadı.',
     'registration.errors.event-not-paid': 'Bu etkinlik ücretli değil.',
     'registration.errors.event-past': 'Etkinliğin tarihi geçti.',
     'registration.errors.event-started': 'Etkinlik başladı; yeni kayıt alınmıyor.',
-    'registration.errors.generic': 'İşlem tamamlanamadı. Lütfen tekrar dene.',
+    'registration.errors.generic': 'İşlem tamamlanamadı. Tekrar dene.',
     'registration.errors.invalid-quota': 'Geçerli bir kontenjan gir.',
-    'registration.errors.not-eligible': 'Bu etkinlik senin üniversiten ya da bölümün için değil.',
+    'registration.errors.not-eligible': 'Bu etkinlik belirli üniversite ya da bölümlere açık; profilin bu şartı karşılamıyor.',
     'registration.errors.not-event-club': 'Bu işlem yalnızca etkinliğin kulübü tarafından yapılabilir.',
     'registration.errors.not-registered': 'Bu etkinliğe kayıt bulunamadı.',
     'registration.errors.offline': 'Sunucuya ulaşılamadı. İnternet bağlantını kontrol edip tekrar dene.',
-    'registration.errors.paid-consent-required': 'Ücretli etkinlikte ödeme koşullarını onaylaman gerekiyor.',
+    'registration.errors.paid-consent-required': 'Ücretli etkinliğe kaydolmak için ödeme bilgilendirmesini onayla.',
     'registration.errors.payment-pending': 'Ödemen henüz onaylanmadı; kulüp onaylayınca giriş yapabilirsin.',
-    'registration.errors.phone-not-verified': 'Kayıt olmak için önce telefon numaranı doğrulamalısın.',
-    'registration.errors.profile-incomplete': 'Önce öğrenci profilini tamamlamalısın.',
-    'registration.errors.profile-missing': 'Önce öğrenci profilini tamamlamalısın.',
+    'registration.errors.phone-not-verified': 'Kaydolmak için önce telefon numaranı doğrula.',
+    'registration.errors.profile-incomplete': 'Kaydolmak için önce öğrenci profilini tamamla.',
+    'registration.errors.profile-missing': 'Kaydolmak için önce öğrenci profilini tamamla.',
     'registration.errors.quota-setup': 'Etkinliğin kontenjanı henüz hazır değil. Biraz sonra tekrar dene.',
     'registration.errors.registration-closed': 'Bu etkinliğin kayıtları kapandı.',
-    'registration.errors.signIn': 'Oturumun kapanmış görünüyor. Lütfen yeniden giriş yap.',
+    'registration.errors.signIn': 'Oturumun kapanmış. Yeniden giriş yap.',
     'eventModal.contactTitle': 'İletişim Bilgileri',
     'eventModal.feeContactTitle': 'Ücret İçin İletişim Bilgileri',
     'eventModal.feeContactNoteClub': 'Ücret: {{fee}}. Ödeme Regipass dışında doğrudan kulüple yapılır; öğrenciler ücret için aşağıdaki bilgilerle kulübe ulaşır. Ödemeyi aldığında öğrenci listesinden "Ödendi" olarak işaretle; kayıt o zaman kesinleşir.',
@@ -1493,7 +1491,7 @@ kExtraTranslations = <String, Map<String, String>>{
   },
   'en': <String, String>{
     // İP-8 / İP-9: yeni sertifika sistemi (web language.js ile aynı metinler)
-    'cert.panel.title': 'Certificate',
+    'cert.panel.title': 'Certificate of Attendance',
     'cert.editor.sampleName': 'First Last',
     'cert.gate.open': 'You can send to everyone who qualifies and has no certificate yet.',
     'cert.list.open': 'Open',
@@ -1517,15 +1515,15 @@ kExtraTranslations = <String, Map<String, String>>{
     'cert.reason.bad-page': 'A field is on a page that does not exist.',
     'cert.reason.bad-size': 'Size must be between 6 and 96.',
     'cert.reason.bad-threshold': 'Threshold must be between 0 and 100.',
-    'cert.reason.box-outside-page': 'A field extends outside the page.',
-    'cert.reason.box-too-small': 'A field is too small.',
+    'cert.reason.box-outside-page': 'A field extends outside the page; drag it back inside.',
+    'cert.reason.box-too-small': 'A field is too small; make the box a bit larger.',
     'cert.reason.certificate-not-found': 'Certificate not found.',
     'cert.reason.certificate-not-issued': 'This certificate has not been sent yet.',
     'cert.reason.certificate-revoked': 'This certificate was revoked.',
-    'cert.reason.checkin-not-started': 'Send is locked: start and finish check-in first (“Finish check-in”).',
-    'cert.reason.checkin-open': 'Send is locked: check-in is still open. It unlocks when you finish check-in.',
-    'cert.reason.club-banned': 'Your account is blocked, this action is not available.',
-    'cert.reason.code-collision': 'Could not create a code, try again.',
+    'cert.reason.checkin-not-started': 'Sending is locked: start door check-in first, then press “Finish Check-in” when the event ends.',
+    'cert.reason.checkin-open': 'Sending is locked: door check-in is still open. It unlocks when you press “Finish Check-in”.',
+    'cert.reason.club-banned': 'Your club account is blocked, so this action is not available.',
+    'cert.reason.code-collision': 'Could not create a certificate code. Try again.',
     'cert.reason.config-not-saved': 'Set up and save the certificate in the editor first.',
     'cert.reason.empty-text': 'A free text field cannot be empty.',
     'cert.reason.event-cancelled': 'The event was cancelled, certificates cannot be sent.',
@@ -1543,7 +1541,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'cert.reason.template-encrypted': 'This PDF is encrypted. Upload an unencrypted copy.',
     'cert.reason.template-missing': 'Template not found. Upload the sample certificate again.',
     'cert.reason.template-too-large': 'The file is too large (max 10 MB).',
-    'cert.reason.template-unreadable': 'This PDF could not be read. Try exporting it again.',
+    'cert.reason.template-unreadable': 'This PDF could not be read. Export it again from another program and retry.',
     'cert.reason.template-unsupported': 'This file type is not supported. Upload a PDF, PNG or JPG.',
     'cert.reason.too-many-fields': 'At most 20 fields can be added.',
     'cert.revoke.text': 'They disappear from students\' screens and the verification page shows them as “Revoked”. You can send again later; new certificates get new codes.',
@@ -1844,7 +1842,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'admin.ban.reasonLabel': 'Reason',
     'admin.ban.reasonHelper':
         'Required. Saved to the audit log; not shown to students.',
-    'admin.ban.reasonRequired': 'You must enter a reason to ban.',
+    'admin.ban.reasonRequired': 'Enter a reason to block.',
     'auth.error.roleAlreadyExists':
         'This account type already exists. Please sign in.',
     'auth.error.emailRegisteredWrongPassword':
@@ -1854,7 +1852,7 @@ kExtraTranslations = <String, Map<String, String>>{
         'Data Protection Notice.',
     'legal.consent.summaryTitle': 'Documents you approved',
     'legal.consent.acceptedAt': 'Consent time',
-    'legal.consent.tileLabel': 'Document consent',
+    'legal.consent.tileLabel': 'Terms and privacy consent',
     'legal.consent.notRecorded': 'Not recorded',
     'legal.consent.marketingOn': 'marketing consent given',
     'legal.consent.marketingOff': 'marketing consent not given',
@@ -1976,8 +1974,8 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubAccount.section.club': 'Club Details',
 
     'studentAppointments.title': 'My Events',
-    'studentAppointments.activeTitle': 'Active Events',
-    'studentAppointments.pastTitle': 'Past Events',
+    'studentAppointments.activeTitle': 'Upcoming',
+    'studentAppointments.pastTitle': 'Past',
 
     'settings.appearance': 'Appearance',
     'settings.appearance.light': 'Light mode',
@@ -2059,7 +2057,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'scan.missingEventInfo': 'The QR code is incomplete or damaged.',
     'scan.notSessionQr': 'This is not a session check-in code.',
     'clubScan.needsDoorCheckin':
-        '{{name}} has not checked in at the door - check-in is required first.',
+        '{{name}} hasn\'t checked in at the door yet; door check-in is required first.',
     'scan.notDoorQr': 'This is not a door entry code.',
     'scan.doorClosed': 'Door entry is not open yet.',
     'scan.needsDoorCheckin': 'You need to scan the door entry QR first.',
@@ -2266,13 +2264,13 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubEvents.entry.restart': 'Restart Check-in',
     'clubEvents.entry.title': 'Door Entry',
     'clubEvents.entry.subtitle':
-        'The QR shown at the door. Students scan it with their own phones.',
-    'clubEvents.entry.open': 'Open Entry QR',
+        'Show this QR at the door; students scan it from their own phones.',
+    'clubEvents.entry.open': 'Open Door QR',
     'clubEvents.entry.show': 'Show Entry QR',
-    'clubEvents.entry.close': 'Close Entry',
-    'clubEvents.entry.qrTitle': 'Event Entry QR',
+    'clubEvents.entry.close': 'Close Door',
+    'clubEvents.entry.qrTitle': 'Door Check-in QR',
     'clubEvents.entry.qrHint':
-        'Students scan this code with their own phones. Entries are confirmed while it stays open.',
+        'Students scan this QR with their own phones; check-ins are recorded while the door is open.',
     'clubEvents.session.allowWithoutCheckin':
         'Let students without check-in join attendance',
     'clubEvents.session.allowWithoutCheckinHint':
@@ -2388,22 +2386,22 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubCreateEvent.eyebrow': 'Event Management',
     'clubCreateEvent.section.basics': 'Basic Details',
     'clubCreateEvent.section.basicsDesc':
-        'The event name, what it covers and what it aims for.',
+        'The event\'s name, content and goal.',
     'clubCreateEvent.section.participation': 'Attendance and Fee',
     'clubCreateEvent.section.participationDesc':
         'Quota, fee and session settings.',
     'clubCreateEvent.section.schedule': 'Date and Time',
     'clubCreateEvent.section.scheduleDesc':
-        'Event day, time range and application deadline.',
+        'Event day, time range and registration deadline.',
     'clubCreateEvent.section.audience': 'Target Audience',
     'clubCreateEvent.section.audienceDesc':
         'Decides who can see and register for the event.',
     'clubCreateEvent.section.location': 'Event Location',
     'clubCreateEvent.section.locationDesc':
-        'The location picked on the map is used for QR check-in control.',
+        'The location you pick is used for location checks during QR check-in and attendance.',
     'clubCreateEvent.section.media': 'Image',
     'clubCreateEvent.section.mediaDesc':
-        'A single cover image is added to the event.',
+        'The event\'s cover image.',
     'clubCreateEvent.scope.label': 'Scope',
     'clubCreateEvent.scope.departmentOnly': 'Department Only',
     'clubCreateEvent.scope.universityAndDepartment':
@@ -2425,11 +2423,11 @@ kExtraTranslations = <String, Map<String, String>>{
     'checkinMode.attendance_only': 'Attendance Only',
     'checkinMode.checkin_only': 'Check-in Only',
     'checkinMode.checkin_attendanceDesc':
-        'Students check in through a location-verified door QR before session attendance.',
+        'Students check in at the door; only those who checked in can join session attendance.',
     'checkinMode.attendance_onlyDesc':
-        'There is no door entry; session QR codes work directly.',
+        'No door check-in; session attendance starts directly.',
     'checkinMode.checkin_onlyDesc':
-        'There is no session attendance; scanning the door QR completes entry.',
+        'No session attendance; door check-in is enough.',
     'clubCreateEvent.feedback.sessionCountRequired':
         'An event with attendance needs at least 2 sessions.',
     'clubCreateEvent.image.pick': 'Choose From Device',
@@ -2475,7 +2473,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'dashboard.scope.departmentOnly': 'Department Only',
 
     'clubDocuments.subtitle':
-        'All four documents must be uploaded before your club can be approved.',
+        'Upload the documents below so we can verify your club. Access to the club panel opens once they are reviewed.',
     'clubDocuments.establishment': 'Establishment Document',
     'clubDocuments.advisor': 'Advisor Approval',
     'clubDocuments.studentCerts': 'Student Certificates',
@@ -2609,8 +2607,8 @@ kExtraTranslations = <String, Map<String, String>>{
         'if its documents are still there, otherwise to the upload step.',
     'admin.ban.banSuccess': '{{name}} has been blocked.',
     'admin.ban.unbanSuccess': 'The block on {{name}} has been lifted.',
-    'admin.ban.banError': 'The block could not be applied. Please try again.',
-    'admin.ban.unbanError': 'The block could not be removed. Please try again.',
+    'admin.ban.banError': 'Blocking failed. Try again.',
+    'admin.ban.unbanError': 'Unblocking failed. Try again.',
 
     // Admin note to a club (club_message_panel.dart)
     'admin.clubs.ban': 'Block Club',
@@ -2625,7 +2623,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'admin.message.send': 'Send Message',
     'admin.message.sent': 'Message delivered to the club.',
     'admin.message.empty': 'Write a message before sending.',
-    'admin.message.error': 'The message could not be sent. Please try again.',
+    'admin.message.error': 'The message could not be sent. Try again.',
     'admin.message.none': 'No message has been sent to this club yet.',
     'admin.message.logTitle': 'Sent messages',
     'clubPending.messages.title': 'Message From The Admin',
@@ -2786,7 +2784,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'gate.hint.no-door': 'Attendance only: show the session QR, students scan it',
     'gate.hint.past-event': 'The event day has passed',
     'gate.hint.not-ticket': 'Ask the student to open their Regipass ticket',
-    'gate.hint.unknown-event': 'Event not found. If offline: this event\'s list was never downloaded to this device',
+    'gate.hint.unknown-event': 'Event not found. If offline, this event\'s ticket list may not have been downloaded to this device yet',
     'gate.hint.conflict': 'Another device checked them in at {{time}} — first scan wins',
     'gate.hint.rejected': 'Server rejected — check this entry',
     'gate.conflictToast': '{{name}}: another device scanned first ({{time}}).',
@@ -2841,9 +2839,9 @@ kExtraTranslations = <String, Map<String, String>>{
     'registration.club.waitlistCount': '{{count}} people on the waitlist',
     'registration.club.waitlistEmpty': 'Fully booked. The waitlist is empty for now.',
     'registration.errors.banned': 'Your account is blocked, so you cannot register.',
-    'registration.errors.below-registered': 'Capacity cannot be lower than the number of registered students ({{registered}}).',
+    'registration.errors.below-registered': 'Capacity can\'t be lower than the number of registered students ({{registered}}). Enter a higher capacity.',
     'registration.errors.busy': 'It\'s very busy right now. Try again in a few seconds.',
-    'registration.errors.cancel-locked': 'Sessions have started, so you can no longer delete your registration; contact the club.',
+    'registration.errors.cancel-locked': 'Sessions have started, so you can no longer cancel your registration yourself. Contact the club if needed.',
     'registration.errors.club-banned': 'This club\'s events are not accepting registrations right now.',
     'registration.errors.deadline-passed': 'The registration deadline has passed.',
     'registration.errors.event-cancelled': 'This event was cancelled.',
@@ -2854,15 +2852,15 @@ kExtraTranslations = <String, Map<String, String>>{
     'registration.errors.event-started': 'The event has started; no new registrations.',
     'registration.errors.generic': 'The action could not be completed. Please try again.',
     'registration.errors.invalid-quota': 'Enter a valid capacity.',
-    'registration.errors.not-eligible': 'This event is not open to your university or department.',
+    'registration.errors.not-eligible': 'This event is open to specific universities or departments; your profile doesn\'t meet the requirement.',
     'registration.errors.not-event-club': 'Only the event\'s club can do this.',
     'registration.errors.not-registered': 'No registration found for this event.',
     'registration.errors.offline': 'Could not reach the server. Check your connection and try again.',
-    'registration.errors.paid-consent-required': 'You need to accept the payment terms for paid events.',
+    'registration.errors.paid-consent-required': 'Accept the payment notice to register for a paid event.',
     'registration.errors.payment-pending': 'Your payment is not confirmed yet; you can enter once the club confirms it.',
     'registration.errors.phone-not-verified': 'Verify your phone number before registering.',
-    'registration.errors.profile-incomplete': 'Complete your student profile first.',
-    'registration.errors.profile-missing': 'Complete your student profile first.',
+    'registration.errors.profile-incomplete': 'Complete your student profile to register.',
+    'registration.errors.profile-missing': 'Complete your student profile to register.',
     'registration.errors.quota-setup': 'The event\'s capacity is not ready yet. Try again shortly.',
     'registration.errors.registration-closed': 'Registration for this event is closed.',
     'registration.errors.signIn': 'Your session seems to have ended. Please sign in again.',

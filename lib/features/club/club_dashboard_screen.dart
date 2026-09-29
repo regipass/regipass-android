@@ -97,12 +97,24 @@ class _ClubDashboardScreenState extends ConsumerState<ClubDashboardScreen> {
             final StudentProfile? pseudo = pseudoStudentFromClub(club);
 
             return ListView.separated(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
               itemCount: list.length + 1,
-              separatorBuilder: (_, _) => const SizedBox(height: 14),
+              separatorBuilder: (_, _) => const SizedBox(height: 16),
               itemBuilder: (BuildContext context, int index) {
                 // İP-TK: takipçi sayısı (liste yok; yalnızca sayı).
-                if (index == 0) return const ClubFollowerCountChip();
+                if (index == 0) {
+                  return Column(
+                    children: <Widget>[
+                      PageHeader(
+                        title: context.t('clubDashboard.hero.title'),
+                        subtitle: context.t('clubDashboard.hero.subtitle'),
+                        center: true,
+                        padding: const EdgeInsets.fromLTRB(8, 8, 8, 14),
+                      ),
+                      const ClubFollowerCountChip(),
+                    ],
+                  );
+                }
                 final AppEvent event = list[index - 1];
                 return EventSummaryCard(
                   event: event,
@@ -132,7 +144,6 @@ class ClubFollowerCountChip extends ConsumerWidget {
     final int? count = ref.watch(clubFollowerCountProvider).value;
     if (count == null) return const SizedBox.shrink();
     return Align(
-      alignment: Alignment.centerLeft,
       child: Container(
         key: const ValueKey<String>('club-follower-count'),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),

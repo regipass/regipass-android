@@ -937,17 +937,21 @@ class _InfoTile extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 10),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: context.surface,
-          borderRadius: BorderRadius.circular(BrandShape.controlRadius),
-          boxShadow: BrandShape.card,
-        ),
+        decoration: context.cardDecoration(radius: BrandShape.controlRadius),
         child: Row(
           crossAxisAlignment: multiline
               ? CrossAxisAlignment.start
               : CrossAxisAlignment.center,
           children: <Widget>[
-            Icon(icon, size: 20, color: context.inkMuted),
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: context.brandTint,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, size: 19, color: context.brandInk),
+            ),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -962,8 +966,10 @@ class _InfoTile extends StatelessWidget {
                         ? TextOverflow.clip
                         : TextOverflow.ellipsis,
                     style: TextStyle(
+                      fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      height: multiline ? 1.45 : null,
+                      height: multiline ? 1.5 : 1.35,
+                      color: context.ink,
                     ),
                   ),
                 ],

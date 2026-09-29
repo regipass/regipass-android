@@ -388,8 +388,8 @@ class _ClubDocumentsScreenState extends ConsumerState<ClubDocumentsScreen> {
 
             const SizedBox(height: 8),
             // Web'deki kısmi italik biçim: etiket düz, format listesi italik.
-            RichText(
-              text: TextSpan(
+            Text.rich(
+              TextSpan(
                 style: TextStyle(fontSize: 12.5, color: context.inkMuted),
                 children: <InlineSpan>[
                   TextSpan(

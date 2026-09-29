@@ -1,0 +1,5 @@
+# Tasarım ekran görüntüsü düzeneği (test/design) normal koşuda atlanır.
+# Çalıştırmak için: flutter test --run-skipped -t design test/design
+tags:
+  design:
+    skip: "Tasarım düzeneği; --run-skipped -t design ile çalıştırın."

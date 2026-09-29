@@ -11,8 +11,8 @@ import '../../app/theme.dart';
 /// `warning`: İP-K — ödeme bekleniyor, kontenjan dolu (bekleme listesi).
 enum FeedbackTone { info, success, error, warning }
 
-const Color _warningFg = Color(0xFF9A5B00);
-const Color _warningBg = Color(0xFFFFF4E0);
+const Color _warningFg = BrandColors.warning;
+const Color _warningBg = BrandColors.warningBg;
 const Color _warningOnDark = Color(0xFFFFC870);
 const Color _warningBgDark = Color(0x33F5A623);
 
@@ -219,16 +219,25 @@ class FeedbackBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(BrandShape.controlRadius),
+        border: Border.all(color: fg.withValues(alpha: 0.18)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Icon(icon, size: 18, color: fg),
+          Padding(
+            padding: const EdgeInsets.only(top: 1),
+            child: Icon(icon, size: 18, color: fg),
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               text,
-              style: TextStyle(color: fg, fontSize: 13.5, height: 1.4),
+              style: TextStyle(
+                color: fg,
+                fontSize: 14,
+                height: 1.45,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
         ],
@@ -247,7 +256,7 @@ class FeedbackBanner extends StatelessWidget {
 /// Not: açılış ekranındaki (splash) rozetli/parlak sembol kasıtlı olarak
 /// bunu kullanmıyor — `splash_screen.dart` içindeki `_SplashMark` bakınız.
 class BrandMark extends StatelessWidget {
-  const BrandMark({this.size = 32, this.color = BrandColors.maroon, super.key});
+  const BrandMark({this.size = 32, this.color = BrandColors.red, super.key});
 
   final double size;
   final Color color;
@@ -306,23 +315,55 @@ class EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // İlk satır başlık gibi okunur (web `.empty-state h3` + p).
+    final int newline = message.indexOf('\n');
+    final String title = newline < 0 ? message : message.substring(0, newline);
+    final String? body = newline < 0 ? null : message.substring(newline + 1);
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
-      decoration: BoxDecoration(
-        color: context.surface,
-        borderRadius: BorderRadius.circular(BrandShape.cardRadius),
-        boxShadow: BrandShape.card,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
+      decoration: context.cardDecoration(),
       child: Column(
         children: <Widget>[
-          Icon(icon ?? Icons.inbox_outlined, size: 36, color: context.hairline),
-          const SizedBox(height: 12),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: TextStyle(color: context.inkMuted, height: 1.5),
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              color: context.brandTint,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon ?? Icons.inbox_outlined,
+              size: 30,
+              color: context.brandInk,
+            ),
           ),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: body == null
+                ? TextStyle(
+                    fontSize: 15,
+                    height: 1.55,
+                    fontWeight: FontWeight.w500,
+                    color: context.inkBody,
+                  )
+                : Theme.of(context).textTheme.titleMedium,
+          ),
+          if (body != null && body.isNotEmpty) ...<Widget>[
+            const SizedBox(height: 6),
+            Text(
+              body,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: context.inkMuted,
+                height: 1.55,
+                fontSize: 14.5,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -345,7 +386,7 @@ class StatusPill extends StatelessWidget {
     // Nötr ton hap etiketlerde zemin rengiyle aynı aileden olmalı; banner'daki
     // mavi bilgi zemini burada fazla gürültü yapardı.
     final ({Color bg, Color fg}) tones = tone == FeedbackTone.info
-        ? (bg: context.subtleFill, fg: context.inkMuted)
+        ? (bg: context.subtleFill, fg: context.inkBody)
         : feedbackToneColors(context, tone);
 
     final Color bg = tones.bg;
@@ -356,14 +397,37 @@ class StatusPill extends StatelessWidget {
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(BrandShape.pillRadius),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: fg,
-          fontSize: 11.5,
-          fontWeight: FontWeight.w600,
+        border: Border.all(
+          color: tone == FeedbackTone.info
+              ? context.hairline.withValues(alpha: 0.7)
+              : fg.withValues(alpha: 0.16),
         ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          if (tone != FeedbackTone.info) ...<Widget>[
+            Container(
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(color: fg, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 6),
+          ],
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: fg,
+                fontSize: 12,
+                height: 1.25,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -392,7 +456,7 @@ class EventImage extends StatelessWidget {
     // çözemediği için gömülü görselin baytları burada ayrıştırılır —
     // aksi hâlde yüklenen her görsel kartlarda kırık görünüyor.
     if (url.startsWith('data:')) {
-      final Uint8List? bytes = _decodeDataUrl(url);
+      final Uint8List? bytes = _cachedDataUrlBytes(url);
       if (bytes == null) return EventCoverPlaceholder(height: height);
 
       return Image.memory(
@@ -524,6 +588,27 @@ class ClubLogoBox extends StatelessWidget {
   }
 }
 
+/// Çözülmüş `data:` görsellerinin küçük önbelleği.
+///
+/// `Image.memory` görseli bayt dizisinin KİMLİĞİYLE tanır. Her çizimde
+/// base64 yeniden çözülünce yeni bir dizi — dolayısıyla yeni bir görsel —
+/// oluşuyor, sık yenilenen ekranlarda (kulüp etkinlik detayı gibi canlı
+/// akışlar) kapak her karede yeniden çözülüp boş görünüyordu.
+final Map<String, Uint8List> _dataUrlCache = <String, Uint8List>{};
+
+Uint8List? _cachedDataUrlBytes(String url) {
+  final Uint8List? hit = _dataUrlCache.remove(url);
+  if (hit != null) {
+    _dataUrlCache[url] = hit; // en son kullanılan sona
+    return hit;
+  }
+  final Uint8List? bytes = _decodeDataUrl(url);
+  if (bytes == null) return null;
+  _dataUrlCache[url] = bytes;
+  if (_dataUrlCache.length > 24) _dataUrlCache.remove(_dataUrlCache.keys.first);
+  return bytes;
+}
+
 /// `data:image/jpeg;base64,...` adresinden baytları çıkarır.
 ///
 /// Bozuk ya da base64 olmayan bir gövde geldiğinde null döner; çağıran taraf
@@ -583,7 +668,7 @@ class SessionProgressBar extends StatelessWidget {
     final Color fill = done ? BrandColors.success : BrandColors.red;
     final Color empty = context.isDarkMode
         ? BrandColors.darkSurfaceAlt
-        : BrandColors.grayLighter;
+        : BrandColors.grayLight;
 
     if (slots > 12) {
       return ClipRRect(
@@ -613,6 +698,223 @@ class SessionProgressBar extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+/// Sayfanın üstündeki başlık bloğu (web `.hero` → açık başlık alanı):
+/// küçük kırmızı çizgi/üst başlık, Montserrat başlık ve soluk açıklama.
+class PageHeader extends StatelessWidget {
+  const PageHeader({
+    required this.title,
+    this.eyebrow,
+    this.subtitle,
+    this.trailing,
+    this.center = false,
+    this.padding = const EdgeInsets.fromLTRB(4, 4, 4, 18),
+    super.key,
+  });
+
+  final String title;
+  final String? eyebrow;
+  final String? subtitle;
+  final Widget? trailing;
+  final bool center;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final TextAlign align = center ? TextAlign.center : TextAlign.start;
+    final CrossAxisAlignment cross = center
+        ? CrossAxisAlignment.center
+        : CrossAxisAlignment.start;
+
+    final Widget column = Column(
+      crossAxisAlignment: cross,
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        if (eyebrow != null && eyebrow!.isNotEmpty) ...<Widget>[
+          Text(
+            eyebrow!.toUpperCase(),
+            textAlign: align,
+            style: TextStyle(
+              fontFamily: BrandFonts.heading,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.4,
+              color: context.brandInk,
+            ),
+          ),
+          const SizedBox(height: 8),
+        ] else ...<Widget>[
+          Container(
+            width: 28,
+            height: 3,
+            decoration: BoxDecoration(
+              gradient: BrandColors.gradient,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        Text(
+          title,
+          textAlign: align,
+          style: Theme.of(
+            context,
+          ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        if (subtitle != null && subtitle!.isNotEmpty) ...<Widget>[
+          const SizedBox(height: 8),
+          Text(
+            subtitle!,
+            textAlign: align,
+            style: TextStyle(
+              fontSize: 14.5,
+              height: 1.55,
+              color: context.inkMuted,
+            ),
+          ),
+        ],
+      ],
+    );
+
+    return Padding(
+      padding: padding,
+      child: trailing == null
+          ? SizedBox(width: double.infinity, child: column)
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: <Widget>[
+                Expanded(child: column),
+                const SizedBox(width: 12),
+                trailing!,
+              ],
+            ),
+    );
+  }
+}
+
+/// Başlıklı bölüm kartı: solda tonlu simge kutusu, başlık + açıklama ve
+/// altında içerik. Uzun yönetim ekranlarını (kulüp etkinlik detayı, form
+/// bölümleri) nefes alan bloklara ayırır.
+class SectionCard extends StatelessWidget {
+  const SectionCard({
+    required this.title,
+    required this.child,
+    this.icon,
+    this.subtitle,
+    this.trailing,
+    this.padding = const EdgeInsets.fromLTRB(16, 16, 16, 18),
+    super.key,
+  });
+
+  final String title;
+  final String? subtitle;
+  final IconData? icon;
+  final Widget? trailing;
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      decoration: context.cardDecoration(),
+      padding: padding,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              if (icon != null) ...<Widget>[
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: context.brandTint,
+                    borderRadius: BorderRadius.circular(BrandShape.smallRadius),
+                  ),
+                  child: Icon(icon, size: 20, color: context.brandInk),
+                ),
+                const SizedBox(width: 12),
+              ],
+              Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(top: icon == null ? 0 : 1),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      if (subtitle != null && subtitle!.isNotEmpty) ...<Widget>[
+                        const SizedBox(height: 3),
+                        Text(
+                          subtitle!,
+                          style: TextStyle(
+                            fontSize: 13,
+                            height: 1.45,
+                            color: context.inkMuted,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              if (trailing != null) ...<Widget>[
+                const SizedBox(width: 8),
+                trailing!,
+              ],
+            ],
+          ),
+          const SizedBox(height: 16),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+/// Kapak görselinin sol üstüne oturan tarih hapı (web `.event-date-pill`).
+class EventDatePill extends StatelessWidget {
+  const EventDatePill({required this.label, super.key});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(8, 5, 11, 5),
+      decoration: BoxDecoration(
+        color: context.surface.withValues(alpha: 0.94),
+        borderRadius: BorderRadius.circular(BrandShape.pillRadius),
+        boxShadow: const <BoxShadow>[
+          BoxShadow(
+            color: Color(0x1F0F172A),
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(Icons.schedule_rounded, size: 14, color: context.brandInk),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: context.ink,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

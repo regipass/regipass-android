@@ -26,6 +26,9 @@ void main() {
   // bu da logo ekranının bile gecikmiş görünmesine neden oluyordu.
   unawaited(applyVisibleSystemBars());
 
+  // Gömülü fontların OFL lisansı "Lisanslar" sayfasında görünsün.
+  registerBrandFontLicenses();
+
   // Açılış perdesi cihazın görünümünü izliyor (bkz. splash_screen.dart), sistem
   // çubukları da ilk kareden itibaren aynı tarafta olmalı; aksi halde koyu
   // modda alt gezinme çubuğu bir an beyaz parlıyordu.

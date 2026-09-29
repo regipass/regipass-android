@@ -200,9 +200,14 @@ class _ClubEventsScreenState extends ConsumerState<ClubEventsScreen> {
 
           return Column(
             children: <Widget>[
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 2),
+              Container(
+                margin: const EdgeInsets.fromLTRB(16, 16, 16, 2),
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: context.subtleFill,
+                  borderRadius: BorderRadius.circular(BrandShape.pillRadius),
+                  border: Border.all(color: context.hairline),
+                ),
                 child: Row(
                   children: <Widget>[
                     _GroupButton(
@@ -211,14 +216,14 @@ class _ClubEventsScreenState extends ConsumerState<ClubEventsScreen> {
                       selected: _group == _Group.active,
                       onTap: () => setState(() => _group = _Group.active),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 4),
                     _GroupButton(
                       label: context.t('clubEvents.group.upcoming'),
                       count: groups.upcoming.length,
                       selected: _group == _Group.upcoming,
                       onTap: () => setState(() => _group = _Group.upcoming),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 4),
                     _GroupButton(
                       label: context.t('clubEvents.group.past'),
                       count: groups.past.length,
@@ -322,8 +327,8 @@ class _CardActions extends StatelessWidget {
   }
 }
 
-/// Aktif / gelecek / geçmiş seçimi — öğrenci tarafındaki sayaçlı yuvarlak
-/// düğmelerle aynı dil.
+/// Aktif / gelecek / geçmiş seçimi — öğrenci tarafındaki bölümlü seçiciyle
+/// aynı dil: seçili bölüm beyaz hapla öne çıkar, sayaç kırmızı rozette.
 class _GroupButton extends StatelessWidget {
   const _GroupButton({
     required this.label,
@@ -339,50 +344,61 @@ class _GroupButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color idleFill = context.isDarkMode
-        ? BrandColors.red.withValues(alpha: 0.18)
-        : BrandColors.redTint;
-
-    return Material(
-      color: selected ? BrandColors.redSoft : idleFill,
-      borderRadius: BorderRadius.circular(BrandShape.pillRadius),
-      elevation: selected ? 3 : 0,
-      shadowColor: BrandColors.red.withValues(alpha: 0.4),
-      child: InkWell(
-        onTap: onTap,
+    return Expanded(
+      child: Material(
+        color: selected ? context.surface : Colors.transparent,
         borderRadius: BorderRadius.circular(BrandShape.pillRadius),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
-                  color: selected ? BrandColors.white : context.brandInk,
-                ),
-              ),
-              const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
-                decoration: BoxDecoration(
-                  color: selected
-                      ? BrandColors.white.withValues(alpha: 0.26)
-                      : BrandColors.red.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(BrandShape.pillRadius),
-                ),
-                child: Text(
-                  '$count',
-                  style: TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w700,
-                    color: selected ? BrandColors.white : context.brandInk,
+        elevation: selected ? 1 : 0,
+        shadowColor: const Color(0x330F172A),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(BrandShape.pillRadius),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 44),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  Flexible(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight:
+                            selected ? FontWeight.w700 : FontWeight.w600,
+                        color: selected ? context.ink : context.inkMuted,
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 6),
+                  Container(
+                    constraints: const BoxConstraints(minWidth: 22),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: selected ? BrandColors.red : context.hairline,
+                      borderRadius: BorderRadius.circular(
+                        BrandShape.pillRadius,
+                      ),
+                    ),
+                    child: Text(
+                      '$count',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: selected ? BrandColors.white : context.inkBody,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),

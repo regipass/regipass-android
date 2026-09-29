@@ -542,7 +542,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       },
       child: DarkScreenSystemBars(
         child: Scaffold(
-          backgroundColor: BrandColors.loginBase,
+          backgroundColor: context.authColors.base,
           resizeToAvoidBottomInset: false,
           body: Stack(
             fit: StackFit.expand,
@@ -604,8 +604,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
           Text(
             context.t('forgotPassword.title'),
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: BrandColors.white,
+            style: TextStyle(
+              color: context.authColors.text,
               fontSize: 18,
               fontWeight: FontWeight.w700,
             ),
@@ -614,7 +614,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
           Text(
             widget.email,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: BrandColors.loginMuted, fontSize: 13),
+            style: TextStyle(color: context.authColors.muted, fontSize: 13),
           ),
           const SizedBox(height: 18),
           if (_feedback != null) ...<Widget>[
@@ -642,9 +642,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
-                color: const Color(0x14FFFFFF),
+                color: context.authColors.field,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: BrandColors.loginGlassBorder),
+                border: Border.all(color: context.authColors.cardBorder),
               ),
               child: Row(
                 children: <Widget>[
@@ -657,8 +657,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                   Expanded(
                     child: Text(
                       _maskedPhone!,
-                      style: const TextStyle(
-                        color: BrandColors.white,
+                      style: TextStyle(
+                        color: context.authColors.text,
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
                       ),
@@ -671,10 +671,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
           ],
           Text(
             context.t('forgotPassword.enterPhoneHint'),
-            style: const TextStyle(
-              color: BrandColors.loginMuted,
-              fontSize: 12.5,
-            ),
+            style: TextStyle(color: context.authColors.muted, fontSize: 12.5),
           ),
           const SizedBox(height: 10),
           _FieldLabel(text: context.t('form.phone')),
@@ -710,10 +707,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
           Text(
             context.t('forgotPassword.newPasswordHint'),
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: BrandColors.loginMuted,
-              fontSize: 13.5,
-            ),
+            style: TextStyle(color: context.authColors.muted, fontSize: 13.5),
           ),
           const SizedBox(height: 16),
           _FieldLabel(text: context.t('passwordReset.newPasswordLabel')),
@@ -731,7 +725,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                 _obscure
                     ? Icons.visibility_off_outlined
                     : Icons.visibility_outlined,
-                color: BrandColors.loginMuted,
+                color: context.authColors.muted,
                 size: 20,
               ),
               onPressed: () => setState(() => _obscure = !_obscure),
@@ -760,7 +754,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
             style: TextStyle(
               fontSize: 11.5,
               height: 1.35,
-              color: strong ? BrandColors.success : BrandColors.loginMuted,
+              color: strong ? BrandColors.success : context.authColors.muted,
             ),
           ),
           const SizedBox(height: 16),
@@ -785,8 +779,8 @@ class _FieldLabel extends StatelessWidget {
     padding: const EdgeInsets.only(left: 2, bottom: 6),
     child: Text(
       text,
-      style: const TextStyle(
-        color: BrandColors.loginMuted,
+      style: TextStyle(
+        color: context.authColors.muted,
         fontSize: 12.5,
         fontWeight: FontWeight.w600,
       ),
@@ -839,12 +833,12 @@ class _CodeDialogState extends State<_CodeDialog> {
         );
 
     return Dialog(
-      backgroundColor: BrandColors.loginSurface,
+      backgroundColor: context.authColors.card,
       surfaceTintColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(22),
-        side: const BorderSide(color: BrandColors.loginGlassBorder),
+        side: BorderSide(color: context.authColors.cardBorder),
       ),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 420),
@@ -859,8 +853,8 @@ class _CodeDialogState extends State<_CodeDialog> {
                   Expanded(
                     child: Text(
                       context.t('phoneVerify.modalTitle'),
-                      style: const TextStyle(
-                        color: BrandColors.white,
+                      style: TextStyle(
+                        color: context.authColors.text,
                         fontSize: 16.5,
                         fontWeight: FontWeight.w700,
                       ),
@@ -869,9 +863,9 @@ class _CodeDialogState extends State<_CodeDialog> {
                   IconButton(
                     tooltip: context.t('common.cancel'),
                     onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.close,
-                      color: BrandColors.loginMuted,
+                      color: context.authColors.muted,
                       size: 22,
                     ),
                   ),
@@ -881,8 +875,8 @@ class _CodeDialogState extends State<_CodeDialog> {
                 padding: const EdgeInsets.only(right: 8),
                 child: Text(
                   context.t('phoneVerify.modalSubtitle'),
-                  style: const TextStyle(
-                    color: BrandColors.loginMuted,
+                  style: TextStyle(
+                    color: context.authColors.muted,
                     fontSize: 13,
                     height: 1.45,
                   ),
@@ -896,9 +890,9 @@ class _CodeDialogState extends State<_CodeDialog> {
                   vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0x14FFFFFF),
+                  color: context.authColors.field,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: BrandColors.loginGlassBorder),
+                  border: Border.all(color: context.authColors.cardBorder),
                 ),
                 child: Row(
                   children: <Widget>[
@@ -911,8 +905,8 @@ class _CodeDialogState extends State<_CodeDialog> {
                     Expanded(
                       child: Text(
                         formatE164ForDisplay(widget.phoneE164),
-                        style: const TextStyle(
-                          color: BrandColors.white,
+                        style: TextStyle(
+                          color: context.authColors.text,
                           fontSize: 15.5,
                           fontWeight: FontWeight.w700,
                         ),
@@ -932,8 +926,8 @@ class _CodeDialogState extends State<_CodeDialog> {
                   textInputAction: TextInputAction.done,
                   autofillHints: const <String>[AutofillHints.oneTimeCode],
                   cursorColor: BrandColors.red,
-                  style: const TextStyle(
-                    color: BrandColors.white,
+                  style: TextStyle(
+                    color: context.authColors.text,
                     fontSize: 24,
                     letterSpacing: 10,
                     fontWeight: FontWeight.w700,
@@ -942,20 +936,20 @@ class _CodeDialogState extends State<_CodeDialog> {
                   decoration: InputDecoration(
                     counterText: '',
                     hintText: '••••••',
-                    hintStyle: const TextStyle(
-                      color: BrandColors.loginMuted,
+                    hintStyle: TextStyle(
+                      color: context.authColors.muted,
                       fontSize: 24,
                       letterSpacing: 10,
                       fontWeight: FontWeight.w700,
                     ),
                     filled: true,
-                    fillColor: const Color(0x14FFFFFF),
+                    fillColor: context.authColors.field,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 14,
                       vertical: 16,
                     ),
-                    border: border(BrandColors.loginGlassBorder),
-                    enabledBorder: border(BrandColors.loginGlassBorder),
+                    border: border(context.authColors.cardBorder),
+                    enabledBorder: border(context.authColors.cardBorder),
                     focusedBorder: border(BrandColors.red, 1.5),
                   ),
                   onChanged: (String value) {

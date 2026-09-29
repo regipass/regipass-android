@@ -108,7 +108,7 @@ class _AccountSettingsSheet extends StatelessWidget {
             // yüzey olarak okunsun.
             color: context.canvas,
             borderRadius: BorderRadius.circular(BrandShape.cardRadius),
-            boxShadow: BrandShape.card,
+            border: Border.all(color: context.hairline),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -196,7 +196,7 @@ class AccountPreferencesCard extends ConsumerWidget {
       decoration: BoxDecoration(
         color: context.surface,
         borderRadius: BorderRadius.circular(BrandShape.controlRadius),
-        boxShadow: BrandShape.card,
+        border: Border.all(color: context.hairline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

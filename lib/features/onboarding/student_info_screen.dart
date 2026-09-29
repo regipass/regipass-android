@@ -605,7 +605,11 @@ class _StudentInfoScreenState extends ConsumerState<StudentInfoScreen> {
             children: <Widget>[
               Text(
                 context.t('studentInfo.subtitle'),
-                style: Theme.of(context).textTheme.bodySmall,
+                style: TextStyle(
+                  fontSize: 14.5,
+                  height: 1.55,
+                  color: context.inkMuted,
+                ),
               ),
               const SizedBox(height: 20),
 

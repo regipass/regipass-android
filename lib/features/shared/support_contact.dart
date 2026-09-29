@@ -64,7 +64,7 @@ class _SupportContactSheet extends StatelessWidget {
         decoration: BoxDecoration(
           color: context.surface,
           borderRadius: BorderRadius.circular(BrandShape.cardRadius),
-          boxShadow: BrandShape.card,
+          border: Border.all(color: context.hairline),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,

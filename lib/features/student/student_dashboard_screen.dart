@@ -134,10 +134,21 @@ class _StudentDashboardScreenState
               followedIds,
               (AppEvent e) => e.clubId,
             );
-            final Widget filterBar = _FollowFilterBar(
-              value: followFilter,
-              onChanged: (FollowFilter f) =>
-                  ref.read(followFilterProvider.notifier).select(f),
+            final Widget filterBar = Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                PageHeader(
+                  title: context.t('dashboard.hero.title'),
+                  subtitle: context.t('dashboard.hero.subtitle'),
+                  center: true,
+                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 20),
+                ),
+                _FollowFilterBar(
+                  value: followFilter,
+                  onChanged: (FollowFilter f) =>
+                      ref.read(followFilterProvider.notifier).select(f),
+                ),
+              ],
             );
             if (list.isEmpty) {
               final bool following = followFilter == FollowFilter.following;
@@ -159,9 +170,9 @@ class _StudentDashboardScreenState
             }
 
             return ListView.separated(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
               itemCount: list.length + 1,
-              separatorBuilder: (_, _) => const SizedBox(height: 14),
+              separatorBuilder: (_, _) => const SizedBox(height: 16),
               itemBuilder: (BuildContext context, int index) {
                 if (index == 0) return filterBar;
                 final AppEvent event = list[index - 1];
@@ -214,14 +225,13 @@ class _FollowFilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.centerLeft,
+    return SizedBox(
+      width: double.infinity,
       child: SegmentedButton<FollowFilter>(
         key: const ValueKey<String>('follow-filter'),
         showSelectedIcon: false,
         style: SegmentedButton.styleFrom(
-          visualDensity: VisualDensity.compact,
-          selectedBackgroundColor: BrandColors.red.withValues(alpha: 0.12),
+          selectedBackgroundColor: context.brandTint,
           selectedForegroundColor: context.brandInk,
         ),
         segments: <ButtonSegment<FollowFilter>>[
@@ -275,104 +285,14 @@ class _EventCard extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    final String label = context.t(view.statusKey);
-    final FeedbackTone tone = feedbackToneFor(view.statusTone);
-
-    return Card(
-      child: InkWell(
-        onTap: onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            EventImage(url: event.displayImageUrl),
-            Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: Text(
-                          event.title,
-                          style: Theme.of(context).textTheme.titleMedium,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      StatusPill(label: label, tone: tone),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  _MetaRow(
-                    icon: Icons.groups_outlined,
-                    text: event.clubName.isNotEmpty
-                        ? event.clubName
-                        : context.t('dashboard.clubFallback'),
-                  ),
-                  _MetaRow(
-                    icon: Icons.calendar_today_outlined,
-                    text: formatDeadline(
-                      event.deadlineAtMs,
-                      locale: context.lang,
-                    ),
-                  ),
-                  if (event.locationName.isNotEmpty)
-                    _MetaRow(
-                      icon: Icons.place_outlined,
-                      text: event.locationName,
-                    ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: <Widget>[
-                      StatusPill(label: scopeLabel(context, event.targetScope)),
-                      StatusPill(label: priorityLabel(context, priority)),
-                      if (event.isMultiSession)
-                        StatusPill(
-                          label: context.t(
-                            'eventModal.sessionsValue',
-                            <String, Object?>{'count': event.sessionCount},
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MetaRow extends StatelessWidget {
-  const _MetaRow({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 3),
-    child: Row(
-      children: <Widget>[
-        Icon(icon, size: 14, color: context.inkMuted),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(
-            text,
-            style: Theme.of(context).textTheme.bodySmall,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
+  Widget build(BuildContext context) => EventSummaryCard(
+    event: event,
+    priority: priority,
+    statusOverride: (
+      label: context.t(view.statusKey),
+      tone: feedbackToneFor(view.statusTone),
     ),
+    onTap: onTap,
   );
 }
 
@@ -553,31 +473,34 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
       if (!mounted) return;
 
       _toast(switch (result.outcome) {
-        RegistrationOutcome.registered => result.paymentPending
-            ? '${context.t('dashboard.alerts.registerSuccess')}\n${context.t('registration.alerts.paymentPendingNote')}'
-            : context.t('dashboard.alerts.registerSuccess'),
+        RegistrationOutcome.registered =>
+          result.paymentPending
+              ? '${context.t('dashboard.alerts.registerSuccess')}\n${context.t('registration.alerts.paymentPendingNote')}'
+              : context.t('dashboard.alerts.registerSuccess'),
         RegistrationOutcome.alreadyRegistered => context.t(
           'dashboard.alerts.alreadyRegistered',
         ),
         RegistrationOutcome.quotaFull => context.t(
           'dashboard.alerts.quotaFull',
         ),
-        RegistrationOutcome.closed => result.reason.isNotEmpty
-            ? context.t('registration.errors.${result.reason}')
-            : context.t('dashboard.alerts.registrationClosed'),
+        RegistrationOutcome.closed =>
+          result.reason.isNotEmpty
+              ? context.t('registration.errors.${result.reason}')
+              : context.t('dashboard.alerts.registrationClosed'),
         RegistrationOutcome.notFound => context.t(
           'dashboard.alerts.eventNotFound',
         ),
-        RegistrationOutcome.notEligible => result.reason.isNotEmpty
-            ? context.t('registration.errors.${result.reason}')
-            : context.t('dashboard.errors.register.permissionDenied'),
+        RegistrationOutcome.notEligible =>
+          result.reason.isNotEmpty
+              ? context.t('registration.errors.${result.reason}')
+              : context.t('dashboard.errors.register.permissionDenied'),
         RegistrationOutcome.retryExhausted => context.t(
           'dashboard.errors.register.retryExhausted',
         ),
         RegistrationOutcome.unavailable =>
           result.reason.isNotEmpty && result.reason != 'network'
-          ? context.t('registration.errors.${result.reason}')
-          : context.t('dashboard.errors.register.unavailable'),
+              ? context.t('registration.errors.${result.reason}')
+              : context.t('dashboard.errors.register.unavailable'),
       });
 
       // Ücretli etkinlikte ödeme uygulama dışında: kayıt alındıktan sonra
@@ -690,7 +613,9 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
     if (!ok || !mounted) return;
     setState(() => _busy = true);
     try {
-      await ref.read(registrationServiceProvider).leaveWaitlist(widget.event.id);
+      await ref
+          .read(registrationServiceProvider)
+          .leaveWaitlist(widget.event.id);
       if (mounted) setState(() => _position = null);
     } on RegistrationFailure catch (_) {
       if (!mounted) return;
@@ -829,7 +754,7 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
                     // ── Başlık görseli + kapatma ────────────────────────────
                     Stack(
                       children: <Widget>[
-                        EventImage(url: event.displayImageUrl, height: 200),
+                        EventImage(url: event.displayImageUrl, height: 210),
                         Positioned(
                           top: 10,
                           left: 0,
@@ -839,29 +764,36 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
                               width: 42,
                               height: 4,
                               decoration: BoxDecoration(
-                                color: BrandColors.white.withValues(
-                                  alpha: 0.75,
-                                ),
+                                color: BrandColors.white.withValues(alpha: 0.8),
                                 borderRadius: BorderRadius.circular(999),
                               ),
                             ),
                           ),
                         ),
                         Positioned(
-                          top: 8,
-                          right: 8,
+                          left: 16,
+                          bottom: 14,
+                          child: EventDatePill(
+                            label: eventCardDate(context, event),
+                          ),
+                        ),
+                        Positioned(
+                          top: 12,
+                          right: 12,
                           child: Material(
-                            color: const Color(0x8C000000),
+                            color: context.surface.withValues(alpha: 0.92),
                             shape: const CircleBorder(),
                             clipBehavior: Clip.antiAlias,
+                            elevation: 1,
                             child: InkWell(
                               onTap: () => Navigator.of(context).pop(),
-                              child: const Padding(
-                                padding: EdgeInsets.all(7),
+                              child: SizedBox(
+                                width: 40,
+                                height: 40,
                                 child: Icon(
-                                  Icons.close,
-                                  size: 19,
-                                  color: BrandColors.white,
+                                  Icons.close_rounded,
+                                  size: 20,
+                                  color: context.ink,
                                 ),
                               ),
                             ),
@@ -871,21 +803,22 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
                     ),
 
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
+                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
                           Text(
                             event.title,
-                            style: Theme.of(context).textTheme.headlineSmall,
+                            style: Theme.of(context).textTheme.headlineSmall
+                                ?.copyWith(fontWeight: FontWeight.w800),
                           ),
 
                           // Kulüp kimliği: adın hemen altında, kulübü kısa kısa
                           // anlatan baloncuklar (alan, üniversite, şehir).
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 16),
                           _ClubHeader(event: event),
 
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 16),
                           Wrap(
                             spacing: 6,
                             runSpacing: 6,
@@ -904,12 +837,25 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
                           ),
 
                           // ── Etkinlik bilgileri (web'deki etiketli bilgi bloğu) ──
-                          const SizedBox(height: 22),
+                          const SizedBox(height: 26),
                           _SectionTitle(context.t('eventModal.info')),
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 12),
                           _InfoTable(
                             rows:
                                 <({IconData icon, String label, String value})>[
+                                  if ((event.eventDateAtMs ?? 0) > 0)
+                                    (
+                                      icon: Icons.event_outlined,
+                                      label: context.t('eventModal.eventDate'),
+                                      value:
+                                          formatDeadline(
+                                            event.eventDateAtMs,
+                                            locale: context.lang,
+                                          ) +
+                                          (event.timeRangeLabel.isEmpty
+                                              ? ''
+                                              : ' · ${event.timeRangeLabel}'),
+                                    ),
                                   (
                                     icon: Icons.calendar_today_outlined,
                                     label: context.t('eventModal.deadline'),
@@ -921,9 +867,7 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
                                   (
                                     icon: Icons.payments_outlined,
                                     label: context.t('eventModal.fee'),
-                                    value: event.feeInfo.isNotEmpty
-                                        ? event.feeInfo
-                                        : context.t('eventModal.free'),
+                                    value: eventFeeLabel(context, event),
                                   ),
                                   (
                                     icon: Icons.event_seat_outlined,
@@ -960,31 +904,31 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
                           // Ücretli etkinlik: pop-up kapandıktan sonra da
                           // kulüp iletişim bilgileri kaybolmasın diye burada
                           // kalıcı olarak da gösteriliyor.
-                          const SizedBox(height: 22),
+                          const SizedBox(height: 26),
                           EventPaidContactBlock(event: event),
 
                           // İP-T: takvime ekle
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 14),
                           AddToCalendarButton(event: event),
 
                           // ── Açıklama ────────────────────────────────────────
-                          const SizedBox(height: 22),
+                          const SizedBox(height: 26),
                           _SectionTitle(context.t('eventModal.description')),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 10),
                           Text(
                             event.description.isNotEmpty
                                 ? event.description
                                 : context.t('dashboard.modal.noDescription'),
-                            style: const TextStyle(height: 1.55),
+                            style: Theme.of(context).textTheme.bodyLarge,
                           ),
 
                           if (event.purpose.isNotEmpty) ...<Widget>[
-                            const SizedBox(height: 22),
+                            const SizedBox(height: 26),
                             _SectionTitle(context.t('eventModal.purpose')),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 10),
                             Text(
                               event.purpose,
-                              style: const TextStyle(height: 1.55),
+                              style: Theme.of(context).textTheme.bodyLarge,
                             ),
                           ],
                         ],
@@ -1008,7 +952,8 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
                     position: _position,
                     onPrimary: switch (view.primaryAction) {
                       StudentPrimaryAction.register => _register,
-                      StudentPrimaryAction.joinWaitlist => () => _joinWaitlist(),
+                      StudentPrimaryAction.joinWaitlist =>
+                        () => _joinWaitlist(),
                       StudentPrimaryAction.none => () {},
                     },
                     onSecondary: switch (view.secondary) {
@@ -1088,8 +1033,10 @@ class _SheetActionBar extends StatelessWidget {
             child: _PrimaryAction(
               busy: busy,
               queued: queued,
-              closed: !view.primaryEnabled && !view.registered && !view.waitlisted,
-              registered: view.registered || (view.waitlisted && !view.primaryEnabled),
+              closed:
+                  !view.primaryEnabled && !view.registered && !view.waitlisted,
+              registered:
+                  view.registered || (view.waitlisted && !view.primaryEnabled),
               enabled: view.primaryEnabled,
               label: primaryLabel,
               onPressed: onPrimary,
@@ -1106,10 +1053,11 @@ class _SheetActionBar extends StatelessWidget {
                 height: 50,
                 child: OutlinedButton(
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: BrandColors.danger,
-                    side: const BorderSide(color: BrandColors.danger),
+                    foregroundColor: context.brandInk,
+                    side: BorderSide(color: context.brandInk),
                     shape: const StadiumBorder(),
                     backgroundColor: surface,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
                   ),
                   onPressed: busy ? null : onSecondary,
                   child: Text(
@@ -1118,8 +1066,10 @@ class _SheetActionBar extends StatelessWidget {
                           ? 'registration.actions.leaveWaitlist'
                           : 'dashboard.actions.unregister',
                     ),
-                    maxLines: 1,
+                    maxLines: 2,
+                    textAlign: TextAlign.center,
                     overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 14, height: 1.2),
                   ),
                 ),
               ),
@@ -1240,10 +1190,12 @@ class _PrimaryAction extends StatelessWidget {
                         Flexible(
                           child: Text(
                             label,
-                            maxLines: 1,
+                            maxLines: 2,
+                            textAlign: TextAlign.center,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: 15,
+                              fontSize: 14,
+                              height: 1.2,
                               fontWeight: FontWeight.w700,
                               color: foreground,
                             ),
@@ -1263,7 +1215,8 @@ class _PrimaryAction extends StatelessWidget {
 ///
 /// Ad tek başına kulübün ne yaptığını anlatmıyor; adın hemen altındaki
 /// baloncuklar (alan, üniversite) öğrencinin kulübü bir bakışta
-/// tanımasını sağlıyor.
+/// tanımasını sağlıyor. Takip düğmesi dar ekranda adı sıkıştırmasın diye
+/// bilgilerin altında, kendi satırında durur.
 class _ClubHeader extends StatelessWidget {
   const _ClubHeader({required this.event});
 
@@ -1271,94 +1224,26 @@ class _ClubHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String name = event.clubName.isNotEmpty
-        ? event.clubName
-        : context.t('dashboard.clubFallback');
-
-    // Kulübün TÜM alanları gösterilir: çok alanlı bir kulüpte yalnızca ilk
-    // alanı yazmak kulübü olduğundan dar gösteriyordu.
-    final List<String> facts = <String>[
-      ...eventClubFields(event),
-      if (event.clubUniversity.isNotEmpty) event.clubUniversity,
-    ];
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            gradient: BrandColors.gradient,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Icon(
-            Icons.groups_outlined,
-            color: BrandColors.white,
-            size: 21,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(
-                name,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: context.ink,
-                ),
-              ),
-              if (facts.isNotEmpty) ...<Widget>[
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: <Widget>[
-                    for (final String fact in facts) _ClubBubble(text: fact),
-                  ],
-                ),
-              ],
-            ],
-          ),
-        ),
-        // İP-TK: kulübü takip et / bırak.
-        if (event.clubId.isNotEmpty) ...<Widget>[
-          const SizedBox(width: 8),
-          ClubFollowButton(clubId: event.clubId),
-        ],
-      ],
-    );
-  }
-}
-
-/// Kulüp bilgisi baloncuğu — kırmızının en soluk tonunda, kısa metin.
-class _ClubBubble extends StatelessWidget {
-  const _ClubBubble({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: BrandColors.red.withValues(
-          alpha: context.isDarkMode ? 0.18 : 0.09,
-        ),
-        borderRadius: BorderRadius.circular(BrandShape.pillRadius),
+        color: context.canvas,
+        borderRadius: BorderRadius.circular(BrandShape.cardRadius),
+        border: Border.all(color: context.hairline),
       ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 11.5,
-          fontWeight: FontWeight.w600,
-          color: context.brandInk,
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          EventClubHeader(event: event),
+          // İP-TK: kulübü takip et / bırak.
+          if (event.clubId.isNotEmpty) ...<Widget>[
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: ClubFollowButton(clubId: event.clubId),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -1371,27 +1256,7 @@ class _SectionTitle extends StatelessWidget {
   final String text;
 
   @override
-  Widget build(BuildContext context) => Row(
-    children: <Widget>[
-      Container(
-        width: 3,
-        height: 15,
-        decoration: BoxDecoration(
-          color: BrandColors.red,
-          borderRadius: BorderRadius.circular(2),
-        ),
-      ),
-      const SizedBox(width: 8),
-      Text(
-        text,
-        style: TextStyle(
-          fontSize: 14.5,
-          fontWeight: FontWeight.w700,
-          color: context.ink,
-        ),
-      ),
-    ],
-  );
+  Widget build(BuildContext context) => EventSectionTitle(text);
 }
 
 /// Etiket/değer çiftlerinden oluşan bilgi bloğu (web'deki detay tablosu).
@@ -1401,53 +1266,7 @@ class _InfoTable extends StatelessWidget {
   final List<({IconData icon, String label, String value})> rows;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: context.subtleFill,
-        borderRadius: BorderRadius.circular(BrandShape.controlRadius),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      child: Column(
-        children: <Widget>[
-          for (int i = 0; i < rows.length; i++) ...<Widget>[
-            if (i > 0)
-              Divider(
-                height: 1,
-                thickness: 1,
-                color: context.hairline.withValues(alpha: 0.5),
-              ),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 11),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Icon(rows[i].icon, size: 16, color: context.inkMuted),
-                  const SizedBox(width: 9),
-                  Text(
-                    rows[i].label,
-                    style: TextStyle(fontSize: 13, color: context.inkMuted),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Text(
-                      rows[i].value,
-                      textAlign: TextAlign.right,
-                      style: TextStyle(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w600,
-                        color: context.ink,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => EventInfoTable(rows: rows);
 }
 
 /// İP-K: saf durum tonu → ekrandaki ton.

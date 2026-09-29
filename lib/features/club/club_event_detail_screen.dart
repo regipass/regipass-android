@@ -1068,18 +1068,53 @@ class _Body extends ConsumerWidget {
 
         ClipRRect(
           borderRadius: BorderRadius.circular(BrandShape.cardRadius),
-          child: EventImage(url: event.displayImageUrl, height: 170),
+          child: Stack(
+            children: <Widget>[
+              EventImage(url: event.displayImageUrl, height: 184),
+              Positioned(
+                left: 12,
+                bottom: 12,
+                child: EventDatePill(label: eventCardDate(context, event)),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 16),
-
-        EventSectionTitle(context.t('eventModal.info')),
+        Text(
+          event.title,
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.w800,
+          ),
+        ),
         const SizedBox(height: 10),
-        EventInfoTable(rows: eventInfoRows(context, event)),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: <Widget>[
+            StatusPill(
+              label: eventStatus(context, event).label,
+              tone: eventStatus(context, event).tone,
+            ),
+            StatusPill(label: eventScopeLabel(context, event.targetScope)),
+            StatusPill(label: eventFeeLabel(context, event)),
+          ],
+        ),
+        const SizedBox(height: 20),
+
+        SectionCard(
+          title: context.t('eventModal.info'),
+          icon: Icons.info_outline_rounded,
+          child: EventInfoTable(rows: eventInfoRows(context, event)),
+        ),
 
         // ── Kayıtlar ───────────────────────────────────────────────
-        const SizedBox(height: 22),
-        EventSectionTitle(context.t('clubEvents.registrations.title')),
-        const SizedBox(height: 10),
+        const SizedBox(height: 16),
+        SectionCard(
+          title: context.t('clubEvents.registrations.title'),
+          icon: Icons.how_to_reg_outlined,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
 
         // Kontenjan doluluğu. Kayıt kartının ÜSTÜNDE duruyor: kulüp
         // "kayıtları durdur" düğmesine bakmadan önce durdurulacak bir şey
@@ -1114,6 +1149,9 @@ class _Body extends ConsumerWidget {
           onPressed: past || busy ? null : onToggleRegistrations,
           danger: !event.registrationClosed,
         ),
+            ],
+          ),
+        ),
 
         // ── Kapı check-in'i ────────────────────────────────────────
         // Ölçüt oturum sayısı değil MODDUR: "Check-in + Yoklama" modunda
@@ -1125,10 +1163,11 @@ class _Body extends ConsumerWidget {
         // okutması) isteyen kulüpler için burada "Göster" düğmesiyle elle
         // açılan, ikinci planda bir seçenek olarak durur — otomatik açılmaz.
         if (event.hasDoorCheckin) ...<Widget>[
-          const SizedBox(height: 22),
-          EventSectionTitle(context.t('clubEvents.entry.title')),
-          const SizedBox(height: 10),
-          _CheckinStageBar(
+          const SizedBox(height: 16),
+          SectionCard(
+            title: context.t('clubEvents.entry.title'),
+            icon: Icons.door_front_door_outlined,
+            child: _CheckinStageBar(
             event: event,
             busy: busy || past,
             attended: list
@@ -1139,13 +1178,18 @@ class _Body extends ConsumerWidget {
             onShowQr: onShowDoorQr,
             onScan: onScanDoorCheckin,
           ),
+          ),
         ],
 
         // ── Oturumlar ──────────────────────────────────────────────
         if (event.isMultiSession) ...<Widget>[
-          const SizedBox(height: 22),
-          EventSectionTitle(context.t('clubEvents.session.title')),
-          const SizedBox(height: 10),
+          const SizedBox(height: 16),
+          SectionCard(
+            title: context.t('clubEvents.session.title'),
+            icon: Icons.fact_check_outlined,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
           _SessionPanel(
             event: event,
             busy: busy,
@@ -1169,6 +1213,9 @@ class _Body extends ConsumerWidget {
               value: event.allowSessionWithoutCheckin,
               onChanged: busy ? null : onAllowSessionWithoutCheckin,
             ),
+              ],
+            ),
+          ),
         ],
 
         // ── Belge ──────────────────────────────────────────────────
@@ -1177,13 +1224,15 @@ class _Body extends ConsumerWidget {
         // ne zaman açıldığı — oturumluda kulüp oturumları bitirince, tek
         // oturumluda etkinlik bitince (bkz. `canDistributeCertificates`).
         // İP-B: otomatik bildirimlerin durumu + kulübün elle mesajı.
-        const SizedBox(height: 22),
-        EventSectionTitle(context.t('eventNotify.title')),
-        const SizedBox(height: 10),
-        EventNotifyCard(event: event, compact: true),
+        const SizedBox(height: 16),
+        SectionCard(
+          title: context.t('eventNotify.title'),
+          icon: Icons.notifications_active_outlined,
+          child: EventNotifyCard(event: event, compact: true),
+        ),
 
         // İP-R: etkinlik raporu (PDF + Excel).
-        const SizedBox(height: 22),
+        const SizedBox(height: 16),
         EventReportCard(event: event),
 
         // İP-D: etkinlik bitince katılımcıların kimliksiz değerlendirmesi.
@@ -1192,29 +1241,36 @@ class _Body extends ConsumerWidget {
               event,
               DateTime.now().millisecondsSinceEpoch,
             )) ...<Widget>[
-          const SizedBox(height: 22),
+          const SizedBox(height: 16),
           EventFeedbackSummaryCard(event: event),
         ],
 
         // İP-8: yeni sertifika paneli. Belge webde ayarlanır (editör yalnızca
         // webde); burada gönder / geri al / eşik. Eski yükleme akışı kaldırıldı.
-        const SizedBox(height: 22),
-        EventSectionTitle(context.t('cert.panel.title')),
-        const SizedBox(height: 10),
-        CertificatePanelCard(event: event, registrations: list),
+        const SizedBox(height: 16),
+        SectionCard(
+          title: context.t('cert.panel.title'),
+          icon: Icons.workspace_premium_outlined,
+          child: CertificatePanelCard(event: event, registrations: list),
+        ),
 
         // ── Ücretli etkinlik onay kaydı ────────────────────────────
         // Yalnızca ücretli etkinlikte görünür: kulübün oluşturma anında,
         // öğrencilerin kayıt anında onayladığı metnin işlem logu.
         if (event.isPaid) ...<Widget>[
-          const SizedBox(height: 22),
-          EventSectionTitle(context.t('paidEventConsent.log.title')),
-          const SizedBox(height: 10),
-          _PaidEventConsentLogCard(event: event, registrations: list),
+          const SizedBox(height: 16),
+          SectionCard(
+            title: context.t('paidEventConsent.log.title'),
+            icon: Icons.verified_user_outlined,
+            child: _PaidEventConsentLogCard(
+              event: event,
+              registrations: list,
+            ),
+          ),
         ],
 
         // ── Katılımcılar ───────────────────────────────────────────
-        const SizedBox(height: 22),
+        const SizedBox(height: 28),
         Row(
           children: <Widget>[
             Expanded(
@@ -1223,7 +1279,7 @@ class _Body extends ConsumerWidget {
             StatusPill(label: '${list.length}'),
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
 
         // "Tabloda Gör" kaldırıldı: aynı kayıtlar zaten hemen aşağıda, tüm
         // bilgileriyle listeleniyordu — düğme kulübü aynı listenin ikinci bir
@@ -1233,8 +1289,8 @@ class _Body extends ConsumerWidget {
           width: double.infinity,
           child: FilledButton.icon(
             style: FilledButton.styleFrom(
-              minimumSize: const Size(0, 42),
-              padding: const EdgeInsets.symmetric(horizontal: 10),
+              minimumSize: const Size(0, 48),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
             ),
             onPressed: list.isEmpty || busy ? null : onDownloadExcel,
             icon: const Icon(Icons.download_outlined, size: 18),
@@ -1378,7 +1434,7 @@ class _CheckinStageBar extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.surface,
         borderRadius: BorderRadius.circular(BrandShape.controlRadius),
-        boxShadow: BrandShape.card,
+        border: Border.all(color: context.hairline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1507,7 +1563,7 @@ class _SessionPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.surface,
         borderRadius: BorderRadius.circular(BrandShape.controlRadius),
-        boxShadow: BrandShape.card,
+        border: Border.all(color: context.hairline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1711,7 +1767,7 @@ class _ActionCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(BrandShape.controlRadius),
-            boxShadow: BrandShape.card,
+            border: Border.all(color: context.hairline),
           ),
           child: Row(
             children: <Widget>[
@@ -1813,7 +1869,7 @@ class _PaidEventConsentLogCardState extends State<_PaidEventConsentLogCard> {
       decoration: BoxDecoration(
         color: context.surface,
         borderRadius: BorderRadius.circular(BrandShape.controlRadius),
-        boxShadow: BrandShape.card,
+        border: Border.all(color: context.hairline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2022,10 +2078,9 @@ class _StudentTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.surface,
         borderRadius: BorderRadius.circular(BrandShape.controlRadius),
-        boxShadow: BrandShape.card,
         border: selected
             ? Border.all(color: BrandColors.red, width: 1.5)
-            : null,
+            : Border.all(color: context.hairline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2245,7 +2300,7 @@ class _BulkBar extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.surface,
         borderRadius: BorderRadius.circular(BrandShape.controlRadius),
-        boxShadow: BrandShape.card,
+        border: Border.all(color: context.hairline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2389,7 +2444,7 @@ class _WaitlistRow extends ConsumerWidget {
         decoration: BoxDecoration(
           color: context.surface,
           borderRadius: BorderRadius.circular(BrandShape.controlRadius),
-          boxShadow: BrandShape.card,
+          border: Border.all(color: context.hairline),
         ),
         child: Row(
           children: <Widget>[

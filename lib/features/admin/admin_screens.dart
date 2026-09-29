@@ -300,7 +300,7 @@ class _PendingClubCardState extends ConsumerState<_PendingClubCard> {
       decoration: BoxDecoration(
         color: context.surface,
         borderRadius: BorderRadius.circular(BrandShape.cardRadius),
-        boxShadow: BrandShape.card,
+        border: Border.all(color: context.hairline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -660,7 +660,7 @@ class _TotalCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.surface,
         borderRadius: BorderRadius.circular(BrandShape.controlRadius),
-        boxShadow: BrandShape.card,
+        border: Border.all(color: context.hairline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -732,7 +732,7 @@ class _BarList extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.surface,
         borderRadius: BorderRadius.circular(BrandShape.controlRadius),
-        boxShadow: BrandShape.card,
+        border: Border.all(color: context.hairline),
       ),
       child: Column(
         children: <Widget>[
@@ -823,7 +823,7 @@ class _CityCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: context.surface,
           borderRadius: BorderRadius.circular(BrandShape.controlRadius),
-          boxShadow: BrandShape.card,
+          border: Border.all(color: context.hairline),
         ),
         child: Theme(
           // ExpansionTile'ın varsayılan ayraçları kartın kenarlarıyla
@@ -1089,7 +1089,7 @@ class _BanGroupCard extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(BrandShape.controlRadius),
-          boxShadow: BrandShape.card,
+          border: Border.all(color: context.hairline),
         ),
         child: Material(
           color: context.surface,
@@ -1229,9 +1229,11 @@ class _BanRowState extends ConsumerState<_BanRow> {
                     ),
                     if (entry.banned) ...<Widget>[
                       const SizedBox(width: 6),
-                      StatusPill(
-                        label: context.t('admin.ban.bannedLabel'),
-                        tone: FeedbackTone.error,
+                      Flexible(
+                        child: StatusPill(
+                          label: context.t('admin.ban.bannedLabel'),
+                          tone: FeedbackTone.error,
+                        ),
                       ),
                     ],
                   ],

@@ -76,7 +76,31 @@ String eventPriorityLabel(BuildContext context, int priority) =>
   );
 }
 
-/// Liste kartı.
+/// Ücret metni — `feeType`/`feeAmount`'tan üretilir.
+///
+/// `feeInfo` serbest metin olarak saklanıyor ve eski etkinliklerde Türkçe
+/// karakter olmadan ("Ucretsiz") ya da yazıldığı dilde kalıyor. Ekranda her
+/// zaman o anki dile göre gösterilsin diye ücretsiz etkinlikte çeviri, ücretli
+/// etkinlikte tutar yazılır; tutar yoksa kulübün yazdığı metne düşülür.
+String eventFeeLabel(BuildContext context, AppEvent event) {
+  if (event.isPaid) {
+    if (event.feeAmount > 0) return '${event.feeAmount} TL';
+    final String info = event.feeInfo.trim();
+    if (info.isNotEmpty) return info;
+  }
+  return context.t('eventModal.free');
+}
+
+/// Kartlarda gösterilecek tarih: etkinlik günü, yoksa son başvuru.
+String eventCardDate(BuildContext context, AppEvent event) {
+  final int? day = (event.eventDateAtMs ?? 0) > 0
+      ? event.eventDateAtMs
+      : event.deadlineAtMs;
+  return formatDeadline(day, locale: context.lang);
+}
+
+/// Liste kartı (web `.event-card`): içe oturan yuvarlak kapak + tarih hapı,
+/// Montserrat başlık, simgeli soluk bilgi satırları ve durum hapı.
 class EventSummaryCard extends StatelessWidget {
   const EventSummaryCard({
     required this.event,
@@ -104,80 +128,92 @@ class EventSummaryCard extends StatelessWidget {
     final ({String label, FeedbackTone tone}) status =
         statusOverride ?? eventStatus(context, event);
 
+    final List<String> tags = <String>[
+      eventScopeLabel(context, event.targetScope),
+      if (priority != null) eventPriorityLabel(context, priority!),
+      if (event.isMultiSession)
+        context.t('eventModal.sessionsValue', <String, Object?>{
+          'count': event.sessionCount,
+        }),
+    ];
+
     return Card(
       child: InkWell(
         onTap: onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            EventImage(url: event.displayImageUrl),
-            Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: Text(
-                          event.title,
-                          style: Theme.of(context).textTheme.titleMedium,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(BrandShape.controlRadius),
+                child: Stack(
+                  children: <Widget>[
+                    EventImage(url: event.displayImageUrl, height: 172),
+                    Positioned(
+                      top: 10,
+                      left: 10,
+                      child: EventDatePill(
+                        label: eventCardDate(context, event),
                       ),
-                      const SizedBox(width: 8),
-                      StatusPill(label: status.label, tone: status.tone),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  EventMetaRow(
-                    icon: Icons.groups_outlined,
-                    text: event.clubName.isNotEmpty
-                        ? event.clubName
-                        : context.t('dashboard.clubFallback'),
-                  ),
-                  EventMetaRow(
-                    icon: Icons.calendar_today_outlined,
-                    text: formatDeadline(
-                      event.deadlineAtMs,
-                      locale: context.lang,
                     ),
-                  ),
-                  if (event.locationName.isNotEmpty)
-                    EventMetaRow(
-                      icon: Icons.place_outlined,
-                      text: event.locationName,
-                    ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: <Widget>[
-                      StatusPill(
-                        label: eventScopeLabel(context, event.targetScope),
-                      ),
-                      if (priority != null)
-                        StatusPill(
-                          label: eventPriorityLabel(context, priority!),
-                        ),
-                      if (event.isMultiSession)
-                        StatusPill(
-                          label: context.t(
-                            'eventModal.sessionsValue',
-                            <String, Object?>{'count': event.sessionCount},
-                          ),
-                        ),
-                    ],
-                  ),
-                  if (footer != null) ...<Widget>[
-                    const SizedBox(height: 12),
-                    footer!,
                   ],
-                ],
+                ),
               ),
-            ),
-          ],
+              Padding(
+                padding: const EdgeInsets.fromLTRB(6, 14, 6, 6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      event.title,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.titleMedium?.copyWith(fontSize: 17),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 10),
+                    EventMetaRow(
+                      icon: Icons.groups_2_outlined,
+                      text: event.clubName.isNotEmpty
+                          ? event.clubName
+                          : context.t('dashboard.clubFallback'),
+                    ),
+                    if (event.locationName.isNotEmpty)
+                      EventMetaRow(
+                        icon: Icons.place_outlined,
+                        text: event.locationName,
+                      ),
+                    EventMetaRow(
+                      icon: Icons.event_available_outlined,
+                      text:
+                          '${context.t('eventModal.deadline')}: '
+                          '${formatDeadline(event.deadlineAtMs, locale: context.lang)}',
+                    ),
+                    EventMetaRow(
+                      icon: Icons.sell_outlined,
+                      text: tags.join(' · '),
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: <Widget>[
+                        StatusPill(label: status.label, tone: status.tone),
+                        StatusPill(label: eventFeeLabel(context, event)),
+                      ],
+                    ),
+                    if (footer != null) ...<Widget>[
+                      const SizedBox(height: 12),
+                      footer!,
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -192,16 +228,24 @@ class EventMetaRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 3),
+    padding: const EdgeInsets.only(bottom: 6),
     child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Icon(icon, size: 14, color: context.inkMuted),
-        const SizedBox(width: 6),
+        Padding(
+          padding: const EdgeInsets.only(top: 1),
+          child: Icon(icon, size: 16, color: context.inkMuted),
+        ),
+        const SizedBox(width: 8),
         Expanded(
           child: Text(
             text,
-            style: Theme.of(context).textTheme.bodySmall,
-            maxLines: 1,
+            style: TextStyle(
+              fontSize: 13.5,
+              height: 1.35,
+              color: context.inkMuted,
+            ),
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
         ),
@@ -220,20 +264,24 @@ class EventSectionTitle extends StatelessWidget {
   Widget build(BuildContext context) => Row(
     children: <Widget>[
       Container(
-        width: 3,
-        height: 15,
+        width: 4,
+        height: 18,
         decoration: BoxDecoration(
-          color: BrandColors.red,
+          gradient: BrandColors.gradient,
           borderRadius: BorderRadius.circular(2),
         ),
       ),
-      const SizedBox(width: 8),
-      Text(
-        text,
-        style: TextStyle(
-          fontSize: 14.5,
-          fontWeight: FontWeight.w700,
-          color: context.ink,
+      const SizedBox(width: 10),
+      Expanded(
+        child: Text(
+          text,
+          style: TextStyle(
+            fontFamily: BrandFonts.heading,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.1,
+            color: context.ink,
+          ),
         ),
       ),
     ],
@@ -273,7 +321,8 @@ class EventClubHeader extends StatelessWidget {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 15,
+                  fontFamily: BrandFonts.heading,
+                  fontSize: 15.5,
                   fontWeight: FontWeight.w700,
                   color: context.ink,
                 ),
@@ -305,17 +354,15 @@ class EventBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: BrandColors.red.withValues(
-          alpha: context.isDarkMode ? 0.18 : 0.09,
-        ),
+        color: context.brandTint,
         borderRadius: BorderRadius.circular(BrandShape.pillRadius),
       ),
       child: Text(
         text,
         style: TextStyle(
-          fontSize: 11.5,
+          fontSize: 12,
           fontWeight: FontWeight.w600,
           color: context.brandInk,
         ),
@@ -334,8 +381,9 @@ class EventInfoTable extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: context.subtleFill,
-        borderRadius: BorderRadius.circular(BrandShape.controlRadius),
+        color: context.surface,
+        borderRadius: BorderRadius.circular(BrandShape.cardRadius),
+        border: Border.all(color: context.hairline),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 14),
       child: Column(
@@ -345,29 +393,50 @@ class EventInfoTable extends StatelessWidget {
               Divider(
                 height: 1,
                 thickness: 1,
-                color: context.hairline.withValues(alpha: 0.5),
+                color: context.hairline.withValues(alpha: 0.7),
               ),
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 11),
+              padding: const EdgeInsets.symmetric(vertical: 13),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  Icon(rows[i].icon, size: 16, color: context.inkMuted),
-                  const SizedBox(width: 9),
-                  Text(
-                    rows[i].label,
-                    style: TextStyle(fontSize: 13, color: context.inkMuted),
+                  Container(
+                    width: 30,
+                    height: 30,
+                    decoration: BoxDecoration(
+                      color: context.brandTint,
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    child: Icon(
+                      rows[i].icon,
+                      size: 16,
+                      color: context.brandInk,
+                    ),
                   ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 12),
                   Expanded(
-                    child: Text(
-                      rows[i].value,
-                      textAlign: TextAlign.right,
-                      style: TextStyle(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w600,
-                        color: context.ink,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          rows[i].label,
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            height: 1.3,
+                            color: context.inkMuted,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          rows[i].value,
+                          style: TextStyle(
+                            fontSize: 14.5,
+                            height: 1.4,
+                            fontWeight: FontWeight.w600,
+                            color: context.ink,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -411,9 +480,7 @@ List<({IconData icon, String label, String value})> eventInfoRows(
     (
       icon: Icons.payments_outlined,
       label: context.t('eventModal.fee'),
-      value: event.feeInfo.isNotEmpty
-          ? event.feeInfo
-          : context.t('eventModal.free'),
+      value: eventFeeLabel(context, event),
     ),
     (
       icon: Icons.event_seat_outlined,
@@ -525,8 +592,9 @@ class _PaidContactCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: context.subtleFill,
-        borderRadius: BorderRadius.circular(BrandShape.controlRadius),
+        color: context.surface,
+        borderRadius: BorderRadius.circular(BrandShape.cardRadius),
+        border: Border.all(color: context.hairline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -543,11 +611,7 @@ class _PaidContactCard extends StatelessWidget {
                       forClub
                           ? 'eventModal.feeContactNoteClub'
                           : 'eventModal.feeContactNoteWithFee',
-                      <String, Object?>{
-                        'fee': event.feeInfo.isNotEmpty
-                            ? event.feeInfo
-                            : '${event.feeAmount} TL',
-                      },
+                      <String, Object?>{'fee': eventFeeLabel(context, event)},
                     ),
                     style: TextStyle(
                       fontSize: 13,
@@ -791,7 +855,9 @@ Future<void> showEventDetailSheet(
     isScrollControlled: true,
     backgroundColor: context.surface,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      borderRadius: BorderRadius.vertical(
+        top: Radius.circular(BrandShape.sheetRadius),
+      ),
     ),
     builder: (_) => EventDetailSheet(
       event: event,
@@ -850,11 +916,18 @@ class EventDetailSheet extends ConsumerWidget {
                       children: <Widget>[
                         ClipRRect(
                           borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(24),
+                            top: Radius.circular(BrandShape.sheetRadius),
                           ),
                           child: EventImage(
                             url: event.displayImageUrl,
-                            height: 200,
+                            height: 220,
+                          ),
+                        ),
+                        Positioned(
+                          left: 16,
+                          bottom: 14,
+                          child: EventDatePill(
+                            label: eventCardDate(context, event),
                           ),
                         ),
                         Positioned(
@@ -875,20 +948,22 @@ class EventDetailSheet extends ConsumerWidget {
                           ),
                         ),
                         Positioned(
-                          top: 8,
-                          right: 8,
+                          top: 12,
+                          right: 12,
                           child: Material(
-                            color: const Color(0x8C000000),
+                            color: context.surface.withValues(alpha: 0.92),
                             shape: const CircleBorder(),
                             clipBehavior: Clip.antiAlias,
+                            elevation: 1,
                             child: InkWell(
                               onTap: () => Navigator.of(context).pop(),
-                              child: const Padding(
-                                padding: EdgeInsets.all(7),
+                              child: SizedBox(
+                                width: 40,
+                                height: 40,
                                 child: Icon(
-                                  Icons.close,
-                                  size: 19,
-                                  color: BrandColors.white,
+                                  Icons.close_rounded,
+                                  size: 20,
+                                  color: context.ink,
                                 ),
                               ),
                             ),
@@ -897,17 +972,18 @@ class EventDetailSheet extends ConsumerWidget {
                       ],
                     ),
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
                           Text(
                             event.title,
-                            style: Theme.of(context).textTheme.headlineSmall,
+                            style: Theme.of(context).textTheme.headlineSmall
+                                ?.copyWith(fontWeight: FontWeight.w800),
                           ),
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 16),
                           EventClubHeader(event: event),
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 16),
                           Wrap(
                             spacing: 6,
                             runSpacing: 6,
@@ -929,9 +1005,9 @@ class EventDetailSheet extends ConsumerWidget {
                             ],
                           ),
 
-                          const SizedBox(height: 22),
+                          const SizedBox(height: 26),
                           EventSectionTitle(context.t('eventModal.info')),
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 12),
                           EventInfoTable(rows: eventInfoRows(context, event)),
 
                           // İletişim: ücretsizde "İletişim Bilgileri", ücretlide
@@ -940,25 +1016,25 @@ class EventDetailSheet extends ConsumerWidget {
                           const SizedBox(height: 22),
                           EventPaidContactBlock(event: event, forClub: forClub),
 
-                          const SizedBox(height: 22),
+                          const SizedBox(height: 26),
                           EventSectionTitle(
                             context.t('eventModal.description'),
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 10),
                           Text(
                             event.description.isNotEmpty
                                 ? event.description
                                 : context.t('dashboard.modal.noDescription'),
-                            style: const TextStyle(height: 1.55),
+                            style: Theme.of(context).textTheme.bodyLarge,
                           ),
 
                           if (event.purpose.isNotEmpty) ...<Widget>[
-                            const SizedBox(height: 22),
+                            const SizedBox(height: 26),
                             EventSectionTitle(context.t('eventModal.purpose')),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 10),
                             Text(
                               event.purpose,
-                              style: const TextStyle(height: 1.55),
+                              style: Theme.of(context).textTheme.bodyLarge,
                             ),
                           ],
 
@@ -981,7 +1057,7 @@ class EventDetailSheet extends ConsumerWidget {
                   child: SafeArea(
                     top: false,
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
                       child: actionBar,
                     ),
                   ),

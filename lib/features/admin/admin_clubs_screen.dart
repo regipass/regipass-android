@@ -210,7 +210,7 @@ class _DirectorySummary extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.surface,
         borderRadius: BorderRadius.circular(BrandShape.controlRadius),
-        boxShadow: BrandShape.card,
+        border: Border.all(color: context.hairline),
       ),
       child: Row(
         children: <Widget>[
@@ -376,7 +376,7 @@ class _ClubCard extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(BrandShape.cardRadius),
-            boxShadow: BrandShape.card,
+            border: Border.all(color: context.hairline),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

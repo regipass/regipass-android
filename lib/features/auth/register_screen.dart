@@ -303,7 +303,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   Widget build(BuildContext context) {
     return DarkScreenSystemBars(
       child: Scaffold(
-        backgroundColor: BrandColors.loginBase,
+        backgroundColor: context.authColors.base,
         resizeToAvoidBottomInset: false,
         body: Stack(
           fit: StackFit.expand,
@@ -360,8 +360,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           Text(
             context.t('auth.roleStep.title'),
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: BrandColors.white,
+            style: TextStyle(
+              color: context.authColors.text,
               fontSize: 17,
               fontWeight: FontWeight.w700,
             ),
@@ -427,7 +427,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 _obscure
                     ? Icons.visibility_off_outlined
                     : Icons.visibility_outlined,
-                color: BrandColors.loginMuted,
+                color: context.authColors.muted,
                 size: 20,
               ),
               onPressed: () => setState(() => _obscure = !_obscure),
@@ -449,8 +449,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             // Giriş/kayıt sahnesi her modda kendi sabit koyu paletinde kalır
             // (bkz. app/theme.dart#BrandSurfaces) — context.ink/inkMuted
             // burada kullanılmaz.
-            textColor: BrandColors.white,
-            mutedColor: BrandColors.loginMuted,
+            textColor: context.authColors.text,
+            mutedColor: context.authColors.muted,
           ),
 
           const SizedBox(height: 16),
@@ -526,10 +526,10 @@ class _RoleTile extends StatelessWidget {
           decoration: BoxDecoration(
             color: selected
                 ? BrandColors.red.withValues(alpha: 0.16)
-                : const Color(0x0FFFFFFF),
+                : context.authColors.field,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: selected ? BrandColors.red : BrandColors.loginGlassBorder,
+              color: selected ? BrandColors.red : context.authColors.cardBorder,
               width: selected ? 1.8 : 1,
             ),
             boxShadow: selected
@@ -548,7 +548,7 @@ class _RoleTile extends StatelessWidget {
               Icon(
                 icon,
                 size: 34,
-                color: selected ? BrandColors.red : BrandColors.loginMuted,
+                color: selected ? BrandColors.red : context.authColors.muted,
               ),
               const SizedBox(height: 10),
               Padding(
@@ -558,8 +558,8 @@ class _RoleTile extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: selected
-                        ? BrandColors.white
-                        : BrandColors.loginMuted,
+                        ? context.authColors.text
+                        : context.authColors.muted,
                     fontSize: 13.5,
                     fontWeight: FontWeight.w700,
                   ),
@@ -590,7 +590,7 @@ class _PasswordHint extends StatelessWidget {
       style: TextStyle(
         fontSize: 11.5,
         height: 1.35,
-        color: valid ? const Color(0xFF4ADE80) : BrandColors.loginMuted,
+        color: valid ? const Color(0xFF4ADE80) : context.authColors.muted,
         fontWeight: valid ? FontWeight.w600 : FontWeight.normal,
       ),
     );
@@ -606,16 +606,16 @@ class _SignInLink extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextButton(
       onPressed: enabled ? () => context.canPop() ? context.pop() : null : null,
-      style: TextButton.styleFrom(foregroundColor: BrandColors.white),
-      child: RichText(
-        text: TextSpan(
-          style: const TextStyle(color: BrandColors.loginMuted, fontSize: 13.5),
+      style: TextButton.styleFrom(foregroundColor: context.authColors.text),
+      child: Text.rich(
+        TextSpan(
+          style: TextStyle(color: context.authColors.muted, fontSize: 14.5),
           children: <InlineSpan>[
             TextSpan(text: '${context.t('auth.haveAccount')} '),
             TextSpan(
               text: context.t('auth.emailLogin'),
-              style: const TextStyle(
-                color: BrandColors.white,
+              style: TextStyle(
+                color: context.authColors.accent,
                 fontWeight: FontWeight.w700,
               ),
             ),

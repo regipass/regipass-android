@@ -16,7 +16,7 @@ import '../../app/theme.dart';
 class GlowingBorder extends StatefulWidget {
   const GlowingBorder({
     required this.child,
-    this.radius = 14,
+    this.radius = 25,
     this.color = BrandColors.red,
     this.strokeWidth = 1.6,
     this.duration = const Duration(milliseconds: 2600),
@@ -35,8 +35,10 @@ class GlowingBorder extends StatefulWidget {
 
 class _GlowingBorderState extends State<GlowingBorder>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _controller =
-      AnimationController(vsync: this, duration: widget.duration);
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: widget.duration,
+  );
 
   @override
   void initState() {
@@ -77,6 +79,7 @@ class _GlowingBorderState extends State<GlowingBorder>
           strokeWidth: widget.strokeWidth,
           // Hareket kapalıyken tek renkli sakin bir kenarlık çizilir.
           static: reduceMotion,
+          baseColor: context.authColors.cardBorder,
         ),
         child: child,
       ),
@@ -92,8 +95,11 @@ class _GlowPainter extends CustomPainter {
     required this.color,
     required this.strokeWidth,
     required this.static,
+    required this.baseColor,
   });
 
+  /// Dolanan ışığın altındaki sabit, soluk taban kenarlık.
+  final Color baseColor;
   final double progress;
   final double radius;
   final Color color;
@@ -163,7 +169,7 @@ class _GlowPainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = strokeWidth
-        ..color = BrandColors.loginGlassBorder,
+        ..color = baseColor,
     );
   }
 
@@ -171,5 +177,6 @@ class _GlowPainter extends CustomPainter {
   bool shouldRepaint(_GlowPainter oldDelegate) =>
       oldDelegate.progress != progress ||
       oldDelegate.static != static ||
+      oldDelegate.baseColor != baseColor ||
       oldDelegate.color != color;
 }

@@ -246,9 +246,9 @@ class _AppointmentDetailSheetState
             children: <Widget>[
               ClipRRect(
                 borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(24),
+                  top: Radius.circular(BrandShape.sheetRadius),
                 ),
-                child: EventImage(url: item.imageUrl, height: 180),
+                child: EventImage(url: item.imageUrl, height: 200),
               ),
               Padding(
                 padding: const EdgeInsets.all(20),
@@ -257,9 +257,10 @@ class _AppointmentDetailSheetState
                   children: <Widget>[
                     Text(
                       item.title,
-                      style: Theme.of(context).textTheme.headlineSmall,
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w800),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
                     StatusPill(
                       label: context.t(item.statusBadge.key),
                       tone: switch (item.statusBadge.tone) {
@@ -291,15 +292,13 @@ class _AppointmentDetailSheetState
                     ],
                     const SizedBox(height: 16),
 
-                    Text(
-                      context.t(
-                        'studentAppointments.card.club',
-                        <String, Object?>{'clubName': item.clubName},
-                      ),
-                      style: Theme.of(context).textTheme.bodySmall,
+                    EventMetaRow(
+                      icon: Icons.groups_2_outlined,
+                      text: item.clubName,
                     ),
-                    Text(
-                      context.t(
+                    EventMetaRow(
+                      icon: Icons.event_available_outlined,
+                      text: context.t(
                         'studentAppointments.card.deadline',
                         <String, Object?>{
                           'deadline': formatDeadline(
@@ -308,10 +307,10 @@ class _AppointmentDetailSheetState
                           ),
                         },
                       ),
-                      style: Theme.of(context).textTheme.bodySmall,
                     ),
-                    Text(
-                      context.t(
+                    EventMetaRow(
+                      icon: Icons.how_to_reg_outlined,
+                      text: context.t(
                         'studentAppointments.card.registeredAt',
                         <String, Object?>{
                           'registeredAt': formatDateTime(
@@ -320,8 +319,12 @@ class _AppointmentDetailSheetState
                           ),
                         },
                       ),
-                      style: Theme.of(context).textTheme.bodySmall,
                     ),
+                    if (item.event?.locationName.isNotEmpty ?? false)
+                      EventMetaRow(
+                        icon: Icons.place_outlined,
+                        text: item.event!.locationName,
+                      ),
 
                     // İP-D: bildirimden gelindiyse değerlendirme en üstte.
                     if (widget.focusFeedback) ...<Widget>[
@@ -338,27 +341,15 @@ class _AppointmentDetailSheetState
                     ],
 
                     if (item.event != null) ...<Widget>[
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 24),
+                      EventSectionTitle(context.t('eventModal.description')),
+                      const SizedBox(height: 10),
                       Text(
                         item.event!.description.isNotEmpty
                             ? item.event!.description
                             : context.t('dashboard.modal.noDescription'),
-                        style: const TextStyle(height: 1.55),
+                        style: Theme.of(context).textTheme.bodyLarge,
                       ),
-                      if (item.event!.locationName.isNotEmpty) ...<Widget>[
-                        const SizedBox(height: 12),
-                        Row(
-                          children: <Widget>[
-                            Icon(
-                              Icons.place_outlined,
-                              size: 16,
-                              color: context.inkMuted,
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(child: Text(item.event!.locationName)),
-                          ],
-                        ),
-                      ],
 
                       // Ücretli etkinlik: ödeme uygulama dışında konuşulduğu
                       // için kulübün iletişim bilgileri kayıt sonrasında da
@@ -668,8 +659,9 @@ class _ProgressBox extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: context.subtleFill,
-        borderRadius: BorderRadius.circular(BrandShape.controlRadius),
+        color: context.surface,
+        borderRadius: BorderRadius.circular(BrandShape.cardRadius),
+        border: Border.all(color: context.hairline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

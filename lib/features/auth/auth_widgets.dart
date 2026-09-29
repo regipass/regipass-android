@@ -5,8 +5,6 @@
 /// değiştirilebilsin.
 library;
 
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -17,43 +15,45 @@ import '../../l10n/app_strings.dart';
 import '../landing/diagonal_marquee.dart';
 import '../shared/common_widgets.dart';
 
-/// Koyu zemin + iki köşeden ışıma + çapraz akan yazı + okunabilirlik perdesi.
+/// Giriş öncesi ekranların zemini.
 ///
-/// Katman sırası önemli: perde en üstte, çünkü akan yazıların form alanında
-/// sönmesini o sağlıyor.
+/// Açık temada web'deki giriş sayfasıyla aynı: beyaz zemin, köşelerden
+/// yumuşak kırmızı ışıma. Koyu temada slate koyu zemin + hafif ışıma +
+/// çapraz akan soluk yazı ve okunabilirlik perdesi.
 class AuthBackground extends StatelessWidget {
   const AuthBackground({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const Stack(
+    final AuthColors ac = context.authColors;
+    return Stack(
       fit: StackFit.expand,
       children: <Widget>[
-        DecoratedBox(
-          decoration: BoxDecoration(color: BrandColors.loginSurface),
-        ),
-        DecoratedBox(
-          decoration: BoxDecoration(gradient: BrandColors.loginGlow),
-        ),
-        DecoratedBox(
-          decoration: BoxDecoration(gradient: BrandColors.loginGlowSecondary),
-        ),
-        DiagonalMarquee(),
-        DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: RadialGradient(
-              center: Alignment.center,
-              radius: 0.95,
-              colors: <Color>[Color(0xCC0E1113), Color(0x330E1113)],
+        DecoratedBox(decoration: BoxDecoration(color: ac.base)),
+        DecoratedBox(decoration: BoxDecoration(gradient: ac.glow)),
+        DecoratedBox(decoration: BoxDecoration(gradient: ac.glowSecondary)),
+        if (ac.isDark) ...<Widget>[
+          const DiagonalMarquee(),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: Alignment.center,
+                radius: 0.95,
+                colors: <Color>[
+                  ac.base.withValues(alpha: 0.85),
+                  ac.base.withValues(alpha: 0.25),
+                ],
+              ),
             ),
           ),
-        ),
+        ],
       ],
     );
   }
 }
 
-/// Buzlu cam kart — arka plandaki hareketin form alanına sızmasını engeller.
+/// Form kartı (web `.auth-card`): açık temada beyaz, ince slate kenarlık ve
+/// yumuşak katmanlı gölge; koyu temada koyu yüzey.
 class AuthGlassCard extends StatelessWidget {
   const AuthGlassCard({required this.child, super.key});
 
@@ -61,20 +61,35 @@ class AuthGlassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(20, 24, 20, 22),
-          decoration: BoxDecoration(
-            color: BrandColors.loginGlass,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: BrandColors.loginGlassBorder),
-          ),
-          child: child,
-        ),
+    final AuthColors ac = context.authColors;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+      decoration: BoxDecoration(
+        color: ac.card,
+        borderRadius: BorderRadius.circular(BrandShape.largeRadius),
+        border: Border.all(color: ac.cardBorder),
+        boxShadow: ac.isDark
+            ? const <BoxShadow>[
+                BoxShadow(
+                  color: Color(0x66000000),
+                  blurRadius: 32,
+                  offset: Offset(0, 16),
+                ),
+              ]
+            : const <BoxShadow>[
+                BoxShadow(
+                  color: Color(0x0A0F172A),
+                  blurRadius: 2,
+                  offset: Offset(0, 1),
+                ),
+                BoxShadow(
+                  color: Color(0x140F172A),
+                  blurRadius: 40,
+                  offset: Offset(0, 18),
+                ),
+              ],
       ),
+      child: child,
     );
   }
 }
@@ -129,9 +144,10 @@ class AuthField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AuthColors ac = context.authColors;
     OutlineInputBorder border(Color color, [double width = 1]) =>
         OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(BrandShape.controlRadius),
           borderSide: BorderSide(color: color, width: width),
         );
 
@@ -147,29 +163,29 @@ class AuthField extends StatelessWidget {
       inputFormatters: inputFormatters,
       autocorrect: false,
       enableSuggestions: !obscure,
-      style: const TextStyle(color: BrandColors.white, fontSize: 15.5),
+      style: TextStyle(color: ac.text, fontSize: 15.5),
       cursorColor: BrandColors.red,
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: BrandColors.loginMuted, fontSize: 15),
-        prefixIcon: Icon(icon, color: BrandColors.loginMuted, size: 20),
+        hintStyle: TextStyle(color: ac.muted, fontSize: 15),
+        prefixIcon: Icon(icon, color: ac.muted, size: 20),
         suffixIcon: suffix,
         filled: true,
-        fillColor: const Color(0x14FFFFFF),
+        fillColor: ac.field,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 14,
           vertical: 16,
         ),
-        border: border(BrandColors.loginGlassBorder),
-        enabledBorder: border(BrandColors.loginGlassBorder),
-        disabledBorder: border(BrandColors.loginGlassBorder),
-        focusedBorder: border(BrandColors.red, 1.5),
+        border: border(ac.fieldBorder),
+        enabledBorder: border(ac.fieldBorder),
+        disabledBorder: border(ac.fieldBorder),
+        focusedBorder: border(BrandColors.red, 1.6),
       ),
     );
   }
 }
 
-/// Birincil eylem düğmesi — ekrandaki tek parlak nokta.
+/// Birincil eylem düğmesi — web'deki gradyanlı hap düğme (--rp-grad).
 class AuthPrimaryButton extends StatelessWidget {
   const AuthPrimaryButton({
     required this.label,
@@ -184,34 +200,46 @@ class AuthPrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 52,
-      child: FilledButton(
-        style: FilledButton.styleFrom(
-          backgroundColor: BrandColors.red,
-          foregroundColor: BrandColors.white,
-          disabledBackgroundColor: BrandColors.red.withValues(alpha: 0.5),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+    final bool enabled = !loading && onPressed != null;
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      child: Opacity(
+        opacity: enabled || loading ? 1 : 0.55,
+        child: Material(
+          color: Colors.transparent,
+          child: Ink(
+            height: 52,
+            decoration: BoxDecoration(
+              gradient: BrandColors.gradient,
+              borderRadius: BorderRadius.circular(BrandShape.pillRadius),
+              boxShadow: enabled ? BrandShape.raised : null,
+            ),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(BrandShape.pillRadius),
+              onTap: enabled ? onPressed : null,
+              child: Center(
+                child: loading
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.2,
+                          color: BrandColors.white,
+                        ),
+                      )
+                    : Text(
+                        label,
+                        style: const TextStyle(
+                          color: BrandColors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+              ),
+            ),
           ),
         ),
-        onPressed: loading ? null : onPressed,
-        child: loading
-            ? const SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.2,
-                  color: BrandColors.white,
-                ),
-              )
-            : Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
       ),
     );
   }
@@ -224,24 +252,15 @@ class AuthOrDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AuthColors ac = context.authColors;
     return Row(
       children: <Widget>[
-        const Expanded(
-          child: Divider(color: BrandColors.loginGlassBorder, height: 1),
-        ),
+        Expanded(child: Divider(color: ac.cardBorder, height: 1)),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Text(
-            label,
-            style: const TextStyle(
-              color: BrandColors.loginMuted,
-              fontSize: 12.5,
-            ),
-          ),
+          child: Text(label, style: TextStyle(color: ac.muted, fontSize: 13)),
         ),
-        const Expanded(
-          child: Divider(color: BrandColors.loginGlassBorder, height: 1),
-        ),
+        Expanded(child: Divider(color: ac.cardBorder, height: 1)),
       ],
     );
   }
@@ -271,19 +290,17 @@ class AuthSocialButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AuthColors ac = context.authColors;
     return SizedBox(
       height: 50,
       child: OutlinedButton(
         style: OutlinedButton.styleFrom(
-          foregroundColor: BrandColors.white,
-          disabledForegroundColor: BrandColors.loginMuted,
-          backgroundColor: const Color(0x0FFFFFFF),
-          side: borderless
-              ? BorderSide.none
-              : const BorderSide(color: BrandColors.loginGlassBorder),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
+          foregroundColor: ac.text,
+          disabledForegroundColor: ac.muted,
+          backgroundColor: ac.isDark ? const Color(0x0FFFFFFF) : ac.card,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          side: borderless ? BorderSide.none : BorderSide(color: ac.cardBorder),
+          shape: const StadiumBorder(),
         ),
         onPressed: enabled ? onPressed : null,
         child: Row(
@@ -291,11 +308,15 @@ class AuthSocialButton extends StatelessWidget {
           children: <Widget>[
             leading ?? Icon(icon, size: iconSize),
             const SizedBox(width: 10),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 14.5,
-                fontWeight: FontWeight.w600,
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],
@@ -330,19 +351,14 @@ class AuthFeedback extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color accent = switch (tone) {
-      FeedbackTone.success => const Color(0xFF4ADE80),
-      FeedbackTone.error => const Color(0xFFFF6B6E),
-      FeedbackTone.info => const Color(0xFF7DB3FF),
-      FeedbackTone.warning => const Color(0xFFFFC870),
-    };
+    final Color accent = feedbackToneColors(context, tone).fg;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
       decoration: BoxDecoration(
-        color: accent.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: accent.withValues(alpha: 0.35)),
+        color: accent.withValues(alpha: context.isDarkMode ? 0.12 : 0.08),
+        borderRadius: BorderRadius.circular(BrandShape.smallRadius),
+        border: Border.all(color: accent.withValues(alpha: 0.3)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -358,7 +374,7 @@ class AuthFeedback extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              style: TextStyle(color: accent, fontSize: 13, height: 1.35),
+              style: TextStyle(color: accent, fontSize: 13.5, height: 1.45),
             ),
           ),
         ],
@@ -382,16 +398,16 @@ class AuthGhostButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AuthColors ac = context.authColors;
     return TextButton.icon(
       onPressed: onPressed,
       style: TextButton.styleFrom(
-        foregroundColor: BrandColors.white,
-        disabledForegroundColor: BrandColors.loginMuted,
+        foregroundColor: ac.text,
+        disabledForegroundColor: ac.muted,
+        minimumSize: const Size(44, 44),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(BrandShape.pillRadius),
-        ),
-        backgroundColor: const Color(0x14FFFFFF),
+        shape: StadiumBorder(side: BorderSide(color: ac.cardBorder)),
+        backgroundColor: ac.chip,
       ),
       icon: Icon(icon, size: 18),
       label: Text(
@@ -420,11 +436,12 @@ class LanguageToggleDark extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final String language = ref.watch(languageProvider);
-    final Color labelColor = accent ?? BrandColors.white;
+    final AuthColors ac = context.authColors;
+    final Color labelColor = accent ?? ac.text;
 
     return PopupMenuButton<String>(
       tooltip: context.t('nav.languageSelectAria'),
-      color: BrandColors.loginSurface,
+      color: ac.card,
       onSelected: (String value) =>
           ref.read(languageProvider.notifier).setLanguage(value),
       itemBuilder: (BuildContext context) => kSupportedLanguages
@@ -436,14 +453,12 @@ class LanguageToggleDark extends ConsumerWidget {
                   Icon(
                     code == language ? Icons.check : Icons.language,
                     size: 16,
-                    color: code == language
-                        ? BrandColors.red
-                        : BrandColors.loginMuted,
+                    color: code == language ? BrandColors.red : ac.muted,
                   ),
                   const SizedBox(width: 10),
                   Text(
                     context.t('language.$code'),
-                    style: const TextStyle(color: BrandColors.white),
+                    style: TextStyle(color: ac.text),
                   ),
                 ],
               ),
@@ -451,11 +466,12 @@ class LanguageToggleDark extends ConsumerWidget {
           )
           .toList(),
       child: Container(
+        constraints: const BoxConstraints(minHeight: 44),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: const Color(0x14FFFFFF),
+          color: ac.chip,
           borderRadius: BorderRadius.circular(BrandShape.pillRadius),
-          border: Border.all(color: BrandColors.loginGlassBorder),
+          border: Border.all(color: ac.cardBorder),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -540,7 +556,7 @@ class _PulsingGlobeState extends State<_PulsingGlobe>
       return Icon(
         Icons.language,
         size: widget.size,
-        color: BrandColors.redOnDark,
+        color: context.authColors.accent,
       );
     }
 
@@ -550,8 +566,8 @@ class _PulsingGlobeState extends State<_PulsingGlobe>
         Icons.language,
         size: widget.size,
         color: Color.lerp(
-          BrandColors.redOnDark,
-          BrandColors.white,
+          context.authColors.accent,
+          context.authColors.isDark ? BrandColors.white : BrandColors.redBright,
           _glint(_controller.value),
         ),
       ),

@@ -116,14 +116,13 @@ SystemUiOverlayStyle systemBarsStyle({required Brightness brightness}) {
   );
 }
 
-/// Zemini uygulama temasından bağımsız KOYU olan ekranların çubuk stili.
+/// Giriş öncesi ekranların (giriş, kayıt, şifre sıfırlama, Keşfet) çubuk
+/// stili.
 ///
-/// Giriş öncesi ekranlar (giriş, kayıt, şifre sıfırlama, Keşfet) açık temada da
-/// gece görünümünde kalıyor. Çubuk simgeleri ise uygulamanın temasını izliyor
-/// ([systemBarsStyle]); açık temada o ekranların üstüne koyu simge çiziliyor ve
-/// simgeler koyu zeminde kaybolduğu için çubuk şeridi düz siyah bir bant gibi
-/// okunuyordu. Bu sarmalayıcı yalnızca simgeleri açık renge sabitler —
-/// çubukların zemini yine saydam, altındaki ekran görünmeye devam eder.
+/// Bu ekranlar eskiden temadan bağımsız olarak koyu zeminde kalıyordu; artık
+/// web'deki giriş sayfası gibi açık temada beyaz zemine, koyu temada koyu
+/// zemine çiziliyor. Sarmalayıcı simgeleri ekranın gerçek zeminine göre
+/// seçer (açık zeminde koyu, koyu zeminde açık simge).
 ///
 /// `AnnotatedRegion` bilerek: kural yalnızca bu ekranlar ağaçtayken geçerlidir,
 /// ekrandan çıkıldığında uygulama genelindeki stil (bkz. lib/app/app.dart)
@@ -135,7 +134,7 @@ class DarkScreenSystemBars extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => AnnotatedRegion<SystemUiOverlayStyle>(
-    value: systemBarsStyle(brightness: Brightness.dark),
+    value: systemBarsStyle(brightness: Theme.of(context).brightness),
     child: child,
   );
 }

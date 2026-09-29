@@ -78,3 +78,29 @@ flutter:
 
   assets:
     - assets/brand/
+    # Font lisansları (SIL OFL 1.1) — LicenseRegistry'ye main() içinde eklenir.
+    - assets/fonts/OFL-Montserrat.txt
+    - assets/fonts/OFL-Inter.txt
+
+  # Web ile aynı yazı aileleri (css/ds.css): başlıklar Montserrat, gövde
+  # Inter. google/fonts deposundaki değişken fontlardan statik ağırlıklar
+  # (Latin + Latin Ext.) olarak çıkarıldı; lisans: SIL OFL 1.1.
+  fonts:
+    - family: Montserrat
+      fonts:
+        - asset: assets/fonts/Montserrat-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Montserrat-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Montserrat-ExtraBold.ttf
+          weight: 800
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Inter-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Inter-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Inter-Bold.ttf
+          weight: 700

@@ -608,7 +608,9 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
 
     // Ücret
     int feeAmount = 0;
-    String feeInfo = context.t('eventModal.free');
+    // Kayıtlı metin dil bağımsız ve web ile aynı: ekranlar ücreti zaten
+    // `feeType`/`feeAmount`'tan çevirerek gösteriyor (eventFeeLabel).
+    String feeInfo = 'Ücretsiz';
     if (_feeType == 'paid') {
       final int? amount = int.tryParse(_feeAmount.text.trim());
       if (amount == null || amount < 1) {
@@ -1030,8 +1032,23 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
           behavior: HitTestBehavior.translucent,
           onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
             children: <Widget>[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 0, 4, 16),
+              child: Text(
+                context.t(
+                  _isEdit
+                      ? 'clubCreateEvent.editSubtitle'
+                      : 'clubCreateEvent.subtitle',
+                ),
+                style: TextStyle(
+                  fontSize: 14.5,
+                  height: 1.5,
+                  color: context.inkMuted,
+                ),
+              ),
+            ),
             // ── 1. Temel bilgiler ─────────────────────────────────
             _SectionCard(
               icon: Icons.notes_rounded,
@@ -1720,13 +1737,8 @@ class _SectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
-      decoration: BoxDecoration(
-        color: context.surface,
-        borderRadius: BorderRadius.circular(BrandShape.cardRadius),
-        border: Border.all(color: context.hairline),
-        boxShadow: BrandShape.card,
-      ),
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 20),
+      decoration: context.cardDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
@@ -1734,16 +1746,14 @@ class _SectionCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Container(
-                width: 36,
-                height: 36,
+                width: 40,
+                height: 40,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: context.isDarkMode
-                      ? BrandColors.red.withValues(alpha: 0.16)
-                      : BrandColors.redTint,
-                  borderRadius: BorderRadius.circular(11),
+                  color: context.brandTint,
+                  borderRadius: BorderRadius.circular(BrandShape.smallRadius),
                 ),
-                child: Icon(icon, size: 19, color: context.brandInk),
+                child: Icon(icon, size: 20, color: context.brandInk),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1760,7 +1770,8 @@ class _SectionCard extends StatelessWidget {
                         Text(
                           title,
                           style: TextStyle(
-                            fontSize: 15.5,
+                            fontFamily: BrandFonts.heading,
+                            fontSize: 16.5,
                             fontWeight: FontWeight.w700,
                             letterSpacing: -0.1,
                             color: context.ink,
@@ -1773,8 +1784,8 @@ class _SectionCard extends StatelessWidget {
                     Text(
                       description,
                       style: TextStyle(
-                        fontSize: 12.5,
-                        height: 1.45,
+                        fontSize: 13.5,
+                        height: 1.5,
                         color: context.inkMuted,
                       ),
                     ),
@@ -1784,9 +1795,9 @@ class _SectionCard extends StatelessWidget {
               if (info != null) _SectionInfoButton(title: title, text: info!),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           for (int i = 0; i < children.length; i++) ...<Widget>[
-            if (i > 0) const SizedBox(height: 14),
+            if (i > 0) const SizedBox(height: 16),
             children[i],
           ],
         ],
@@ -1956,26 +1967,39 @@ class _Choice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color fill = active
-        ? BrandColors.redSoft
-        : context.isDarkMode
-        ? BrandColors.red.withValues(alpha: 0.16)
-        : BrandColors.redTint;
-
     return Material(
-      color: fill,
-      borderRadius: BorderRadius.circular(BrandShape.pillRadius),
+      color: active ? context.brandTint : context.surface,
+      shape: StadiumBorder(
+        side: BorderSide(
+          color: active ? BrandColors.red : context.hairline,
+          width: active ? 1.4 : 1,
+        ),
+      ),
       child: InkWell(
         onTap: enabled ? onTap : null,
-        borderRadius: BorderRadius.circular(BrandShape.pillRadius),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w700,
-              color: active ? BrandColors.white : context.brandInk,
+        customBorder: const StadiumBorder(),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 44),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                if (active) ...<Widget>[
+                  Icon(Icons.check_rounded, size: 17, color: context.brandInk),
+                  const SizedBox(width: 6),
+                ],
+                Flexible(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: active ? FontWeight.w700 : FontWeight.w600,
+                      color: active ? context.brandInk : context.inkBody,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),

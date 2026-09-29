@@ -146,7 +146,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     return DarkScreenSystemBars(
       child: Scaffold(
-        backgroundColor: BrandColors.loginBase,
+        backgroundColor: context.authColors.base,
         // Klavye açılınca zemin ve akan katman yerinde kalsın; içerik
         // AuthFixedBody ile kendini ayarlıyor.
         resizeToAvoidBottomInset: false,
@@ -207,6 +207,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
+          Text(
+            context.t('auth.modal.title'),
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.w800,
+              color: context.authColors.text,
+            ),
+          ),
+          const SizedBox(height: 18),
           if (noticeKey != null) ...<Widget>[
             AuthFeedback(
               message: context.t(noticeKey),
@@ -246,7 +255,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 _obscure
                     ? Icons.visibility_off_outlined
                     : Icons.visibility_outlined,
-                color: BrandColors.loginMuted,
+                color: context.authColors.muted,
                 size: 20,
               ),
               onPressed: () => setState(() => _obscure = !_obscure),
@@ -291,11 +300,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           TextButton(
             onPressed: _loading ? null : _goToForgotPassword,
             style: TextButton.styleFrom(
-              foregroundColor: BrandColors.loginMuted,
+              foregroundColor: context.authColors.accent,
             ),
             child: Text(
               context.t('auth.forgotPassword'),
-              style: const TextStyle(fontSize: 13),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -342,16 +351,16 @@ class _RegisterLink extends StatelessWidget {
               );
             }
           : null,
-      style: TextButton.styleFrom(foregroundColor: BrandColors.white),
-      child: RichText(
-        text: TextSpan(
-          style: const TextStyle(color: BrandColors.loginMuted, fontSize: 13.5),
+      style: TextButton.styleFrom(foregroundColor: context.authColors.text),
+      child: Text.rich(
+        TextSpan(
+          style: TextStyle(color: context.authColors.muted, fontSize: 14.5),
           children: <InlineSpan>[
             TextSpan(text: '${context.t('auth.noAccount')} '),
             TextSpan(
               text: context.t('auth.emailRegister'),
-              style: const TextStyle(
-                color: BrandColors.white,
+              style: TextStyle(
+                color: context.authColors.accent,
                 fontWeight: FontWeight.w700,
               ),
             ),

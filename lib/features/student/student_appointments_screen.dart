@@ -7,6 +7,7 @@ import '../../domain/event_utils.dart';
 import '../../l10n/app_strings.dart';
 import '../../services/event_feedback_service.dart';
 import '../shared/common_widgets.dart';
+import '../shared/event_widgets.dart' show EventMetaRow;
 import 'appointment_detail_sheet.dart';
 import 'student_providers.dart';
 import 'student_shell.dart';
@@ -116,7 +117,24 @@ class _StudentAppointmentsScreenState
           return Column(
             children: <Widget>[
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 2),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                child: Text(
+                  context.t('studentAppointments.hero.subtitle'),
+                  style: TextStyle(
+                    fontSize: 14,
+                    height: 1.5,
+                    color: context.inkMuted,
+                  ),
+                ),
+              ),
+              Container(
+                margin: const EdgeInsets.fromLTRB(16, 14, 16, 2),
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: context.subtleFill,
+                  borderRadius: BorderRadius.circular(BrandShape.pillRadius),
+                  border: Border.all(color: context.hairline),
+                ),
                 child: Row(
                   children: <Widget>[
                     Expanded(
@@ -127,7 +145,7 @@ class _StudentAppointmentsScreenState
                         onTap: () => setState(() => _showPast = false),
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 4),
                     Expanded(
                       child: _SegmentButton(
                         label: context.t('studentAppointments.pastTitle'),
@@ -162,8 +180,8 @@ class _StudentAppointmentsScreenState
   }
 }
 
-/// Aktif / geçmiş seçimi. Seçili olan açık kırmızıyla dolar, diğeri aynı
-/// rengin en soluk tonunda kalır — iki düğme de aynı renk ailesinde durur.
+/// Aktif / geçmiş seçimi (web'deki bölümlü seçici): seçili bölüm beyaz
+/// hapla öne çıkar, sayaç kırmızı rozette durur.
 class _SegmentButton extends StatelessWidget {
   const _SegmentButton({
     required this.label,
@@ -179,80 +197,59 @@ class _SegmentButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Seçilmemiş düğme koyu modda pastel kalmamalı; aynı kırmızının düşük
-    // opaklıklı hâli her iki zeminde de doğru okunuyor.
-    final Color idleFill = context.isDarkMode
-        ? BrandColors.red.withValues(alpha: 0.18)
-        : BrandColors.redTint;
-
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints constraints) {
-        // Dar telefonlarda uzun başlıklar iki satıra açılır; sayı alanı hep
-        // sağda sabit kaldığı için başlık "..." olarak kesilmez.
-        final bool compact = constraints.maxWidth < 190;
-
-        return Material(
-          color: selected ? BrandColors.redSoft : idleFill,
-          borderRadius: BorderRadius.circular(BrandShape.pillRadius),
-          elevation: selected ? 3 : 0,
-          shadowColor: BrandColors.red.withValues(alpha: 0.4),
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(BrandShape.pillRadius),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: compact ? 54 : 46),
-              child: Stack(
-                alignment: Alignment.center,
-                children: <Widget>[
-                  Padding(
-                    // Sağdaki sayaç, metnin üstüne binmesin diye bu alanı
-                    // ayırıyoruz. Sayaç sağ kenarda, başlık ortada kalır.
-                    padding: const EdgeInsets.fromLTRB(12, 8, 38, 8),
-                    child: Text(
-                      label,
-                      maxLines: compact ? 2 : 1,
-                      overflow: TextOverflow.clip,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
-                        color: selected ? BrandColors.white : context.brandInk,
-                      ),
+    return Material(
+      color: selected ? context.surface : Colors.transparent,
+      borderRadius: BorderRadius.circular(BrandShape.pillRadius),
+      elevation: selected ? 1 : 0,
+      shadowColor: const Color(0x330F172A),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(BrandShape.pillRadius),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 44),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                      color: selected ? context.ink : context.inkMuted,
                     ),
                   ),
-                  Positioned(
-                    right: 10,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 7,
-                        vertical: 1,
-                      ),
-                      decoration: BoxDecoration(
-                        color: selected
-                            ? BrandColors.white.withValues(alpha: 0.26)
-                            : BrandColors.red.withValues(alpha: 0.14),
-                        borderRadius: BorderRadius.circular(
-                          BrandShape.pillRadius,
-                        ),
-                      ),
-                      child: Text(
-                        '$count',
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w700,
-                          color: selected
-                              ? BrandColors.white
-                              : context.brandInk,
-                        ),
-                      ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  constraints: const BoxConstraints(minWidth: 22),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: selected ? BrandColors.red : context.hairline,
+                    borderRadius: BorderRadius.circular(BrandShape.pillRadius),
+                  ),
+                  child: Text(
+                    '$count',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: selected ? BrandColors.white : context.inkBody,
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
@@ -273,9 +270,9 @@ class _AppointmentList extends StatelessWidget {
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       itemCount: items.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 12),
+      separatorBuilder: (_, _) => const SizedBox(height: 14),
       itemBuilder: (BuildContext context, int index) =>
           AppointmentCard(item: items[index]),
     );
@@ -308,16 +305,19 @@ class AppointmentCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              SizedBox(
-                width: 108,
-                child: _PodcastEventCover(
-                  imageUrl: item.imageUrl,
-                  closed: item.isClosed,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 10, 0, 10),
+                child: SizedBox(
+                  width: 104,
+                  child: _PodcastEventCover(
+                    imageUrl: item.imageUrl,
+                    closed: item.isClosed,
+                  ),
                 ),
               ),
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
@@ -328,18 +328,24 @@ class AppointmentCard extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        item.clubName,
-                        style: Theme.of(context).textTheme.bodySmall,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        formatDeadline(item.deadlineAtMs, locale: context.lang),
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
                       const SizedBox(height: 8),
+                      EventMetaRow(
+                        icon: Icons.groups_2_outlined,
+                        text: item.clubName,
+                      ),
+                      EventMetaRow(
+                        icon: Icons.event_available_outlined,
+                        text: context.t(
+                          'studentAppointments.card.deadline',
+                          <String, Object?>{
+                            'deadline': formatDeadline(
+                              item.deadlineAtMs,
+                              locale: context.lang,
+                            ),
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 4),
                       Wrap(
                         spacing: 6,
                         runSpacing: 6,
@@ -428,7 +434,7 @@ class _PodcastEventCover extends StatelessWidget {
 
     return RepaintBoundary(
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(BrandShape.controlRadius),
         child: Stack(
           fit: StackFit.expand,
           children: <Widget>[

@@ -307,9 +307,9 @@ class _ConsentRow extends StatelessWidget {
         Expanded(
           child: Padding(
             padding: const EdgeInsets.only(top: 3),
-            child: RichText(
-              text: TextSpan(
-                style: TextStyle(fontSize: 12.5, height: 1.4, color: textColor),
+            child: Text.rich(
+              TextSpan(
+                style: TextStyle(fontSize: 13.5, height: 1.5, color: textColor),
                 children: spans,
               ),
             ),

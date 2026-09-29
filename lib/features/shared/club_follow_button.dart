@@ -78,7 +78,11 @@ class _ClubFollowButtonState extends ConsumerState<ClubFollowButton> {
       ),
       foregroundColor: following ? context.inkMuted : context.brandInk,
       backgroundColor: following ? context.subtleFill : null,
-      textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+      textStyle: const TextStyle(
+        fontFamily: BrandFonts.body,
+        fontSize: 13,
+        fontWeight: FontWeight.w700,
+      ),
     );
 
     return Semantics(

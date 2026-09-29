@@ -65,12 +65,28 @@ class StudentCertificatesScreen extends ConsumerWidget {
           }
 
           return ListView.separated(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-            itemCount: sortedFresh.length + list.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 10),
-            itemBuilder: (BuildContext context, int index) => index < sortedFresh.length
-                ? _NewCertificateRow(certificate: sortedFresh[index])
-                : _CertificateRow(certificate: list[index - sortedFresh.length]),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+            itemCount: sortedFresh.length + list.length + 1,
+            separatorBuilder: (_, _) => const SizedBox(height: 12),
+            itemBuilder: (BuildContext context, int index) {
+              if (index == 0) {
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 0, 4, 4),
+                  child: Text(
+                    context.t('studentCertificates.subtitle'),
+                    style: TextStyle(
+                      fontSize: 14,
+                      height: 1.5,
+                      color: context.inkMuted,
+                    ),
+                  ),
+                );
+              }
+              final int i = index - 1;
+              return i < sortedFresh.length
+                  ? _NewCertificateRow(certificate: sortedFresh[i])
+                  : _CertificateRow(certificate: list[i - sortedFresh.length]);
+            },
           );
         },
       ),

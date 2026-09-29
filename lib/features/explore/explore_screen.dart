@@ -13,6 +13,7 @@ import '../../l10n/app_strings.dart';
 import '../../models/event.dart';
 import '../../state/providers.dart';
 import '../shared/common_widgets.dart';
+import '../shared/event_widgets.dart' show eventCardDate, eventFeeLabel;
 import '../auth/auth_widgets.dart' show LanguageToggleDark;
 import 'explore_providers.dart';
 
@@ -142,10 +143,10 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
 
     return DarkScreenSystemBars(
       child: Scaffold(
-        backgroundColor: BrandColors.loginBase,
+        backgroundColor: context.authColors.base,
         appBar: AppBar(
-          backgroundColor: BrandColors.loginSurface,
-          foregroundColor: BrandColors.white,
+          backgroundColor: context.authColors.card,
+          foregroundColor: context.authColors.text,
           // AppBar durum çubuğunun stilini kendi başına bildiriyor; temadan
           // gelen değer bırakılsaydı açık temada koyu simge çizilir ve
           // simgeler bu koyu başlığın üstünde kaybolurdu. Sarmalayıcının
@@ -163,8 +164,8 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
               style: TextButton.styleFrom(
                 // Keşfet'te vurgu kırmızıya alındı; koyu zeminde okunaklı
                 // kalması için marka kırmızısının açık tonu kullanılıyor.
-                foregroundColor: BrandColors.redOnDark,
-                backgroundColor: const Color(0x14FFFFFF),
+                foregroundColor: context.authColors.accent,
+                backgroundColor: context.authColors.field,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 14,
                   vertical: 10,
@@ -183,9 +184,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
               ),
             ),
           ),
-          actions: const <Widget>[
+          actions: <Widget>[
             LanguageToggleDark(
-              accent: BrandColors.redOnDark,
+              accent: context.authColors.accent,
               animatedGlobe: true,
             ),
             SizedBox(width: 12),
@@ -323,16 +324,16 @@ class _ExitTabVisual extends StatelessWidget {
           child: DecoratedBox(
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: BrandColors.white.withValues(alpha: 0.14),
+              color: context.authColors.card.withValues(alpha: 0.7),
               border: Border.all(
-                color: BrandColors.white.withValues(alpha: 0.28),
+                color: context.authColors.cardBorder,
                 width: 1,
               ),
             ),
             child: Icon(
               Icons.arrow_back_ios_new,
               size: size * 0.42,
-              color: BrandColors.redOnDark,
+              color: context.authColors.accent,
             ),
           ),
         ),
@@ -351,7 +352,7 @@ class _ExploreList extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return RefreshIndicator(
       color: BrandColors.red,
-      backgroundColor: BrandColors.loginSurface,
+      backgroundColor: context.authColors.card,
       onRefresh: () async =>
           ref.read(exploreShuffleProvider.notifier).reshuffle(),
       child: ListView.separated(
@@ -380,15 +381,17 @@ class _GuestNotice extends StatelessWidget {
       decoration: BoxDecoration(
         // Ekrandaki diğer vurgularla aynı kırmızı; iki farklı kırmızı yan
         // yana gelince ikisi de yanlış görünüyor.
-        color: BrandColors.redOnDark.withValues(alpha: 0.1),
+        color: context.authColors.accent.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(BrandShape.cardRadius),
-        border: Border.all(color: BrandColors.redOnDark.withValues(alpha: 0.3)),
+        border: Border.all(
+          color: context.authColors.accent.withValues(alpha: 0.3),
+        ),
       ),
       child: Row(
         children: <Widget>[
-          const Icon(
+          Icon(
             Icons.visibility_outlined,
-            color: BrandColors.redOnDark,
+            color: context.authColors.accent,
             size: 22,
           ),
           const SizedBox(width: 12),
@@ -398,8 +401,8 @@ class _GuestNotice extends StatelessWidget {
               children: <Widget>[
                 Text(
                   context.t('explore.guestTitle'),
-                  style: const TextStyle(
-                    color: BrandColors.white,
+                  style: TextStyle(
+                    color: context.authColors.text,
                     fontWeight: FontWeight.w700,
                     fontSize: 14.5,
                   ),
@@ -407,8 +410,8 @@ class _GuestNotice extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   context.t('explore.guestDesc'),
-                  style: const TextStyle(
-                    color: BrandColors.loginMuted,
+                  style: TextStyle(
+                    color: context.authColors.muted,
                     fontSize: 12.5,
                     height: 1.4,
                   ),
@@ -433,72 +436,99 @@ class _ExploreCard extends StatelessWidget {
     final bool past = isPastEvent(event);
 
     return Material(
-      color: BrandColors.loginSurface,
-      borderRadius: BorderRadius.circular(BrandShape.cardRadius),
+      color: context.authColors.card,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(BrandShape.cardRadius),
+        side: BorderSide(color: context.authColors.cardBorder),
+      ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Stack(
-              children: <Widget>[
-                EventImage(url: event.displayImageUrl, height: 150),
-                // Geçmiş etkinlikler soluklaştırılır — vitrinde kalırlar ama
-                // aktif olanlarla karışmazlar.
-                if (past)
-                  Positioned.fill(
-                    child: ColoredBox(
-                      color: BrandColors.loginBase.withValues(alpha: 0.55),
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(BrandShape.controlRadius),
+                child: Stack(
+                  children: <Widget>[
+                    EventImage(url: event.displayImageUrl, height: 168),
+                    Positioned(
+                      top: 10,
+                      left: 10,
+                      child: EventDatePill(
+                        label: eventCardDate(context, event),
+                      ),
                     ),
-                  ),
-                Positioned(
-                  top: 10,
-                  right: 10,
-                  child: StatusPill(
-                    label: past
-                        ? context.t('dashboard.status.expired')
-                        : context.t('dashboard.status.open'),
-                    tone: past ? FeedbackTone.error : FeedbackTone.success,
-                  ),
+                    // Geçmiş etkinlikler soluklaştırılır — vitrinde kalırlar ama
+                    // aktif olanlarla karışmazlar.
+                    if (past)
+                      Positioned.fill(
+                        child: ColoredBox(
+                          color: context.authColors.base.withValues(
+                            alpha: 0.55,
+                          ),
+                        ),
+                      ),
+                    Positioned(
+                      top: 10,
+                      right: 10,
+                      child: StatusPill(
+                        label: past
+                            ? context.t('dashboard.status.expired')
+                            : context.t('dashboard.status.open'),
+                        tone: past ? FeedbackTone.error : FeedbackTone.success,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    event.title,
-                    style: const TextStyle(
-                      color: BrandColors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 8),
-                  _Meta(
-                    icon: Icons.groups_outlined,
-                    text: event.clubName.isNotEmpty
-                        ? event.clubName
-                        : context.t('dashboard.clubFallback'),
-                  ),
-                  _Meta(
-                    icon: Icons.calendar_today_outlined,
-                    text: formatDeadline(
-                      event.deadlineAtMs,
-                      locale: context.lang,
-                    ),
-                  ),
-                  if (event.locationName.isNotEmpty)
-                    _Meta(icon: Icons.place_outlined, text: event.locationName),
-                ],
               ),
-            ),
-          ],
+              Padding(
+                padding: const EdgeInsets.fromLTRB(6, 14, 6, 6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      event.title,
+                      style: TextStyle(
+                        fontFamily: BrandFonts.heading,
+                        color: context.authColors.text,
+                        fontSize: 17,
+                        height: 1.3,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 10),
+                    _Meta(
+                      icon: Icons.groups_outlined,
+                      text: event.clubName.isNotEmpty
+                          ? event.clubName
+                          : context.t('dashboard.clubFallback'),
+                    ),
+                    _Meta(
+                      icon: Icons.calendar_today_outlined,
+                      text: formatDeadline(
+                        event.deadlineAtMs,
+                        locale: context.lang,
+                      ),
+                    ),
+                    if (event.locationName.isNotEmpty)
+                      _Meta(
+                        icon: Icons.place_outlined,
+                        text: event.locationName,
+                      ),
+                    _Meta(
+                      icon: Icons.payments_outlined,
+                      text: eventFeeLabel(context, event),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -513,17 +543,18 @@ class _Meta extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 4),
+    padding: const EdgeInsets.only(bottom: 6),
     child: Row(
       children: <Widget>[
-        Icon(icon, size: 14, color: BrandColors.loginMuted),
-        const SizedBox(width: 7),
+        Icon(icon, size: 16, color: context.authColors.muted),
+        const SizedBox(width: 8),
         Expanded(
           child: Text(
             text,
-            style: const TextStyle(
-              color: BrandColors.loginMuted,
-              fontSize: 12.5,
+            style: TextStyle(
+              color: context.authColors.muted,
+              fontSize: 13.5,
+              height: 1.35,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -546,9 +577,11 @@ Future<void> showEventDetailSheet(
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: BrandColors.loginSurface,
+    backgroundColor: context.authColors.card,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      borderRadius: BorderRadius.vertical(
+        top: Radius.circular(BrandShape.sheetRadius),
+      ),
     ),
     builder: (BuildContext sheetContext) => Consumer(
       builder: (BuildContext context, WidgetRef ref, Widget? _) {
@@ -585,8 +618,8 @@ Future<void> showEventDetailSheet(
                         children: <Widget>[
                           Text(
                             currentEvent.title,
-                            style: const TextStyle(
-                              color: BrandColors.white,
+                            style: TextStyle(
+                              color: context.authColors.text,
                               fontSize: 22,
                               fontWeight: FontWeight.w700,
                             ),
@@ -603,9 +636,7 @@ Future<void> showEventDetailSheet(
                           ),
                           _Meta(
                             icon: Icons.payments_outlined,
-                            text: currentEvent.feeInfo.isNotEmpty
-                                ? currentEvent.feeInfo
-                                : '-',
+                            text: eventFeeLabel(context, currentEvent),
                           ),
                           if (currentEvent.locationName.isNotEmpty)
                             _Meta(
@@ -617,8 +648,8 @@ Future<void> showEventDetailSheet(
                             currentEvent.description.isNotEmpty
                                 ? currentEvent.description
                                 : context.t('dashboard.modal.noDescription'),
-                            style: const TextStyle(
-                              color: BrandColors.white,
+                            style: TextStyle(
+                              color: context.authColors.text,
                               height: 1.55,
                               fontSize: 14.5,
                             ),
@@ -714,8 +745,8 @@ class _ExploreClubHeader extends StatelessWidget {
                 name,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: BrandColors.white,
+                style: TextStyle(
+                  color: context.authColors.text,
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
                 ),
@@ -748,16 +779,18 @@ class _ExploreClubBubble extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
     decoration: BoxDecoration(
-      color: BrandColors.redOnDark.withValues(alpha: 0.16),
+      color: context.authColors.accent.withValues(alpha: 0.16),
       borderRadius: BorderRadius.circular(BrandShape.pillRadius),
-      border: Border.all(color: BrandColors.redOnDark.withValues(alpha: 0.28)),
+      border: Border.all(
+        color: context.authColors.accent.withValues(alpha: 0.28),
+      ),
     ),
     child: Text(
       text,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: const TextStyle(
-        color: BrandColors.redOnDark,
+      style: TextStyle(
+        color: context.authColors.accent,
         fontSize: 11.5,
         fontWeight: FontWeight.w600,
       ),
@@ -778,17 +811,17 @@ class _ExploreMessage extends ConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            const Icon(
+            Icon(
               Icons.explore_off_outlined,
               size: 48,
-              color: BrandColors.loginMuted,
+              color: context.authColors.muted,
             ),
             const SizedBox(height: 18),
             Text(
               text,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: BrandColors.loginMuted,
+              style: TextStyle(
+                color: context.authColors.muted,
                 height: 1.5,
                 fontSize: 14.5,
               ),
@@ -796,8 +829,8 @@ class _ExploreMessage extends ConsumerWidget {
             const SizedBox(height: 20),
             OutlinedButton.icon(
               style: OutlinedButton.styleFrom(
-                foregroundColor: BrandColors.white,
-                side: const BorderSide(color: BrandColors.loginGlassBorder),
+                foregroundColor: context.authColors.text,
+                side: BorderSide(color: context.authColors.cardBorder),
               ),
               onPressed: () =>
                   ref.read(exploreShuffleProvider.notifier).reshuffle(),

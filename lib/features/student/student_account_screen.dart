@@ -449,7 +449,9 @@ class _StudentAccountScreenState extends ConsumerState<StudentAccountScreen> {
                   profile.fullName.isNotEmpty
                       ? profile.fullName
                       : context.t('dashboard.studentFallback'),
-                  style: Theme.of(context).textTheme.headlineSmall,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -675,14 +677,18 @@ class _InfoTile extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 10),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: context.surface,
-          borderRadius: BorderRadius.circular(BrandShape.controlRadius),
-          boxShadow: BrandShape.card,
-        ),
+        decoration: context.cardDecoration(radius: BrandShape.controlRadius),
         child: Row(
           children: <Widget>[
-            Icon(icon, size: 20, color: context.inkMuted),
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: context.brandTint,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, size: 19, color: context.brandInk),
+            ),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -692,7 +698,12 @@ class _InfoTile extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     value.isNotEmpty ? value : '-',
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      fontSize: 15,
+                      height: 1.35,
+                      fontWeight: FontWeight.w600,
+                      color: context.ink,
+                    ),
                   ),
                 ],
               ),

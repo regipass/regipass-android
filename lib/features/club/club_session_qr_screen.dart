@@ -136,7 +136,7 @@ class _SessionEventTile extends ConsumerWidget {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(BrandShape.controlRadius),
-            boxShadow: BrandShape.card,
+            border: Border.all(color: context.hairline),
           ),
           child: Row(
             children: <Widget>[
