@@ -1169,7 +1169,11 @@ class _Body extends ConsumerWidget {
             icon: Icons.door_front_door_outlined,
             child: _CheckinStageBar(
             event: event,
-            busy: busy || past,
+            // Kapı, son kayıt tarihi geçse de etkinlik günü boyunca açık
+            // kalmalı (web ile aynı): yalnızca etkinlik günü bitince kilitlenir.
+            busy:
+                busy ||
+                getClubEventStage(event) == ClubEventStage.past,
             attended: list
                 .where((EventRegistration r) => r.isCheckedIn)
                 .length,

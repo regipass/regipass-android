@@ -1,9 +1,12 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
+import '../../app/demo_mode.dart';
 import '../../app/theme.dart';
 import '../../core/geo.dart';
 import '../../domain/checkin_qr.dart';
@@ -15,6 +18,7 @@ import '../../services/attendance_service.dart';
 import '../../services/geo_fence_service.dart';
 import '../../state/providers.dart';
 import '../shared/common_widgets.dart';
+import '../shared/qr_code_view.dart';
 import 'student_shell.dart';
 
 /// student-qr-checkin.html + js/pages/student-qr-checkin.js karşılığı.
@@ -71,6 +75,20 @@ class _StudentQrCheckinScreenState
   @override
   void initState() {
     super.initState();
+    if (kShotsMode) {
+      // Ekran görüntüsü kipi: simülatörde kamera yok; örnek başarılı okutma
+      // kalıcı gösterilir. Hiçbir şey yazılmaz.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(
+          () => _result = _ScanResult(
+            success: true,
+            detail: context.t('scan.doorOnlySuccess'),
+          ),
+        );
+      });
+      return;
+    }
     final String? initial = widget.initialQrValue;
     if (initial == null || initial.isEmpty) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -315,7 +333,8 @@ class _StudentQrCheckinScreenState
           !position.latitude.isFinite ||
           !position.longitude.isFinite) {
         _show(false, context.t('scan.locationRequired'));
-        _lastProcessedKey = null; // izin verildikten sonra aynı kod denenebilsin
+        _lastProcessedKey =
+            null; // izin verildikten sonra aynı kod denenebilsin
         return null;
       }
       location = (
@@ -374,20 +393,24 @@ class _StudentQrCheckinScreenState
       body: Stack(
         fit: StackFit.expand,
         children: <Widget>[
-          MobileScanner(
-            controller: _controller,
-            onDetect: _onDetect,
-            errorBuilder:
-                (BuildContext context, MobileScannerException error) => Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: FeedbackBanner(
-                      message: context.t('scan.permissionDenied'),
-                      tone: FeedbackTone.error,
-                    ),
-                  ),
-                ),
-          ),
+          if (kShotsMode)
+            const _StudentShotsScene()
+          else
+            MobileScanner(
+              controller: _controller,
+              onDetect: _onDetect,
+              errorBuilder:
+                  (BuildContext context, MobileScannerException error) =>
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: FeedbackBanner(
+                            message: context.t('scan.permissionDenied'),
+                            tone: FeedbackTone.error,
+                          ),
+                        ),
+                      ),
+            ),
 
           // Hedef çerçevesi
           Center(
@@ -420,6 +443,96 @@ class _StudentQrCheckinScreenState
             ),
         ],
       ),
+    );
+  }
+}
+
+/// Ekran görüntüsü kipi: kapıdaki ekranda duran kulübün giriş QR'ı
+/// (QR herkese https://regipass.com açar).
+class _StudentShotsScene extends StatelessWidget {
+  const _StudentShotsScene();
+
+  static const String _bg =
+      'https://regipass-demos.web.app/demo-assets/events/ctf-1.jpg';
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: <Widget>[
+        ImageFiltered(
+          imageFilter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+          child: Image.network(_bg, fit: BoxFit.cover),
+        ),
+        const ColoredBox(color: Color(0x80000000)),
+        Align(
+          alignment: const Alignment(0, -0.2),
+          child: Transform(
+            alignment: Alignment.center,
+            transform: Matrix4.identity()
+              ..setEntry(3, 2, 0.0012)
+              ..rotateY(-0.22)
+              ..rotateZ(0.03),
+            child: ImageFiltered(
+              imageFilter: ImageFilter.blur(sigmaX: 0.5, sigmaY: 0.5),
+              child: Container(
+                width: 300,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF15181E),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: const <BoxShadow>[
+                    BoxShadow(
+                      color: Color(0x99000000),
+                      blurRadius: 30,
+                      offset: Offset(10, 18),
+                    ),
+                  ],
+                ),
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Text(
+                        'Siber Güvenlik CTF Gecesi',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Kapı Girişi QR\'ı',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF161A1D),
+                        ),
+                      ),
+                      SizedBox(height: 14),
+                      QrCodeView(data: kShotsQrData, size: 190),
+                      SizedBox(height: 12),
+                      Text(
+                        'Telefonunla okut, girişin kaydedilsin.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

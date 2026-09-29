@@ -633,7 +633,7 @@ kExtraTranslations = <String, Map<String, String>>{
 
     // Kamera / QR (mobilde web'den farklı izin akışı var)
     'scan.permissionDenied': 'Kamera izni kapalı. Ayarlardan aç.',
-    'scan.pointCamera': 'Kamerayı QR koda tutun.',
+    'scan.pointCamera': 'Kamerayı QR koda tut.',
     'scan.ready': 'Sonraki öğrenci için hazır.',
     'scan.successTitle': 'Giriş Başarılı',
     'scan.failTitle': 'Giriş Başarısız',

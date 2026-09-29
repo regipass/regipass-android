@@ -14,6 +14,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/demo_mode.dart';
 import '../../app/theme.dart';
 import '../../l10n/app_strings.dart';
 import '../../state/theme_mode.dart';
@@ -155,13 +156,17 @@ class _AccountSettingsSheet extends StatelessWidget {
                   child: Column(
                     children: <Widget>[
                       const AccountPreferencesCard(),
-                      const SizedBox(height: 14),
-                      // Hesap silinince oturum kapanır ve router giriş
-                      // ekranına döner; bu alt sayfa kök gezginde durduğu
-                      // için kendiliğinden kapanmaz, elle kapatılır.
-                      AccountSecurityCard(
-                        onAccountDeleted: () => Navigator.of(context).pop(),
-                      ),
+                      // Demo: ortak hazır hesapta şifre değiştirme / hesap
+                      // silme gösterilmez (web demosuyla aynı).
+                      if (!kDemoMode) ...<Widget>[
+                        const SizedBox(height: 14),
+                        // Hesap silinince oturum kapanır ve router giriş
+                        // ekranına döner; bu alt sayfa kök gezginde durduğu
+                        // için kendiliğinden kapanmaz, elle kapatılır.
+                        AccountSecurityCard(
+                          onAccountDeleted: () => Navigator.of(context).pop(),
+                        ),
+                      ],
                     ],
                   ),
                 ),

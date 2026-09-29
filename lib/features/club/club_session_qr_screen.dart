@@ -56,14 +56,16 @@ class ClubSessionQrScreen extends ConsumerWidget {
           ),
         ),
         data: (List<AppEvent> all) {
-          // Yalnızca oturumlu ve süresi geçmemiş etkinlikler.
+          // Yalnızca oturumlu ve günü geçmemiş etkinlikler. Son kayıt tarihi
+          // genelde etkinlikten önce dolar; etkinlik günü (oturumların asıl
+          // alındığı gün) liste boş kalıyordu.
           final List<AppEvent> sessionEvents =
               all
                   .where(
                     (AppEvent e) =>
                         e.isMultiSession &&
                         !e.hiddenFromClubList &&
-                        !isPastEvent(e),
+                        getClubEventStage(e) != ClubEventStage.past,
                   )
                   .toList()
                 ..sort(
