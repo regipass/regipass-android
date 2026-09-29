@@ -643,7 +643,15 @@ void main() {
       home: _studentShell(Routes.studentHome, const StudentDashboardScreen()),
       overrides: student(),
       interact: (WidgetTester tester) async {
-        final Finder card = find.text('Bilişim Kariyer Günleri').first;
+        // Keşfet puanlı sıralamada kart listenin aşağısında kalabilir; liste
+        // tembel çizildiği için önce kaydırılarak bulunur.
+        final Finder title = find.text('Bilişim Kariyer Günleri');
+        await tester.scrollUntilVisible(
+          title,
+          300,
+          scrollable: find.byType(Scrollable).first,
+        );
+        final Finder card = title.first;
         await tester.ensureVisible(card);
         await tester.pump();
         await tester.tap(card, warnIfMissed: false);

@@ -382,6 +382,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'legal.consent.acceptedAt': 'Onay zamanı',
     'legal.consent.tileLabel': 'Sözleşme ve KVKK onayı',
     'legal.consent.notRecorded': 'Kayıt yok',
+    'legal.consent.acceptedNoTime': 'Onaylandı (zaman kaydı yok)',
     'legal.consent.marketingOn': 'pazarlama izni verildi',
     'legal.consent.marketingOff': 'pazarlama izni verilmedi',
 
@@ -1854,6 +1855,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'legal.consent.acceptedAt': 'Consent time',
     'legal.consent.tileLabel': 'Terms and privacy consent',
     'legal.consent.notRecorded': 'Not recorded',
+    'legal.consent.acceptedNoTime': 'Accepted (time not recorded)',
     'legal.consent.marketingOn': 'marketing consent given',
     'legal.consent.marketingOff': 'marketing consent not given',
 

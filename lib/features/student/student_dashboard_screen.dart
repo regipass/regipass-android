@@ -1041,8 +1041,10 @@ class _SheetActionBar extends StatelessWidget {
               queued: queued,
               closed:
                   !view.primaryEnabled && !view.registered && !view.waitlisted,
-              registered:
-                  view.registered || (view.waitlisted && !view.primaryEnabled),
+              registered: view.registered,
+              // Bekleme listesi kayıttan ayrı renkte (mavi): yer garantisi yok.
+              waitlisted:
+                  !view.registered && view.waitlisted && !view.primaryEnabled,
               enabled: view.primaryEnabled,
               label: primaryLabel,
               onPressed: onPrimary,
@@ -1098,6 +1100,7 @@ class _PrimaryAction extends StatelessWidget {
     required this.enabled,
     required this.label,
     required this.onPressed,
+    this.waitlisted = false,
   });
 
   final bool busy;
@@ -1108,6 +1111,9 @@ class _PrimaryAction extends StatelessWidget {
 
   final bool closed;
   final bool registered;
+
+  /// Bekleme listesinde (düğme pasif): mavi, kum saati.
+  final bool waitlisted;
 
   /// İP-K: düğme etkin mi (kayıt / bekleme listesine gir / yer açıldı).
   final bool enabled;
@@ -1120,15 +1126,22 @@ class _PrimaryAction extends StatelessWidget {
 
     final IconData icon = closed
         ? Icons.event_busy_outlined
+        : waitlisted
+        ? Icons.hourglass_top_rounded
         : registered
         ? Icons.verified_outlined
         : Icons.how_to_reg_outlined;
 
-    final Color foreground = closed
-        ? context.inkMuted
+    // Bekleme listesi ve kayıt aynı "sakin hap" biçiminde, farklı renkte.
+    final Color? calm = waitlisted
+        ? BrandColors.info
         : registered
         ? BrandColors.success
-        : BrandColors.white;
+        : null;
+
+    final Color foreground = closed
+        ? context.inkMuted
+        : calm ?? BrandColors.white;
 
     return Semantics(
       button: true,
@@ -1141,14 +1154,10 @@ class _PrimaryAction extends StatelessWidget {
             gradient: enabled ? BrandColors.gradient : null,
             color: closed
                 ? context.subtleFill
-                : registered
-                ? BrandColors.success.withValues(
-                    alpha: context.isDarkMode ? 0.20 : 0.12,
-                  )
-                : null,
+                : calm?.withValues(alpha: context.isDarkMode ? 0.20 : 0.12),
             borderRadius: BorderRadius.circular(BrandShape.pillRadius),
-            border: registered
-                ? Border.all(color: BrandColors.success.withValues(alpha: 0.45))
+            border: calm != null
+                ? Border.all(color: calm.withValues(alpha: 0.45))
                 : null,
             boxShadow: enabled ? BrandShape.raised : null,
           ),

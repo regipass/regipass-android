@@ -181,8 +181,12 @@ String consentTileValue(
   if (!termsAccepted && acceptedAtMs == null) {
     return context.t('legal.consent.notRecorded');
   }
+  // Eski hesaplarda onay zamanı kaydı yok: "-" yerine açıkça söylenir.
+  final bool hasTime = acceptedAtMs != null && acceptedAtMs > 0;
   return <String>[
-    formatDateTimeWithSeconds(acceptedAtMs, locale: context.lang),
+    hasTime
+        ? formatDateTimeWithSeconds(acceptedAtMs, locale: context.lang)
+        : context.t('legal.consent.acceptedNoTime'),
     context.t(
       marketingConsent
           ? 'legal.consent.marketingOn'
