@@ -106,7 +106,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'report.button': 'Raporu İndir',
     'report.pdf': 'PDF',
     'report.excel': 'Excel',
-    'report.help': 'Katılım oranı, oturum yoklaması, bölüm/sınıf dağılımı ve değerlendirme özeti. PDF kişisel bilgi içermez; katılımcı listesi Excel dosyasında.',
+    'report.help': 'Katılım, yoklama ve değerlendirme özeti. Katılımcı listesi yalnızca Excel\'de.',
     'report.preparing': 'Rapor hazırlanıyor...',
     'report.done': 'Rapor indirildi.',
     'report.error': 'Rapor hazırlanamadı. İnternetini kontrol edip tekrar dene.',
@@ -131,7 +131,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'feedback.edit': 'Değerlendirmeyi düzenle',
     'feedback.editUntil': '{{date}} tarihine kadar düzenleyebilirsin.',
     'feedback.thanks': 'Teşekkürler! Değerlendirmen kulübe isimsiz iletildi.',
-    'feedback.anonymousNote': 'Kulüp adını görmez; yalnızca puanları ve yorumları isimsiz görür. Diğer öğrenciler hiç görmez.',
+    'feedback.anonymousNote': 'Kulüp adını görmez; puanlar isimsiz paylaşılır.',
     'feedback.cardRate': 'Değerlendir',
     'feedback.error.notCheckedIn': 'Yalnızca etkinliğe giriş yapanlar değerlendirme yapabilir.',
     'feedback.error.notFinished': 'Etkinlik bitince değerlendirebilirsin.',
@@ -142,7 +142,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'feedback.error.notOwner': 'Bu etkinliğin değerlendirmelerini yalnızca düzenleyen kulüp görür.',
     'feedback.error.generic': 'Gönderilemedi. İnternetini kontrol edip tekrar dene.',
     'feedback.club.title': 'Değerlendirmeler',
-    'feedback.club.empty': 'Henüz değerlendirme yok. Etkinlik bitince giriş yapan öğrencilerden değerlendirme istenir; 14 gün boyunca puan verebilirler.',
+    'feedback.club.empty': 'Henüz değerlendirme yok. Etkinlik bitince katılanlardan istenir.',
     'feedback.club.count': '{{n}} değerlendirme',
     'feedback.club.comments': 'Yorumlar',
     'feedback.club.commentsHidden': 'Yorumlar, kimin yazdığı tahmin edilmesin diye en az {{n}} değerlendirme olunca görünür.',
@@ -160,10 +160,10 @@ kExtraTranslations = <String, Map<String, String>>{
     'follow.filterAll': 'Tümü',
     'follow.filterFollowing': 'Takip ettiklerim',
     'follow.empty.title': 'Takip ettiğin kulüplerin açık etkinliği yok',
-    'follow.empty.desc': 'Bir etkinliği açıp kulübün yanındaki "Takip et"e dokun; o kulüp yeni etkinlik yayınlayınca bildirim alırsın.',
+    'follow.empty.desc': 'Bir etkinlikte kulübün yanındaki "Takip et"e dokun.',
     'follow.account.title': 'Takip ettiğim kulüpler',
-    'follow.account.help': 'Takip ettiğin kulüpler yeni etkinlik yayınlayınca bildirim alırsın. Kulüpler yalnızca takipçi sayısını görür, kimin takip ettiğini göremez.',
-    'follow.account.empty': 'Henüz kulüp takip etmiyorsun. Keşfet\'te bir etkinliği açıp kulübün yanındaki "Takip et"e dokunabilirsin.',
+    'follow.account.help': 'Takip ettiğin kulüpler yeni etkinlik açınca bildirim alırsın. Kulüpler kimin takip ettiğini göremez.',
+    'follow.account.empty': 'Henüz kulüp takip etmiyorsun.',
     'follow.account.unavailable': 'Bu kulüp şu an etkinlik yayınlamıyor.',
     'follow.account.confirmUnfollow': '{{name}} takibi bırakılsın mı? Yeni etkinliklerinde bildirim almazsın.',
     'follow.account.unfollowed': '{{name}} takibini bıraktın.',
@@ -212,7 +212,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'eventNotify.toggleError': 'Ayar kaydedilemedi. Tekrar dene.',
     'clubNotify.title': 'Bildirimler',
     'clubNotify.subtitle':
-        'Etkinliğini seç; otomatik bildirimleri aç-kapat, katılımcılara mesaj gönder.',
+        'Otomatik bildirimler ve mesajlar.',
     'clubNotify.tab.upcoming': 'Yaklaşan',
     'clubNotify.tab.active': 'Süren',
     'clubNotify.tab.recent': 'Biten',
@@ -293,7 +293,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'postRegistration.ticketTitle': 'Biletini telefonuna kaydet',
     'postRegistration.ticketSave': 'Bileti resim olarak kaydet',
     'postRegistration.ticketHint':
-        'Kapıda internet olmasa da gösterebilirsin. Biletine Biletim sayfasından da ulaşırsın.',
+        'İnternetsiz de açılır; Biletim\'de her zaman bulursun.',
     'postRegistration.ticketPreparing': 'Bilet hazırlanıyor…',
     'postRegistration.ticketReady': 'Bilet hazır; açılan menüden kaydedebilirsin.',
     'postRegistration.ticketError': 'Bilet resmi hazırlanamadı. Biletim sayfasından gösterebilirsin.',
@@ -321,9 +321,7 @@ kExtraTranslations = <String, Map<String, String>>{
         'kayıt: {{count}}.',
     'clubBlock.listTitle': 'Engellenen öğrenciler',
     'clubBlock.listHelp':
-        'Buradaki öğrenciler kulübünün yeni etkinliklerine kaydolamaz. '
-        'Öğrenciyi etkinliğin kayıt listesindeki "Kulüpten engelle" ile '
-        'ekleyebilirsin.',
+        'Bu öğrenciler kulübünün etkinliklerine kaydolamaz.',
     'clubBlock.empty': 'Engellediğin öğrenci yok.',
     'clubBlock.unblock': 'Engeli kaldır',
     'clubBlock.unblockConfirm':
@@ -445,7 +443,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'auth.error.networkFailed': 'Bağlantı kurulamadı. İnternetini kontrol et.',
     'explore.guestTitle': 'Misafir olarak geziyorsun',
     'explore.guestDesc':
-        'Etkinliklere göz atabilirsin. Kayıt olmak, QR oluşturmak ve belge almak için giriş yapmalısın.',
+        'Kaydolmak ve bilet almak için giriş yap.',
     'explore.signInToJoin': 'Katılmak için giriş yap',
     'explore.empty': 'Şu anda gösterilecek etkinlik yok.',
     'explore.loadError': 'Etkinlikler yüklenemedi. Lütfen tekrar dene.',
@@ -536,8 +534,7 @@ kExtraTranslations = <String, Map<String, String>>{
 
     // Hesap ekranındaki telefon alanı + doğrulama pop-up'ı
     'account.phoneChangeHint':
-        'Numarayı değiştirirsen kaydettikten sonra açılan pencerede SMS ile '
-        'doğrulaman gerekir. Doğrulanmadan numara değişmez.',
+        'Yeni numarayı SMS ile doğrulaman gerekir.',
     'account.phoneNotChanged':
         'Numara doğrulanmadı; kayıtlı numaran olduğu gibi kaldı.',
     // Telefon doğrulama hataları (üretilen sözlükte karşılığı yok)
@@ -555,8 +552,7 @@ kExtraTranslations = <String, Map<String, String>>{
         'Bu e-posta ile bir hesap var. Giriş yap ya da şifreni yenile.',
     'phoneVerifySheet.title': 'Telefon Numarasını Doğrula',
     'phoneVerifySheet.subtitle':
-        'Bu numaraya 6 haneli bir doğrulama kodu göndereceğiz. Vazgeçmek '
-        'istersen sağ üstteki düğmeden işlemi iptal edebilirsin.',
+        'Bu numaraya 6 haneli bir kod göndereceğiz.',
 
     // Fotoğraf seçimi (mobilde galeri/kamera ayrımı web'de yoktu)
     'form.photoFromGallery': 'Galeriden Seç',
@@ -699,15 +695,12 @@ kExtraTranslations = <String, Map<String, String>>{
     'club.nav.newEvent': 'Yeni Etkinlik',
     'clubSessionQr.subtitle': 'Oturumlu etkinlikler',
     'clubSessionQr.empty':
-        'Oturumlu etkinliğin yok. QR yalnızca birden fazla oturumu olan '
-        'etkinlikler için üretilir; tek oturumlu etkinliklerde girişi '
-        'öğrencinin QR\'ını okutarak alırsın.',
+        'Oturumlu etkinliğin yok. Oturum QR\'ı yalnızca birden çok oturumlu etkinliklerde var.',
     'clubSessionQr.manage': 'Etkinliği Yönet',
     'clubSessionQr.hint':
-        'Bir etkinliğe dokun: oturum QR\'ı ekrana gelir, etkinliğin kendisi '
-        'de arkasında açılır.',
+        'Bir etkinliğe dokun, oturum QR\'ı açılır.',
     'clubDashboard.empty':
-        'Şu anda gösterilecek etkinlik yok. Kendi etkinliklerini "Etkinliklerim" sekmesinden yönetebilirsin.',
+        'Şu an etkinlik yok.',
 
     'clubEvents.title': 'Etkinlik',
     'clubEvents.edit': 'Düzenle',
@@ -716,7 +709,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubEvents.group.upcoming': 'Gelecek',
     'clubEvents.group.past': 'Geçmiş',
     'clubEvents.empty.active':
-        'Aktif etkinlik bulunmuyor. Alttaki + düğmesinden yeni etkinlik oluşturabilirsin.',
+        'Aktif etkinliğin yok. + ile yeni etkinlik oluştur.',
     'clubEvents.empty.upcoming': 'Gelecek etkinlik bulunmuyor.',
     'clubEvents.empty.past': 'Geçmiş etkinlik bulunmuyor.',
     'clubEvents.feedback.loadError':
@@ -744,7 +737,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubEvents.quota.autoPaused':
         'Kontenjan dolduğu için kayıtlar beklemeye alındı. Kontenjanı artırırsan kayıtlar kendiliğinden yeniden açılır.',
     'clubEvents.registrations.subtitle':
-        'Kayıtları durdurduğunda öğrenciler bu etkinliğe başvuramaz.',
+        'Kayıtları durdurursan yeni başvuru alınmaz.',
     'clubEvents.registrations.closeAction': 'Kayıtları Durdur',
     'clubEvents.registrations.openAction': 'Kayıtları Yeniden Başlat',
     'clubEvents.registrations.pastLabel': 'Kayıtlar kapandı',
@@ -833,13 +826,13 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubEvents.entry.restart': 'Kapı Girişini Yeniden Başlat',
     'clubEvents.entry.title': 'Kapı Girişi',
     'clubEvents.entry.subtitle':
-        'Bu QR\'ı kapıda göster; öğrenciler kendi telefonlarından okutur.',
+        'Öğrenciler bu QR\'ı kendi telefonlarıyla okutur.',
     'clubEvents.entry.open': 'Kapı QR\'ını Aç',
     'clubEvents.entry.show': 'Kapıda Tek QR Giriş',
     'clubEvents.entry.close': 'Kapıyı Kapat',
     'clubEvents.entry.qrTitle': 'Kapı Girişi QR\'ı',
     'clubEvents.entry.qrHint':
-        'Öğrenciler bu QR\'ı kendi telefonlarıyla okutur; kapı girişi açık olduğu sürece girişleri kaydedilir.',
+        'Öğrenciler bu QR\'ı kendi telefonlarıyla okutur.',
     'clubEvents.session.allowWithoutCheckin':
         'Kapı girişi yapmayanlar da yoklamaya katılabilsin',
     'clubEvents.session.allowWithoutCheckinHint':
@@ -962,10 +955,10 @@ kExtraTranslations = <String, Map<String, String>>{
         'Etkinlik günü, saat aralığı ve son kayıt tarihi.',
     'clubCreateEvent.section.audience': 'Hedef Kitle',
     'clubCreateEvent.section.audienceDesc':
-        'Etkinliği kimlerin göreceğini ve kimlerin kaydolabileceğini belirler.',
+        'Kimlerin görüp kaydolabileceği.',
     'clubCreateEvent.section.location': 'Etkinlik Konumu',
     'clubCreateEvent.section.locationDesc':
-        'Seçtiğin konum, QR ile giriş ve yoklamada konum doğrulaması için kullanılır.',
+        'QR ile giriş ve yoklamada konum kontrolü için.',
     'clubCreateEvent.section.media': 'Görsel',
     'clubCreateEvent.section.mediaDesc':
         'Etkinliğin kapak görseli.',
@@ -974,11 +967,9 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubCreateEvent.scope.universityAndDepartment':
         'Üniversiteye + Bölüme Özel',
     'clubCreateEvent.target.universityHint':
-        'Birden fazla üniversite ekleyebilirsin. Boş bırakırsan kulübünün '
-        'üniversitesi hedeflenir.',
+        'Boş bırakırsan kulübünün üniversitesi seçilir.',
     'clubCreateEvent.target.departmentHint':
-        'Birden fazla bölüm ekleyebilirsin. Boş bırakırsan kulübünün ilk '
-        'alanı hedeflenir.',
+        'Boş bırakırsan kulübünün alanı seçilir.',
     'clubCreateEvent.fee.paid': 'Ücretli',
     'clubCreateEvent.sessions.hint':
         '1 oturum: belgeler etkinlik bitince girişi onaylananlara '
@@ -988,8 +979,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubCreateEvent.image.pick': 'Cihazdan Seç',
     'notification.openTarget': 'Görüntüle',
     'clubCreateEvent.location.nameHint':
-        'Bu ad öğrencilere gösterilir. Giriş doğrulaması haritadan seçtiğin '
-        'noktaya göre yapılır.',
+        'Öğrenciler bu adı görür; konum kontrolü haritadaki noktaya göre yapılır.',
     'clubCreateEvent.location.clear': 'Konumu kaldır',
     'clubCreateEvent.location.search': 'Adres ara',
     'clubCreateEvent.location.pickOnMap': 'Haritadan Konum Seç',
@@ -1026,7 +1016,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubCreateEvent.feedback.sessionCountRequired':
         'Yoklamalı etkinlikte oturum sayısı en az 2 olmalı.',
     'clubCreateEvent.subtitle':
-        'Bilgileri doldur, etkinliğin dakikalar içinde yayında olsun.',
+        '',
     'clubCreateEvent.editTitle': 'Etkinliği Düzenle',
     'form.eventDate': 'Etkinlik Tarihi',
     'form.deadline': 'Son Kayıt Tarihi',
@@ -1056,7 +1046,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'dashboard.scope.departmentOnly': 'Bölüme Özel',
 
     'clubDocuments.subtitle':
-        'Kulübünün doğrulanması için aşağıdaki belgeleri yükle. Belgeler incelendikten sonra kulüp paneline erişimin açılır.',
+        'Belgelerin incelenince kulüp panelin açılır.',
     'clubDocuments.establishment': 'Kuruluş Belgesi',
     'clubDocuments.advisor': 'Danışman Onay Belgesi',
     'clubDocuments.studentCerts': 'Öğrenci Belgeleri',
@@ -1213,13 +1203,13 @@ kExtraTranslations = <String, Map<String, String>>{
     'admin.message.logTitle': 'Gönderilen mesajlar',
     'clubPending.messages.title': 'Yöneticiden Mesaj',
     'clubPending.messages.hint':
-        'Başvurunla ilgili yönetici notları aşağıda. Eksik bir belge varsa düzeltip yeniden yükleyebilirsin.',
+        'Yönetici notları aşağıda. Eksik belgeyi yeniden yükleyebilirsin.',
 
     // Kulüp / yönetici tarafı (bu turda iskelet)
     // Bağlantı durumu
     'offline.banner': 'İnternet bağlantısı yok',
     'offline.bannerDesc':
-        'Bağlantın geri geldiğinde kaldığın yerden devam edebilirsin.',
+        'Bağlantı gelince kaldığın yerden devam edersin.',
     'offline.loginBlocked':
         'İnternet bağlantısı yok. Giriş yapabilmek için bağlantını kontrol et.',
     'offline.actionBlocked': 'İnternet bağlantısı yok. Bağlanınca tekrar dene.',
@@ -1249,7 +1239,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubAccount.documents.approvedTitle': 'Onaylanan Belgeler',
     'clubAccount.documents.title': 'Belgelerim',
     'clubAccount.documents.hint':
-        'Başvurunda gönderdiğin belgeler. Adına dokunarak açabilirsin.',
+        'Başvuru belgelerin. Açmak için dokun.',
     'clubAccount.documents.badge.approved': 'Onaylandı',
     'clubAccount.documents.badge.review': 'İncelemede',
     'clubAccount.documents.badge.incomplete': 'Eksik',
@@ -1358,7 +1348,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'gate.hint.in': 'Sıradakini okutabilirsin',
     'gate.hint.legacy': 'Eski uygulama bileti (kodsuz): kimliği kontrol et',
     'gate.hint.already': 'İlk giriş {{time}} · sayı değişmedi',
-    'gate.hint.invalid-ticket': 'Bilet kodu eşleşmiyor; öğrenci biletini uygulamadan yeniden açsın',
+    'gate.hint.invalid-ticket': 'Bilet kodu eşleşmiyor; öğrenci bileti yeniden açmalı.',
     'gate.hint.not-registered': 'Bu öğrencinin etkinliğe kaydı yok',
     'gate.hint.other-event': 'Bu bilet başka bir etkinliğe ait',
     'gate.hint.not-owner': 'Etkinlik bu kulübe ait değil',
@@ -1369,7 +1359,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'gate.hint.conflict': 'Başka cihazda {{time}} girmişti — ilk okuma geçerli',
     'gate.hint.rejected': 'Sunucu kabul etmedi — bu girişi kontrol et',
     'gate.conflictToast': '{{name}}: başka cihaz daha önce okutmuştu ({{time}}).',
-    'gate.cameraHint': 'Bileti kameraya tut. Kamera açık kalır; sıradakini hemen okutabilirsin.',
+    'gate.cameraHint': 'Bileti kameraya tut.',
     'gate.cameraError': 'Kamera açılamadı. Kamera iznini kontrol et.',
     // İP-K: kayıt, bekleme listesi, ödeme, etkinlik iptali (web language.js ile aynı anahtarlar)
     'gate.hint.event-cancelled': 'Etkinlik iptal edildi, biletler geçersiz',
@@ -1388,7 +1378,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'registration.actions.waitlistPosition': 'Bekleme listesinde {{position}}. sıradasın',
     'registration.alerts.fullOfferWaitlist': 'Bu etkinliğin kontenjanı doldu. Bekleme listesine girmek ister misin? Yer açılırsa bildirim alırsın; ilk kaydolan yeri alır.',
     'registration.alerts.leaveWaitlistConfirm': 'Bekleme listesinden çıkmak istediğine emin misin?',
-    'registration.alerts.paymentPendingNote': 'Kaydın "Ödeme bekleniyor" durumunda. Kulüp ödemeni aldığını işaretleyince kaydın kesinleşir ve bildirim alırsın. Ödeme onaylanmadan kapıda giriş yapılamaz.',
+    'registration.alerts.paymentPendingNote': 'Ödemeyi kulüple konuş. Kulüp onaylayınca kaydın kesinleşir; o zamana kadar kapıdan giriş yapılamaz.',
     'registration.alerts.seatsAvailableNow': 'Bu arada yer açıldı. Hemen kaydolabilirsin.',
     'registration.alerts.waitlistJoined': 'Bekleme listesine eklendin: {{position}}. sıradasın. Yer açılınca bildirim alırsın; ilk kaydolan yeri alır.',
     'registration.club.addSeats': '+{{n}} yer aç',
@@ -1455,7 +1445,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubCreateEvent.contact.custom': 'Yeni bilgi gir',
     'clubCreateEvent.contact.hidden': 'Gösterme',
     'clubCreateEvent.contact.clubPreview': 'Gösterilecek: {{contact}}',
-    'clubCreateEvent.contact.clubEmpty': 'Kulüp profilinde telefon/e-posta yok. Kulüp Bilgileri sayfasından ekleyebilir ya da yeni bilgi girebilirsin.',
+    'clubCreateEvent.contact.clubEmpty': 'Kulüp profilinde iletişim bilgisi yok. Yeni bilgi girebilirsin.',
     'clubCreateEvent.contact.hiddenHint': 'Etkinlik detayında iletişim bilgisi gösterilmez.',
     'clubCreateEvent.contact.phone': 'İletişim telefonu',
     'clubCreateEvent.contact.email': 'İletişim e-postası',
@@ -1488,7 +1478,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'registration.status.paymentPendingLong': 'Bekleniyor — kulüp ödemeyi onaylayınca kaydın kesinleşir',
     'registration.status.registeredPaymentPending': 'Kayıtlı · Ödeme Bekleniyor',
     'registration.status.waitlisted': 'Bekleme Listesindesin',
-    'registration.ticket.paymentPendingHint': 'Ödemen henüz onaylanmadı: kapıda giriş yapılamaz. Kulüp ödemeni onaylayınca bilet geçerli olur.',
+    'registration.ticket.paymentPendingHint': 'Ödemen onaylanınca bilet geçerli olur.',
   },
   'en': <String, String>{
     // İP-8 / İP-9: yeni sertifika sistemi (web language.js ile aynı metinler)
@@ -1586,7 +1576,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'report.button': 'Download report',
     'report.pdf': 'PDF',
     'report.excel': 'Excel',
-    'report.help': 'Attendance rate, session attendance, department / year breakdown and rating summary. The PDF has no personal data; the attendee list is in Excel.',
+    'report.help': 'Attendance, sessions and feedback summary. The attendee list is only in Excel.',
     'report.preparing': 'Preparing report...',
     'report.done': 'Report downloaded.',
     'report.error': 'Couldn\'t prepare the report. Check your connection and try again.',
@@ -1611,7 +1601,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'feedback.edit': 'Edit rating',
     'feedback.editUntil': 'You can edit it until {{date}}.',
     'feedback.thanks': 'Thanks! Your rating was sent to the club anonymously.',
-    'feedback.anonymousNote': 'The club doesn\'t see your name; it only sees ratings and comments anonymously. Other students never see them.',
+    'feedback.anonymousNote': 'The club doesn\'t see your name; ratings are anonymous.',
     'feedback.cardRate': 'Rate',
     'feedback.error.notCheckedIn': 'Only attendees who checked in can rate this event.',
     'feedback.error.notFinished': 'You can rate the event once it\'s over.',
@@ -1622,7 +1612,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'feedback.error.notOwner': 'Only the organizing club can see this event\'s ratings.',
     'feedback.error.generic': 'Couldn\'t send. Check your connection and try again.',
     'feedback.club.title': 'Ratings',
-    'feedback.club.empty': 'No ratings yet. Students who checked in get a rating request when the event ends and can rate it for 14 days.',
+    'feedback.club.empty': 'No feedback yet. Attendees are asked after the event.',
     'feedback.club.count': '{{n}} ratings',
     'feedback.club.comments': 'Comments',
     'feedback.club.commentsHidden': 'Comments appear once there are at least {{n}} ratings (so no one can guess who wrote them).',
@@ -1640,10 +1630,10 @@ kExtraTranslations = <String, Map<String, String>>{
     'follow.filterAll': 'All',
     'follow.filterFollowing': 'Following',
     'follow.empty.title': 'No open events from clubs you follow',
-    'follow.empty.desc': 'Open an event and tap "Follow" next to the club; you\'ll be notified when it posts a new event.',
+    'follow.empty.desc': 'Tap "Follow" next to a club on any event.',
     'follow.account.title': 'Clubs I follow',
-    'follow.account.help': 'You\'re notified when clubs you follow post a new event. Clubs only see their follower count, not who follows them.',
-    'follow.account.empty': 'You don\'t follow any clubs yet. Open an event in Discover and tap "Follow" next to the club.',
+    'follow.account.help': 'You get notified when clubs you follow post events. Clubs can\'t see who follows them.',
+    'follow.account.empty': 'You\'re not following any clubs yet.',
     'follow.account.unavailable': 'This club isn\'t posting events right now.',
     'follow.account.confirmUnfollow': 'Unfollow {{name}}? You won\'t be notified about its new events.',
     'follow.account.unfollowed': 'You unfollowed {{name}}.',
@@ -1692,7 +1682,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'eventNotify.toggleError': 'Could not save. Try again.',
     'clubNotify.title': 'Notifications',
     'clubNotify.subtitle':
-        'Pick an event; manage automatic notifications and message attendees.',
+        'Automatic notifications and messages.',
     'clubNotify.tab.upcoming': 'Upcoming',
     'clubNotify.tab.active': 'Live',
     'clubNotify.tab.recent': 'Ended',
@@ -1772,7 +1762,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'postRegistration.ticketTitle': 'Save your ticket to your phone',
     'postRegistration.ticketSave': 'Save ticket as image',
     'postRegistration.ticketHint':
-        'You can show it at the door even offline. Your ticket is also on the My Ticket page.',
+        'Works offline; you can always find it in My Tickets.',
     'postRegistration.ticketPreparing': 'Preparing your ticket…',
     'postRegistration.ticketReady': 'Ticket ready; save it from the share menu.',
     'postRegistration.ticketError': 'Could not create the ticket image. Show it from My Ticket instead.',
@@ -1800,8 +1790,7 @@ kExtraTranslations = <String, Map<String, String>>{
         'removed: {{count}}.',
     'clubBlock.listTitle': 'Blocked students',
     'clubBlock.listHelp':
-        'These students cannot register for your club\'s new events. Add a '
-        'student with "Block from club" on an event\'s registration list.',
+        'These students can\'t register for your club\'s events.',
     'clubBlock.empty': 'You have not blocked anyone.',
     'clubBlock.unblock': 'Unblock',
     'clubBlock.unblockConfirm':
@@ -1911,7 +1900,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'auth.error.networkFailed': 'No connection. Check your internet.',
     'explore.guestTitle': "You're browsing as a guest",
     'explore.guestDesc':
-        'You can browse events. Sign in to register, generate a QR code and receive certificates.',
+        'Sign in to register and get tickets.',
     'explore.signInToJoin': 'Sign in to join',
     'explore.empty': 'There are no events to show right now.',
     'explore.loadError': 'Events could not load. Please try again.',
@@ -2108,9 +2097,7 @@ kExtraTranslations = <String, Map<String, String>>{
 
     // Account screen phone field + verification pop-up
     'account.phoneChangeHint':
-        'If you change the number, you will have to verify it by SMS in the '
-        'pop-up that opens after you save. The number does not change until it '
-        'is verified.',
+        'You\'ll need to verify the new number by SMS.',
     'account.phoneNotChanged':
         'The number was not verified; your saved number is unchanged.',
     // Phone verification errors (not present in the generated dictionary)
@@ -2126,22 +2113,18 @@ kExtraTranslations = <String, Map<String, String>>{
         'An account with this email exists. Sign in or reset your password.',
     'phoneVerifySheet.title': 'Verify Phone Number',
     'phoneVerifySheet.subtitle':
-        'We will send a 6-digit verification code to this number. You can close '
-        'this window any time with the X in the corner.',
+        'We\'ll send a 6-digit code to this number.',
 
     'club.nav.myEvents': 'My Events',
     'club.nav.newEvent': 'New Event',
     'clubSessionQr.subtitle': 'Session-based events',
     'clubSessionQr.empty':
-        'You have no session-based events. QR codes are only generated for '
-        'events with multiple sessions; for single-session events you scan '
-        'the student\'s own QR instead.',
+        'No multi-session events. Session QR is only for events with more than one session.',
     'clubSessionQr.manage': 'Manage Event',
     'clubSessionQr.hint':
-        'Tap an event: its session QR appears on screen and the event itself '
-        'opens behind it.',
+        'Tap an event to open its session QR.',
     'clubDashboard.empty':
-        'No events to show right now. Manage your own from the "My Events" tab.',
+        'No events right now.',
 
     'clubEvents.title': 'Event',
     'clubEvents.edit': 'Edit',
@@ -2150,7 +2133,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubEvents.group.upcoming': 'Upcoming',
     'clubEvents.group.past': 'Past',
     'clubEvents.empty.active':
-        'No active events. Use the + button below to create one.',
+        'No active events. Create one with +.',
     'clubEvents.empty.upcoming': 'No upcoming events.',
     'clubEvents.empty.past': 'No past events.',
     'clubEvents.feedback.loadError': 'Events could not load. Please try again.',
@@ -2177,7 +2160,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubEvents.quota.autoPaused':
         'Registrations are on hold because capacity is full. Raise the capacity and they reopen automatically.',
     'clubEvents.registrations.subtitle':
-        'While registrations are stopped, students cannot apply to this event.',
+        'If you pause registrations, no new sign-ups are accepted.',
     'clubEvents.registrations.closeAction': 'Stop Registrations',
     'clubEvents.registrations.openAction': 'Reopen Registrations',
     'clubEvents.registrations.pastLabel': 'Registrations closed',
@@ -2266,13 +2249,13 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubEvents.entry.restart': 'Restart Check-in',
     'clubEvents.entry.title': 'Door Entry',
     'clubEvents.entry.subtitle':
-        'Show this QR at the door; students scan it from their own phones.',
+        'Students scan this QR with their own phones.',
     'clubEvents.entry.open': 'Open Door QR',
     'clubEvents.entry.show': 'Show Entry QR',
     'clubEvents.entry.close': 'Close Door',
     'clubEvents.entry.qrTitle': 'Door Check-in QR',
     'clubEvents.entry.qrHint':
-        'Students scan this QR with their own phones; check-ins are recorded while the door is open.',
+        'Students scan this QR with their own phones.',
     'clubEvents.session.allowWithoutCheckin':
         'Let students without check-in join attendance',
     'clubEvents.session.allowWithoutCheckinHint':
@@ -2397,10 +2380,10 @@ kExtraTranslations = <String, Map<String, String>>{
         'Event day, time range and registration deadline.',
     'clubCreateEvent.section.audience': 'Target Audience',
     'clubCreateEvent.section.audienceDesc':
-        'Decides who can see and register for the event.',
+        'Who can see and register.',
     'clubCreateEvent.section.location': 'Event Location',
     'clubCreateEvent.section.locationDesc':
-        'The location you pick is used for location checks during QR check-in and attendance.',
+        'Used for location checks on QR entry and attendance.',
     'clubCreateEvent.section.media': 'Image',
     'clubCreateEvent.section.mediaDesc':
         'The event\'s cover image.',
@@ -2409,11 +2392,9 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubCreateEvent.scope.universityAndDepartment':
         'University + Department Only',
     'clubCreateEvent.target.universityHint':
-        'You can add more than one university. Left empty, your club\'s own '
-        'university is targeted.',
+        'Leave empty to target your club\'s university.',
     'clubCreateEvent.target.departmentHint':
-        'You can add more than one department. Left empty, your club\'s first '
-        'field is targeted.',
+        'Leave empty to target your club\'s field.',
     'clubCreateEvent.fee.paid': 'Paid',
     'clubCreateEvent.sessions.hint':
         '1 session: documents go out automatically to checked-in students '
@@ -2435,8 +2416,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubCreateEvent.image.pick': 'Choose From Device',
     'notification.openTarget': 'View',
     'clubCreateEvent.location.nameHint':
-        'Students see this name. Check-in is validated against the point you '
-        'picked on the map.',
+        'Students see this name; location checks use the map pin.',
     'clubCreateEvent.location.clear': 'Remove location',
     'clubCreateEvent.location.search': 'Search address',
     'clubCreateEvent.location.pickOnMap': 'Pick Location On Map',
@@ -2475,7 +2455,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'dashboard.scope.departmentOnly': 'Department Only',
 
     'clubDocuments.subtitle':
-        'Upload the documents below so we can verify your club. Access to the club panel opens once they are reviewed.',
+        'Your club panel opens once your documents are reviewed.',
     'clubDocuments.establishment': 'Establishment Document',
     'clubDocuments.advisor': 'Advisor Approval',
     'clubDocuments.studentCerts': 'Student Certificates',
@@ -2630,13 +2610,12 @@ kExtraTranslations = <String, Map<String, String>>{
     'admin.message.logTitle': 'Sent messages',
     'clubPending.messages.title': 'Message From The Admin',
     'clubPending.messages.hint':
-        'Notes the admin sent about your application are below. If a '
-        'document is missing, fix it and upload it again.',
+        'Admin notes are below. You can re-upload a missing document.',
 
     // Connectivity
     'offline.banner': 'No internet connection',
     'offline.bannerDesc':
-        'You can continue where you left off once you are back online.',
+        'You\'ll pick up where you left off when you\'re back online.',
     'offline.loginBlocked':
         'No internet connection. Check your connection to sign in.',
     'offline.actionBlocked':
@@ -2666,8 +2645,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubAccount.documents.approvedTitle': 'Approved Documents',
     'clubAccount.documents.title': 'My Documents',
     'clubAccount.documents.hint':
-        'The documents you submitted with your application. Tap a name to '
-        'open it.',
+        'Your application documents. Tap to open.',
     'clubAccount.documents.badge.approved': 'Approved',
     'clubAccount.documents.badge.review': 'In review',
     'clubAccount.documents.badge.incomplete': 'Incomplete',
@@ -2779,7 +2757,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'gate.hint.in': 'Scan the next one',
     'gate.hint.legacy': 'Old app ticket (no code) — check their ID',
     'gate.hint.already': 'First entry {{time}} · count unchanged',
-    'gate.hint.invalid-ticket': 'Ticket code mismatch — ask them to reopen the ticket in the app',
+    'gate.hint.invalid-ticket': 'Ticket code doesn\'t match; the student should reopen the ticket.',
     'gate.hint.not-registered': 'This student is not registered',
     'gate.hint.other-event': 'This ticket belongs to another event',
     'gate.hint.not-owner': 'This event is not your club\'s',
@@ -2790,7 +2768,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'gate.hint.conflict': 'Another device checked them in at {{time}} — first scan wins',
     'gate.hint.rejected': 'Server rejected — check this entry',
     'gate.conflictToast': '{{name}}: another device scanned first ({{time}}).',
-    'gate.cameraHint': 'Hold the ticket up to the camera. It stays on; scan the next one right away.',
+    'gate.cameraHint': 'Hold the ticket up to the camera.',
     'gate.cameraError': 'Camera could not start. Check the camera permission.',
     // İP-K: kayıt, bekleme listesi, ödeme, etkinlik iptali (web language.js ile aynı anahtarlar)
     'gate.hint.event-cancelled': 'The event was cancelled; tickets are invalid',
@@ -2809,7 +2787,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'registration.actions.waitlistPosition': 'You are #{{position}} on the waitlist',
     'registration.alerts.fullOfferWaitlist': 'This event is fully booked. Would you like to join the waitlist? You will be notified if a spot opens; the first to register gets it.',
     'registration.alerts.leaveWaitlistConfirm': 'Are you sure you want to leave the waitlist?',
-    'registration.alerts.paymentPendingNote': 'Your registration is "payment pending". It is confirmed once the club marks your payment as received, and you will be notified. You cannot enter until the payment is confirmed.',
+    'registration.alerts.paymentPendingNote': 'Arrange payment with the club. Your registration is confirmed once they approve it; until then you can\'t enter.',
     'registration.alerts.seatsAvailableNow': 'A spot just opened up. You can register now.',
     'registration.alerts.waitlistJoined': 'You joined the waitlist: you are #{{position}}. You will be notified when a spot opens; the first to register gets it.',
     'registration.club.addSeats': '+{{n}} spots',
@@ -2876,7 +2854,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubCreateEvent.contact.custom': 'Enter new details',
     'clubCreateEvent.contact.hidden': 'Don\'t show',
     'clubCreateEvent.contact.clubPreview': 'Will show: {{contact}}',
-    'clubCreateEvent.contact.clubEmpty': 'The club profile has no phone/email. Add them on the Club Info page or enter new details.',
+    'clubCreateEvent.contact.clubEmpty': 'No contact info on your club profile. You can enter new details.',
     'clubCreateEvent.contact.hiddenHint': 'No contact information will be shown on the event.',
     'clubCreateEvent.contact.phone': 'Contact phone',
     'clubCreateEvent.contact.email': 'Contact email',
@@ -2909,6 +2887,6 @@ kExtraTranslations = <String, Map<String, String>>{
     'registration.status.paymentPendingLong': 'Pending — confirmed once the club marks your payment',
     'registration.status.registeredPaymentPending': 'Registered · Payment Pending',
     'registration.status.waitlisted': 'On the Waitlist',
-    'registration.ticket.paymentPendingHint': 'Your payment is not confirmed yet: you cannot enter. The ticket becomes valid once the club confirms your payment.',
+    'registration.ticket.paymentPendingHint': 'Your ticket becomes valid once your payment is confirmed.',
   },
 };

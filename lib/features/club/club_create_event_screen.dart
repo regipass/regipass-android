@@ -190,8 +190,8 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
     _quota.text = event.quota > 0 ? '${event.quota}' : '';
     _feeType = event.feeType.isEmpty ? 'free' : event.feeType;
     _feeAmount.text = event.feeAmount > 0 ? '${event.feeAmount}' : '';
-    _contactMode = const <String>{'club', 'custom', 'hidden'}
-            .contains(event.contactMode)
+    _contactMode =
+        const <String>{'club', 'custom', 'hidden'}.contains(event.contactMode)
         ? event.contactMode
         : 'club';
     if (_contactMode == 'hidden' && _feeType == 'paid') _contactMode = 'club';
@@ -353,9 +353,7 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
           initialEntryMode: TimePickerEntryMode.input,
           builder: (BuildContext context, Widget? child) => MediaQuery(
             // Türkiye'de saat 24'lük yazılır; ÖÖ/ÖS kutusu kafa karıştırıyordu.
-            data: MediaQuery.of(
-              context,
-            ).copyWith(alwaysUse24HourFormat: true),
+            data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
             child: child!,
           ),
         );
@@ -918,8 +916,7 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
               ],
               selected: _contactMode,
               enabled: !_saving,
-              onChanged: (String value) =>
-                  setState(() => _contactMode = value),
+              onChanged: (String value) => setState(() => _contactMode = value),
             ),
             const SizedBox(height: 8),
             if (_contactMode == 'club')
@@ -933,7 +930,10 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
                 style: hint,
               ),
             if (_contactMode == 'hidden')
-              Text(context.t('clubCreateEvent.contact.hiddenHint'), style: hint),
+              Text(
+                context.t('clubCreateEvent.contact.hiddenHint'),
+                style: hint,
+              ),
             if (_contactMode == 'custom') ...<Widget>[
               TextField(
                 controller: _contactPhone,
@@ -972,7 +972,10 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
                 ),
               ),
               const SizedBox(height: 6),
-              Text(context.t('clubCreateEvent.contact.customHint'), style: hint),
+              Text(
+                context.t('clubCreateEvent.contact.customHint'),
+                style: hint,
+              ),
             ],
             const SizedBox(height: 12),
           ],
@@ -991,8 +994,10 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
   }
 
   String? _autoNotifyWarning() {
-    final bool needStart = _startTime == null &&
-        ((_autoNotify['hourBefore'] ?? true) || (_autoNotify['atStart'] ?? true));
+    final bool needStart =
+        _startTime == null &&
+        ((_autoNotify['hourBefore'] ?? true) ||
+            (_autoNotify['atStart'] ?? true));
     final bool needEnd = _endTime == null && (_autoNotify['afterEnd'] ?? true);
     if (needStart && needEnd) return 'autoNotify.warnBoth';
     if (needStart) return 'autoNotify.warnStart';
@@ -1034,575 +1039,580 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
             children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(4, 0, 4, 16),
-              child: Text(
-                context.t(
-                  _isEdit
-                      ? 'clubCreateEvent.editSubtitle'
-                      : 'clubCreateEvent.subtitle',
-                ),
-                style: TextStyle(
-                  fontSize: 14.5,
-                  height: 1.5,
-                  color: context.inkMuted,
-                ),
-              ),
-            ),
-            // ── 1. Temel bilgiler ─────────────────────────────────
-            _SectionCard(
-              icon: Icons.notes_rounded,
-              title: context.t('clubCreateEvent.section.basics'),
-              description: context.t('clubCreateEvent.section.basicsDesc'),
-              children: <Widget>[
-                _NeonAlert(
-                  active: _invalidField == _Field.title,
-                  child: TextField(
-                    controller: _title,
-                    enabled: !_saving,
-                    textInputAction: TextInputAction.next,
-                    onSubmitted: (_) => _descriptionFocus.requestFocus(),
-                    inputFormatters: guardedInput(InputLimits.title),
-                    decoration: InputDecoration(
-                      labelText: context.t('form.eventTitle'),
-                      hintText: context.t('placeholder.eventTitleExample'),
+              // Açıklama boşsa (yeni etkinlik) hiç yer kaplamaz.
+              if (!(!_isEdit && context.t('clubCreateEvent.subtitle').isEmpty))
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 0, 4, 16),
+                  child: Text(
+                    context.t(
+                      _isEdit
+                          ? 'clubCreateEvent.editSubtitle'
+                          : 'clubCreateEvent.subtitle',
+                    ),
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      height: 1.5,
+                      color: context.inkMuted,
                     ),
                   ),
                 ),
-                _NeonAlert(
-                  active: _invalidField == _Field.description,
-                  child: TextField(
-                    controller: _description,
-                    focusNode: _descriptionFocus,
-                    enabled: !_saving,
-                    maxLines: 4,
-                    textInputAction: TextInputAction.next,
-                    onSubmitted: (_) => _purposeFocus.requestFocus(),
-                    inputFormatters: guardedInput(
-                      InputLimits.longText,
-                      multiline: true,
-                    ),
-                    decoration: InputDecoration(
-                      labelText: context.t('form.description'),
-                      hintText: context.t(
-                        'placeholder.eventDescriptionExample',
-                      ),
-                      alignLabelWithHint: true,
-                    ),
-                  ),
-                ),
-                _NeonAlert(
-                  active: _invalidField == _Field.purpose,
-                  child: TextField(
-                    controller: _purpose,
-                    focusNode: _purposeFocus,
-                    enabled: !_saving,
-                    maxLines: 3,
-                    textInputAction: TextInputAction.done,
-                    onSubmitted: (_) =>
-                        FocusManager.instance.primaryFocus?.unfocus(),
-                    inputFormatters: guardedInput(
-                      InputLimits.paragraph,
-                      multiline: true,
-                    ),
-                    decoration: InputDecoration(
-                      labelText: context.t('form.purpose'),
-                      hintText: context.t('placeholder.eventPurposeExample'),
-                      alignLabelWithHint: true,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-
-            // ── 2. Katılım ve ücret ───────────────────────────────
-            _SectionCard(
-              icon: Icons.groups_outlined,
-              title: context.t('clubCreateEvent.section.participation'),
-              description: context.t(
-                'clubCreateEvent.section.participationDesc',
-              ),
-              info: context.t('clubCreateEvent.sessions.hint'),
-              children: <Widget>[
-                _CaptionedField(
-                  label: context.t('form.feeInfo'),
-                  child: _ChoiceRow(
-                    options: <({String value, String label})>[
-                      (value: 'free', label: context.t('eventModal.free')),
-                      (
-                        value: 'paid',
-                        label: context.t('clubCreateEvent.fee.paid'),
-                      ),
-                    ],
-                    selected: _feeType,
-                    enabled: !_saving,
-                    onChanged: (String value) => setState(() {
-                      _feeType = value;
-                      // Ücretli etkinlikte iletişim gizlenemez.
-                      if (value == 'paid' && _contactMode == 'hidden') {
-                        _contactMode = 'club';
-                      }
-                    }),
-                  ),
-                ),
-                if (_feeType == 'paid')
+              // ── 1. Temel bilgiler ─────────────────────────────────
+              _SectionCard(
+                icon: Icons.notes_rounded,
+                title: context.t('clubCreateEvent.section.basics'),
+                description: context.t('clubCreateEvent.section.basicsDesc'),
+                children: <Widget>[
                   _NeonAlert(
-                    active: _invalidField == _Field.fee,
+                    active: _invalidField == _Field.title,
                     child: TextField(
-                      controller: _feeAmount,
+                      controller: _title,
+                      enabled: !_saving,
+                      textInputAction: TextInputAction.next,
+                      onSubmitted: (_) => _descriptionFocus.requestFocus(),
+                      inputFormatters: guardedInput(InputLimits.title),
+                      decoration: InputDecoration(
+                        labelText: context.t('form.eventTitle'),
+                        hintText: context.t('placeholder.eventTitleExample'),
+                      ),
+                    ),
+                  ),
+                  _NeonAlert(
+                    active: _invalidField == _Field.description,
+                    child: TextField(
+                      controller: _description,
+                      focusNode: _descriptionFocus,
+                      enabled: !_saving,
+                      maxLines: 4,
+                      textInputAction: TextInputAction.next,
+                      onSubmitted: (_) => _purposeFocus.requestFocus(),
+                      inputFormatters: guardedInput(
+                        InputLimits.longText,
+                        multiline: true,
+                      ),
+                      decoration: InputDecoration(
+                        labelText: context.t('form.description'),
+                        hintText: context.t(
+                          'placeholder.eventDescriptionExample',
+                        ),
+                        alignLabelWithHint: true,
+                      ),
+                    ),
+                  ),
+                  _NeonAlert(
+                    active: _invalidField == _Field.purpose,
+                    child: TextField(
+                      controller: _purpose,
+                      focusNode: _purposeFocus,
+                      enabled: !_saving,
+                      maxLines: 3,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) =>
+                          FocusManager.instance.primaryFocus?.unfocus(),
+                      inputFormatters: guardedInput(
+                        InputLimits.paragraph,
+                        multiline: true,
+                      ),
+                      decoration: InputDecoration(
+                        labelText: context.t('form.purpose'),
+                        hintText: context.t('placeholder.eventPurposeExample'),
+                        alignLabelWithHint: true,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+
+              // ── 2. Katılım ve ücret ───────────────────────────────
+              _SectionCard(
+                icon: Icons.groups_outlined,
+                title: context.t('clubCreateEvent.section.participation'),
+                description: context.t(
+                  'clubCreateEvent.section.participationDesc',
+                ),
+                info: context.t('clubCreateEvent.sessions.hint'),
+                children: <Widget>[
+                  _CaptionedField(
+                    label: context.t('form.feeInfo'),
+                    child: _ChoiceRow(
+                      options: <({String value, String label})>[
+                        (value: 'free', label: context.t('eventModal.free')),
+                        (
+                          value: 'paid',
+                          label: context.t('clubCreateEvent.fee.paid'),
+                        ),
+                      ],
+                      selected: _feeType,
+                      enabled: !_saving,
+                      onChanged: (String value) => setState(() {
+                        _feeType = value;
+                        // Ücretli etkinlikte iletişim gizlenemez.
+                        if (value == 'paid' && _contactMode == 'hidden') {
+                          _contactMode = 'club';
+                        }
+                      }),
+                    ),
+                  ),
+                  if (_feeType == 'paid')
+                    _NeonAlert(
+                      active: _invalidField == _Field.fee,
+                      child: TextField(
+                        controller: _feeAmount,
+                        enabled: !_saving,
+                        keyboardType: TextInputType.number,
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: (_) =>
+                            FocusManager.instance.primaryFocus?.unfocus(),
+                        inputFormatters: digitsInput(InputLimits.money),
+                        decoration: InputDecoration(
+                          labelText: context.t('placeholder.feeAmount'),
+                          prefixIcon: Icon(
+                            Icons.payments_outlined,
+                            size: 19,
+                            color: context.inkMuted,
+                          ),
+                        ),
+                      ),
+                    ),
+                  _contactSection(club),
+                  _NeonAlert(
+                    active: _invalidField == _Field.quota,
+                    child: TextField(
+                      controller: _quota,
                       enabled: !_saving,
                       keyboardType: TextInputType.number,
                       textInputAction: TextInputAction.done,
                       onSubmitted: (_) =>
                           FocusManager.instance.primaryFocus?.unfocus(),
-                      inputFormatters: digitsInput(InputLimits.money),
+                      inputFormatters: digitsInput(InputLimits.quota),
                       decoration: InputDecoration(
-                        labelText: context.t('placeholder.feeAmount'),
+                        labelText: context.t('form.quota'),
+                        hintText: context.t('placeholder.quotaExample'),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _NeonAlert(
+                    active: _invalidField == _Field.checkinMode,
+                    child: DropdownButtonFormField<String>(
+                      initialValue: _checkinMode,
+                      // Mod adlari dar ekranda kutuya sigmiyor; isExpanded
+                      // olmadan satir kendi genisligini dayatip tasiyor.
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: context.t('form.checkinMode'),
+                      ),
+                      items: <DropdownMenuItem<String>>[
+                        for (final String mode in CheckinMode.values)
+                          DropdownMenuItem<String>(
+                            value: mode,
+                            child: Text(context.t('checkinMode.$mode')),
+                          ),
+                      ],
+                      onChanged: _saving
+                          ? null
+                          : (String? value) {
+                              if (value == null) return;
+                              setState(() {
+                                _checkinMode = value;
+                                if (!CheckinMode.hasSessions(value)) {
+                                  _sessionCount.text = '1';
+                                  _threshold.clear();
+                                } else if ((int.tryParse(_sessionCount.text) ??
+                                        1) <=
+                                    1) {
+                                  _sessionCount.text = '2';
+                                }
+                              });
+                            },
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 7),
+                    child: Text(
+                      context.t('checkinMode.${_checkinMode}Desc'),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                  if (multiSession) ...<Widget>[
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _sessionCount,
+                      enabled: !_saving,
+                      keyboardType: TextInputType.number,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) =>
+                          FocusManager.instance.primaryFocus?.unfocus(),
+                      inputFormatters: digitsInput(InputLimits.sessionCount),
+                      onChanged: (_) => setState(() {}),
+                      decoration: InputDecoration(
+                        labelText: context.t('form.sessionCount'),
+                        hintText: context.t('placeholder.sessionCountExample'),
+                      ),
+                    ),
+                  ],
+                  if (multiSession)
+                    _NeonAlert(
+                      active: _invalidField == _Field.threshold,
+                      child: TextField(
+                        controller: _threshold,
+                        enabled: !_saving,
+                        keyboardType: TextInputType.number,
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: (_) =>
+                            FocusManager.instance.primaryFocus?.unfocus(),
+                        inputFormatters: digitsInput(InputLimits.percent),
+                        decoration: InputDecoration(
+                          labelText: context.t('form.certificateThreshold'),
+                          hintText: context.t(
+                            'placeholder.certificateThresholdExample',
+                          ),
+                          suffixText: '%',
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 14),
+
+              // ── 3. Tarih ve saat ──────────────────────────────────
+              _SectionCard(
+                icon: Icons.calendar_month_outlined,
+                title: context.t('clubCreateEvent.section.schedule'),
+                description: context.t('clubCreateEvent.section.scheduleDesc'),
+                children: <Widget>[
+                  _NeonAlert(
+                    active: _invalidField == _Field.eventDate,
+                    child: _PickerTile(
+                      icon: Icons.event_outlined,
+                      label: context.t('form.eventDate'),
+                      value: _eventDate == null
+                          ? context.t('common.select')
+                          : formatDeadline(
+                              _eventDate!.millisecondsSinceEpoch,
+                              locale: context.lang,
+                            ),
+                      onTap: _saving
+                          ? null
+                          : () => _pickDate(
+                              initial: _eventDate,
+                              onPicked: (DateTime d) =>
+                                  setState(() => _eventDate = d),
+                            ),
+                    ),
+                  ),
+                  _NeonAlert(
+                    active: _invalidField == _Field.deadline,
+                    child: _PickerTile(
+                      icon: Icons.event_available_outlined,
+                      label: context.t('form.deadline'),
+                      value: _deadline == null
+                          ? context.t('common.select')
+                          : formatDeadline(
+                              _deadline!.millisecondsSinceEpoch,
+                              locale: context.lang,
+                            ),
+                      onTap: _saving
+                          ? null
+                          : () => _pickDate(
+                              initial: _deadline,
+                              onPicked: (DateTime d) =>
+                                  setState(() => _deadline = d),
+                            ),
+                    ),
+                  ),
+                  _CaptionedField(
+                    label: context.t('form.eventHours'),
+                    optional: true,
+                    child: _NeonAlert(
+                      active: _invalidField == _Field.time,
+                      child: Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: _PickerTile(
+                              icon: Icons.schedule,
+                              label: context.t('form.startTime'),
+                              value: _formatTime(_startTime).isEmpty
+                                  ? '--:--'
+                                  : _formatTime(_startTime),
+                              onTap: _saving ? null : _pickStartTime,
+                              dense: true,
+                            ),
+                          ),
+                          // Web'de iki saat kutusunu ayıran ok (.time-sep).
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: Icon(
+                              Icons.arrow_forward_rounded,
+                              size: 16,
+                              color: context.inkMuted,
+                            ),
+                          ),
+                          Expanded(
+                            child: _PickerTile(
+                              icon: Icons.schedule,
+                              label: context.t('form.endTime'),
+                              value: _formatTime(_endTime).isEmpty
+                                  ? '--:--'
+                                  : _formatTime(_endTime),
+                              onTap: _saving ? null : _pickEndTime,
+                              dense: true,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // İP-B: otomatik bildirimler
+                  const SizedBox(height: 8),
+                  Text(
+                    context.t('autoNotify.title'),
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  Text(
+                    context.t('autoNotify.help'),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  // Kartın zemini süslü bir kutu; onay satırlarının dokunma
+                  // izi görünsün diye kendi (saydam) Material'ı var.
+                  Material(
+                    type: MaterialType.transparency,
+                    child: Column(
+                      children: <Widget>[
+                        for (final String key in kDefaultAutoNotifications.keys)
+                          CheckboxListTile(
+                            key: Key('autoNotify_$key'),
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            controlAffinity: ListTileControlAffinity.leading,
+                            value: _autoNotify[key] ?? true,
+                            onChanged: _saving
+                                ? null
+                                : (bool? v) => setState(
+                                    () => _autoNotify[key] = v == true,
+                                  ),
+                            title: Text(context.t('autoNotify.$key')),
+                            subtitle: _autoNotifyNeed(key) == null
+                                ? null
+                                : Text(
+                                    context.t(_autoNotifyNeed(key)!),
+                                    style: const TextStyle(
+                                      color: Color(0xFF9A5B00),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (_autoNotifyWarning() != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        context.t(_autoNotifyWarning()!),
+                        key: const Key('autoNotifyWarning'),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Color(0xFF9A5B00),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 14),
+
+              // ── 4. Hedef kitle ────────────────────────────────────
+              _SectionCard(
+                icon: Icons.adjust_rounded,
+                title: context.t('clubCreateEvent.section.audience'),
+                description: context.t('clubCreateEvent.section.audienceDesc'),
+                children: <Widget>[
+                  // Dört uzun Türkçe etiket çip olarak yan yana dizilince
+                  // kartın üst yarısını kaplıyordu; açılır liste tek satıra
+                  // iniyor ve seçenekleri yalnızca gerektiğinde gösteriyor.
+                  DropdownButtonFormField<String>(
+                    initialValue: _targetScope,
+                    // Uzun etiketler seçili haldeyken de tam genişliği
+                    // kullansın: dar kutuda ortadan kırpılıyorlardı.
+                    isExpanded: true,
+                    decoration: InputDecoration(
+                      labelText: context.t('clubCreateEvent.scope.label'),
+                    ),
+                    items: <DropdownMenuItem<String>>[
+                      DropdownMenuItem<String>(
+                        value: TargetScope.public,
+                        child: Text(context.t('dashboard.scope.all')),
+                      ),
+                      DropdownMenuItem<String>(
+                        value: TargetScope.university,
+                        child: Text(context.t('dashboard.scope.university')),
+                      ),
+                      DropdownMenuItem<String>(
+                        value: TargetScope.department,
+                        child: Text(
+                          context.t('clubCreateEvent.scope.departmentOnly'),
+                        ),
+                      ),
+                      DropdownMenuItem<String>(
+                        value: TargetScope.universityDepartment,
+                        child: Text(
+                          context.t(
+                            'clubCreateEvent.scope.universityAndDepartment',
+                          ),
+                        ),
+                      ),
+                    ],
+                    // `null` verildiğinde liste açılmaz: kayıt sürerken alan
+                    // diğer kutularla birlikte kilitli kalıyor.
+                    onChanged: _saving
+                        ? null
+                        : (String? value) {
+                            if (value != null) _onScopeChanged(value);
+                          },
+                  ),
+                  // Üniversite kutusu YALNIZCA üniversite kısıtı olan
+                  // kapsamlarda açılır: "sadece bölüme özel" seçildiğinde kulüp
+                  // üniversite seçmek zorunda kalmamalı.
+                  if (TargetScope.needsUniversity(_targetScope))
+                    _NeonAlert(
+                      active: _invalidField == _Field.targetUniversity,
+                      child: MultiSelectChipsField(
+                        label: context.t('form.targetUniversity'),
+                        options: _allUniversities,
+                        selected: _targetUniversities,
+                        enabled: !_saving,
+                        hint: context.t('form.multiSelect.addHint'),
+                        helperText: context.t(
+                          'clubCreateEvent.target.universityHint',
+                        ),
+                        noResultText: context.t('search.university.noResult'),
+                        onChanged: (List<String> value) => setState(() {
+                          _targetUniversities = value;
+                          _invalidField = null;
+                        }),
+                      ),
+                    ),
+                  if (TargetScope.needsDepartment(_targetScope))
+                    _NeonAlert(
+                      active: _invalidField == _Field.targetDepartment,
+                      child: MultiSelectChipsField(
+                        label: context.t('form.targetDepartment'),
+                        options: _departmentOptions(club),
+                        selected: _targetDepartments,
+                        enabled: !_saving,
+                        hint: context.t('form.multiSelect.addHint'),
+                        helperText: context.t(
+                          'clubCreateEvent.target.departmentHint',
+                        ),
+                        noResultText: context.t('search.department.noResult'),
+                        onChanged: (List<String> value) => setState(() {
+                          _targetDepartments = value;
+                          _invalidField = null;
+                        }),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 14),
+
+              // ── 5. Konum ──────────────────────────────────────────
+              // Konumun tek kaynağı harita. Ad alanı yalnızca seçim yapıldıktan
+              // sonra açılır ve sadece açıklamadır: koordinat zaten haritadan
+              // geldiği için "ad yazarsan koordinat da gir" uyarısına gerek yok.
+              _SectionCard(
+                icon: Icons.place_outlined,
+                title: context.t('clubCreateEvent.section.location'),
+                description: context.t('clubCreateEvent.section.locationDesc'),
+                optional: true,
+                children: <Widget>[
+                  _NeonAlert(
+                    active: _invalidField == _Field.location,
+                    child: _MapPickerTile(
+                      lat: _lat,
+                      lng: _lng,
+                      radius: int.tryParse(_locationRadius.text.trim()) ?? 50,
+                      onTap: _saving ? null : _pickOnMap,
+                      onClear: _saving || _lat == null ? null : _clearLocation,
+                    ),
+                  ),
+                  if (_lat != null && _lng != null)
+                    TextField(
+                      controller: _locationName,
+                      enabled: !_saving,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) =>
+                          FocusManager.instance.primaryFocus?.unfocus(),
+                      inputFormatters: guardedInput(InputLimits.shortText),
+                      decoration: InputDecoration(
+                        labelText: context.t('form.locationName'),
+                        helperText: context.t(
+                          'clubCreateEvent.location.nameHint',
+                        ),
+                        helperMaxLines: 3,
                         prefixIcon: Icon(
-                          Icons.payments_outlined,
-                          size: 19,
+                          Icons.edit_location_alt_outlined,
+                          size: 20,
                           color: context.inkMuted,
                         ),
                       ),
                     ),
-                  ),
-                _contactSection(club),
-                _NeonAlert(
-                  active: _invalidField == _Field.quota,
-                  child: TextField(
-                    controller: _quota,
-                    enabled: !_saving,
-                    keyboardType: TextInputType.number,
-                    textInputAction: TextInputAction.done,
-                    onSubmitted: (_) =>
-                        FocusManager.instance.primaryFocus?.unfocus(),
-                    inputFormatters: digitsInput(InputLimits.quota),
-                    decoration: InputDecoration(
-                      labelText: context.t('form.quota'),
-                      hintText: context.t('placeholder.quotaExample'),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _NeonAlert(
-                  active: _invalidField == _Field.checkinMode,
-                  child: DropdownButtonFormField<String>(
-                    initialValue: _checkinMode,
-                    // Mod adlari dar ekranda kutuya sigmiyor; isExpanded
-                    // olmadan satir kendi genisligini dayatip tasiyor.
-                    isExpanded: true,
-                    decoration: InputDecoration(
-                      labelText: context.t('form.checkinMode'),
-                    ),
-                    items: <DropdownMenuItem<String>>[
-                      for (final String mode in CheckinMode.values)
-                        DropdownMenuItem<String>(
-                          value: mode,
-                          child: Text(context.t('checkinMode.$mode')),
-                        ),
-                    ],
-                    onChanged: _saving
-                        ? null
-                        : (String? value) {
-                            if (value == null) return;
-                            setState(() {
-                              _checkinMode = value;
-                              if (!CheckinMode.hasSessions(value)) {
-                                _sessionCount.text = '1';
-                                _threshold.clear();
-                              } else if ((int.tryParse(_sessionCount.text) ?? 1) <= 1) {
-                                _sessionCount.text = '2';
-                              }
-                            });
-                          },
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(top: 7),
-                  child: Text(
-                    context.t('checkinMode.${_checkinMode}Desc'),
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ),
-                if (multiSession) ...<Widget>[
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _sessionCount,
-                    enabled: !_saving,
-                    keyboardType: TextInputType.number,
-                    textInputAction: TextInputAction.done,
-                    onSubmitted: (_) =>
-                        FocusManager.instance.primaryFocus?.unfocus(),
-                    inputFormatters: digitsInput(InputLimits.sessionCount),
-                    onChanged: (_) => setState(() {}),
-                    decoration: InputDecoration(
-                      labelText: context.t('form.sessionCount'),
-                      hintText: context.t('placeholder.sessionCountExample'),
+                ],
+              ),
+              const SizedBox(height: 14),
+
+              // ── 6. Görsel ─────────────────────────────────────────
+              _SectionCard(
+                icon: Icons.image_outlined,
+                title: context.t('clubCreateEvent.section.media'),
+                description: context.t('clubCreateEvent.section.mediaDesc'),
+                optional: true,
+                children: <Widget>[
+                  _NeonAlert(
+                    active: _invalidField == _Field.image,
+                    child: _ImagePickerRow(
+                      dataUrl: _pickedImageDataUrl,
+                      urlController: _imageUrl,
+                      enabled: !_saving,
+                      onPick: _pickImage,
+                      onClear: () => setState(() {
+                        _pickedImageDataUrl = null;
+                        _pickedImageFile = null;
+                      }),
                     ),
                   ),
                 ],
-                if (multiSession)
-                  _NeonAlert(
-                    active: _invalidField == _Field.threshold,
-                    child: TextField(
-                      controller: _threshold,
-                      enabled: !_saving,
-                      keyboardType: TextInputType.number,
-                      textInputAction: TextInputAction.done,
-                      onSubmitted: (_) =>
-                          FocusManager.instance.primaryFocus?.unfocus(),
-                      inputFormatters: digitsInput(InputLimits.percent),
-                      decoration: InputDecoration(
-                        labelText: context.t('form.certificateThreshold'),
-                        hintText: context.t(
-                          'placeholder.certificateThresholdExample',
-                        ),
-                        suffixText: '%',
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 14),
-
-            // ── 3. Tarih ve saat ──────────────────────────────────
-            _SectionCard(
-              icon: Icons.calendar_month_outlined,
-              title: context.t('clubCreateEvent.section.schedule'),
-              description: context.t('clubCreateEvent.section.scheduleDesc'),
-              children: <Widget>[
-                _NeonAlert(
-                  active: _invalidField == _Field.eventDate,
-                  child: _PickerTile(
-                    icon: Icons.event_outlined,
-                    label: context.t('form.eventDate'),
-                    value: _eventDate == null
-                        ? context.t('common.select')
-                        : formatDeadline(
-                            _eventDate!.millisecondsSinceEpoch,
-                            locale: context.lang,
-                          ),
-                    onTap: _saving
-                        ? null
-                        : () => _pickDate(
-                            initial: _eventDate,
-                            onPicked: (DateTime d) =>
-                                setState(() => _eventDate = d),
-                          ),
-                  ),
-                ),
-                _NeonAlert(
-                  active: _invalidField == _Field.deadline,
-                  child: _PickerTile(
-                    icon: Icons.event_available_outlined,
-                    label: context.t('form.deadline'),
-                    value: _deadline == null
-                        ? context.t('common.select')
-                        : formatDeadline(
-                            _deadline!.millisecondsSinceEpoch,
-                            locale: context.lang,
-                          ),
-                    onTap: _saving
-                        ? null
-                        : () => _pickDate(
-                            initial: _deadline,
-                            onPicked: (DateTime d) =>
-                                setState(() => _deadline = d),
-                          ),
-                  ),
-                ),
-                _CaptionedField(
-                  label: context.t('form.eventHours'),
-                  optional: true,
-                  child: _NeonAlert(
-                    active: _invalidField == _Field.time,
-                    child: Row(
-                      children: <Widget>[
-                        Expanded(
-                          child: _PickerTile(
-                            icon: Icons.schedule,
-                            label: context.t('form.startTime'),
-                            value: _formatTime(_startTime).isEmpty
-                                ? '--:--'
-                                : _formatTime(_startTime),
-                            onTap: _saving ? null : _pickStartTime,
-                            dense: true,
-                          ),
-                        ),
-                        // Web'de iki saat kutusunu ayıran ok (.time-sep).
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          child: Icon(
-                            Icons.arrow_forward_rounded,
-                            size: 16,
-                            color: context.inkMuted,
-                          ),
-                        ),
-                        Expanded(
-                          child: _PickerTile(
-                            icon: Icons.schedule,
-                            label: context.t('form.endTime'),
-                            value: _formatTime(_endTime).isEmpty
-                                ? '--:--'
-                                : _formatTime(_endTime),
-                            onTap: _saving ? null : _pickEndTime,
-                            dense: true,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                // İP-B: otomatik bildirimler
-                const SizedBox(height: 8),
-                Text(
-                  context.t('autoNotify.title'),
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-                Text(
-                  context.t('autoNotify.help'),
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                // Kartın zemini süslü bir kutu; onay satırlarının dokunma
-                // izi görünsün diye kendi (saydam) Material'ı var.
-                Material(
-                  type: MaterialType.transparency,
-                  child: Column(
-                    children: <Widget>[
-                      for (final String key in kDefaultAutoNotifications.keys)
-                        CheckboxListTile(
-                          key: Key('autoNotify_$key'),
-                          dense: true,
-                          contentPadding: EdgeInsets.zero,
-                          controlAffinity: ListTileControlAffinity.leading,
-                          value: _autoNotify[key] ?? true,
-                          onChanged: _saving
-                              ? null
-                              : (bool? v) =>
-                                    setState(() => _autoNotify[key] = v == true),
-                          title: Text(context.t('autoNotify.$key')),
-                          subtitle: _autoNotifyNeed(key) == null
-                              ? null
-                              : Text(
-                                  context.t(_autoNotifyNeed(key)!),
-                                  style: const TextStyle(
-                                    color: Color(0xFF9A5B00),
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                        ),
-                    ],
-                  ),
-                ),
-                if (_autoNotifyWarning() != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      context.t(_autoNotifyWarning()!),
-                      key: const Key('autoNotifyWarning'),
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Color(0xFF9A5B00),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 14),
-
-            // ── 4. Hedef kitle ────────────────────────────────────
-            _SectionCard(
-              icon: Icons.adjust_rounded,
-              title: context.t('clubCreateEvent.section.audience'),
-              description: context.t('clubCreateEvent.section.audienceDesc'),
-              children: <Widget>[
-                // Dört uzun Türkçe etiket çip olarak yan yana dizilince
-                // kartın üst yarısını kaplıyordu; açılır liste tek satıra
-                // iniyor ve seçenekleri yalnızca gerektiğinde gösteriyor.
-                DropdownButtonFormField<String>(
-                  initialValue: _targetScope,
-                  // Uzun etiketler seçili haldeyken de tam genişliği
-                  // kullansın: dar kutuda ortadan kırpılıyorlardı.
-                  isExpanded: true,
-                  decoration: InputDecoration(
-                    labelText: context.t('clubCreateEvent.scope.label'),
-                  ),
-                  items: <DropdownMenuItem<String>>[
-                    DropdownMenuItem<String>(
-                      value: TargetScope.public,
-                      child: Text(context.t('dashboard.scope.all')),
-                    ),
-                    DropdownMenuItem<String>(
-                      value: TargetScope.university,
-                      child: Text(context.t('dashboard.scope.university')),
-                    ),
-                    DropdownMenuItem<String>(
-                      value: TargetScope.department,
-                      child: Text(
-                        context.t('clubCreateEvent.scope.departmentOnly'),
-                      ),
-                    ),
-                    DropdownMenuItem<String>(
-                      value: TargetScope.universityDepartment,
-                      child: Text(
-                        context.t(
-                          'clubCreateEvent.scope.universityAndDepartment',
-                        ),
-                      ),
-                    ),
-                  ],
-                  // `null` verildiğinde liste açılmaz: kayıt sürerken alan
-                  // diğer kutularla birlikte kilitli kalıyor.
-                  onChanged: _saving
-                      ? null
-                      : (String? value) {
-                          if (value != null) _onScopeChanged(value);
-                        },
-                ),
-                // Üniversite kutusu YALNIZCA üniversite kısıtı olan
-                // kapsamlarda açılır: "sadece bölüme özel" seçildiğinde kulüp
-                // üniversite seçmek zorunda kalmamalı.
-                if (TargetScope.needsUniversity(_targetScope))
-                  _NeonAlert(
-                    active: _invalidField == _Field.targetUniversity,
-                    child: MultiSelectChipsField(
-                      label: context.t('form.targetUniversity'),
-                      options: _allUniversities,
-                      selected: _targetUniversities,
-                      enabled: !_saving,
-                      hint: context.t('form.multiSelect.addHint'),
-                      helperText: context.t(
-                        'clubCreateEvent.target.universityHint',
-                      ),
-                      noResultText: context.t('search.university.noResult'),
-                      onChanged: (List<String> value) => setState(() {
-                        _targetUniversities = value;
-                        _invalidField = null;
-                      }),
-                    ),
-                  ),
-                if (TargetScope.needsDepartment(_targetScope))
-                  _NeonAlert(
-                    active: _invalidField == _Field.targetDepartment,
-                    child: MultiSelectChipsField(
-                      label: context.t('form.targetDepartment'),
-                      options: _departmentOptions(club),
-                      selected: _targetDepartments,
-                      enabled: !_saving,
-                      hint: context.t('form.multiSelect.addHint'),
-                      helperText: context.t(
-                        'clubCreateEvent.target.departmentHint',
-                      ),
-                      noResultText: context.t('search.department.noResult'),
-                      onChanged: (List<String> value) => setState(() {
-                        _targetDepartments = value;
-                        _invalidField = null;
-                      }),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 14),
-
-            // ── 5. Konum ──────────────────────────────────────────
-            // Konumun tek kaynağı harita. Ad alanı yalnızca seçim yapıldıktan
-            // sonra açılır ve sadece açıklamadır: koordinat zaten haritadan
-            // geldiği için "ad yazarsan koordinat da gir" uyarısına gerek yok.
-            _SectionCard(
-              icon: Icons.place_outlined,
-              title: context.t('clubCreateEvent.section.location'),
-              description: context.t('clubCreateEvent.section.locationDesc'),
-              optional: true,
-              children: <Widget>[
-                _NeonAlert(
-                  active: _invalidField == _Field.location,
-                  child: _MapPickerTile(
-                    lat: _lat,
-                    lng: _lng,
-                    radius: int.tryParse(_locationRadius.text.trim()) ?? 50,
-                    onTap: _saving ? null : _pickOnMap,
-                    onClear: _saving || _lat == null ? null : _clearLocation,
-                  ),
-                ),
-                if (_lat != null && _lng != null)
-                  TextField(
-                    controller: _locationName,
-                    enabled: !_saving,
-                    textInputAction: TextInputAction.done,
-                    onSubmitted: (_) =>
-                        FocusManager.instance.primaryFocus?.unfocus(),
-                    inputFormatters: guardedInput(InputLimits.shortText),
-                    decoration: InputDecoration(
-                      labelText: context.t('form.locationName'),
-                      helperText: context.t(
-                        'clubCreateEvent.location.nameHint',
-                      ),
-                      helperMaxLines: 3,
-                      prefixIcon: Icon(
-                        Icons.edit_location_alt_outlined,
-                        size: 20,
-                        color: context.inkMuted,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 14),
-
-            // ── 6. Görsel ─────────────────────────────────────────
-            _SectionCard(
-              icon: Icons.image_outlined,
-              title: context.t('clubCreateEvent.section.media'),
-              description: context.t('clubCreateEvent.section.mediaDesc'),
-              optional: true,
-              children: <Widget>[
-                _NeonAlert(
-                  active: _invalidField == _Field.image,
-                  child: _ImagePickerRow(
-                    dataUrl: _pickedImageDataUrl,
-                    urlController: _imageUrl,
-                    enabled: !_saving,
-                    onPick: _pickImage,
-                    onClear: () => setState(() {
-                      _pickedImageDataUrl = null;
-                      _pickedImageFile = null;
-                    }),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 22),
-            FilledButton.icon(
-              onPressed: _saving ? null : _save,
-              icon: _saving
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: BrandColors.white,
-                      ),
-                    )
-                  : Icon(
-                      _isEdit ? Icons.save_outlined : Icons.add_rounded,
-                      size: 20,
-                    ),
-              label: Text(
-                _isEdit
-                    ? context.t('common.save')
-                    : context.t('clubCreateEvent.create'),
               ),
-            ),
 
-            // Uyari butonun HEMEN ALTINDA: kullanici kaydete bastigi yerden
-            // gozunu ayirmadan neyin eksik oldugunu goruyor. Sayfanin tepesinde
-            // dururken uzun formda hic fark edilmiyordu.
-            if (_feedback != null) ...<Widget>[
-              const SizedBox(height: 12),
-              FeedbackBanner(message: _feedback, tone: _tone),
-            ],
+              const SizedBox(height: 22),
+              FilledButton.icon(
+                onPressed: _saving ? null : _save,
+                icon: _saving
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: BrandColors.white,
+                        ),
+                      )
+                    : Icon(
+                        _isEdit ? Icons.save_outlined : Icons.add_rounded,
+                        size: 20,
+                      ),
+                label: Text(
+                  _isEdit
+                      ? context.t('common.save')
+                      : context.t('clubCreateEvent.create'),
+                ),
+              ),
+
+              // Uyari butonun HEMEN ALTINDA: kullanici kaydete bastigi yerden
+              // gozunu ayirmadan neyin eksik oldugunu goruyor. Sayfanin tepesinde
+              // dururken uzun formda hic fark edilmiyordu.
+              if (_feedback != null) ...<Widget>[
+                const SizedBox(height: 12),
+                FeedbackBanner(message: _feedback, tone: _tone),
+              ],
             ],
           ),
         ),

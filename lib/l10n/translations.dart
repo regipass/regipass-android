@@ -39,12 +39,12 @@ const Map<String, String> kTranslationsTr = <String, String>{
   'cta.button': 'Giriş Yap',
   'auth.modal.title': 'Giriş Yap',
   'auth.modal.desc':
-      'E-posta ve şifre ile giriş yapabilir veya hesap oluşturabilirsin.',
+      '',
   'auth.role.student': 'Öğrenciyim',
   'auth.role.club': 'Kulübüz',
   'auth.roleStep.title': 'Hesap Türünü Seç',
   'auth.roleStep.desc':
-      'Bu hesabı nasıl kullanacaksın? Her e-posta adresi tek bir hesap türüne bağlanır; seçimini sonradan değiştiremezsin.',
+      'Hesap türü sonradan değiştirilemez.',
   'auth.roleStep.student.desc': 'Etkinlikleri keşfet ve katıl',
   'auth.roleStep.club.desc': 'Etkinlik oluştur ve yönet',
   'auth.googleContinue': 'Google ile devam et',
@@ -224,7 +224,7 @@ const Map<String, String> kTranslationsTr = <String, String>{
   'loginRedirect.clickHere': 'buraya tıkla',
   'studentInfo.title': 'Öğrenci Bilgilerini Tamamla',
   'studentInfo.subtitle':
-      'Bilgilerini bir kez tamamla, etkinliklere hemen kaydolmaya başla.',
+      'Bir kez doldur, hemen kaydolmaya başla.',
   'studentInfo.feedback.invalidPhone': 'Seçili ülkeye uygun geçerli bir telefon numarası yaz.',
   'studentInfo.feedback.invalidCity': 'Şehri listeden seç.',
   'studentInfo.feedback.invalidUniversity': 'Seçtiğin şehirdeki üniversitelerden birini listeden seç.',
@@ -238,7 +238,7 @@ const Map<String, String> kTranslationsTr = <String, String>{
       'Profil bilgilerin yüklenemedi. Tekrar dene.',
   'studentInfo.feedback.saving': 'Bilgiler kaydediliyor...',
   'clubInfo.title': 'Kulüp Hesabı Oluştur',
-  'clubInfo.subtitle': 'Kulübünü ve kulüp yetkilisini tanıt; başvurun bu bilgilerle incelenir.',
+  'clubInfo.subtitle': 'Başvurun bu bilgilerle incelenir.',
   'clubInfo.save': 'Kulüp Bilgilerini Kaydet',
   'clubInfo.feedback.invalidPhone': 'Geçerli bir telefon numarası gir.',
   'clubInfo.feedback.invalidCity': 'Şehri listeden seç.',
@@ -251,7 +251,7 @@ const Map<String, String> kTranslationsTr = <String, String>{
   'clubInfo.feedback.saving': 'Kulüp bilgileri kaydediliyor...',
   'clubDocuments.title': 'Kulüp Belgelerini Yükle',
   'clubDocuments.subtitle':
-      'Kulübünün doğrulanması için aşağıdaki belgeleri yükle. Belgeler incelendikten sonra kulüp paneline erişimin açılır.',
+      'Belgelerin incelenince kulüp panelin açılır.',
   'clubDocuments.doc.establishment.title': 'Kulüp Kuruluş Onay Belgesi',
   'clubDocuments.doc.establishment.desc':
       'Kulübünün üniversite ya da okul tarafından resmî olarak kurulduğunu gösteren onay belgesi.',
@@ -302,7 +302,7 @@ const Map<String, String> kTranslationsTr = <String, String>{
   'clubPending.error': 'Durum kontrol edilemedi. Bağlantını kontrol edip tekrar dene.',
   'phoneVerify.title': 'Telefon Numaranı Doğrula',
   'phoneVerify.subtitle':
-      'Hesabının güvenliği için kayıtlı numarana SMS ile gelecek kodu gir.',
+      'Numarana gelen SMS kodunu gir.',
   'phoneVerify.sendCode': 'Doğrulama Kodu Gönder',
   'phoneVerify.changeNumber': 'Numara yanlış mı? Değiştir',
   'phoneVerify.codeLabel': 'SMS ile gelen 6 haneli kodu gir',
@@ -338,7 +338,7 @@ const Map<String, String> kTranslationsTr = <String, String>{
   'phoneVerify.error.loadFailed': 'Sayfa yüklenemedi. Tekrar dene.',
   'phoneChange.title': 'Telefon Numaranı Değiştir',
   'phoneChange.subtitle':
-      'Kayıtlı numaran yanlışsa doğrusunu gir. Yeni numarayı bir sonraki adımda SMS ile doğrulayacaksın.',
+      'Yeni numaranı gir; sonraki adımda SMS ile doğrularsın.',
   'phoneChange.currentLabel': 'Mevcut kayıtlı numara',
   'phoneChange.noCurrentPhone': 'Kayıtlı numara bulunamadı',
   'phoneChange.newLabel': 'Yeni Telefon Numarası',
@@ -357,7 +357,7 @@ const Map<String, String> kTranslationsTr = <String, String>{
       'Güvenliğin için bu işlemden önce yeniden giriş yapman gerekiyor. Çıkış yapıp tekrar giriş yaptıktan sonra dene.',
   'studentAccount.changePhone': 'Değiştir',
   'studentAccount.phoneVerifiedHint':
-      'Numaran doğrulandı. Değiştirmek için SMS doğrulaması gerekir.',
+      'Numaran doğrulandı. Değiştirmek SMS doğrulaması gerektirir.',
   'admin.searchPlaceholder': 'Kulüp ara...',
   'admin.logout': 'Çıkış',
   'admin.title': 'Onay Bekleyen Kulüpler',
@@ -427,7 +427,7 @@ const Map<String, String> kTranslationsTr = <String, String>{
   'admin.ban.loadError': 'Öğrenci listesi yüklenemedi. Tekrar dene.',
   'studentAccount.title': 'Hesabim',
   'studentAccount.subtitle':
-      'Bilgilerini buradan görüntüleyip güncelleyebilirsin.',
+      '',
   'studentAccount.edit': 'Bilgileri Duzenle',
   'studentAccount.identityLoading': 'Kullanıcı bilgileri yükleniyor...',
   'studentAccount.userFallback': 'Kullanıcı',
@@ -441,7 +441,7 @@ const Map<String, String> kTranslationsTr = <String, String>{
       'Profil bilgilerin yüklenemedi. Tekrar dene.',
   'clubAccount.title': 'Kulüp Hesabım',
   'clubAccount.subtitle':
-      'Kulüp bilgilerini buradan görüntüleyip dilediğin zaman güncelleyebilirsin.',
+      '',
   'clubAccount.edit': 'Bilgileri Duzenle',
   'clubAccount.identityLoading': 'Kulüp bilgileri yükleniyor...',
   'clubAccount.fallbackClubName': 'Kulüp',
@@ -457,7 +457,7 @@ const Map<String, String> kTranslationsTr = <String, String>{
   'studentAppointments.identityLoading': 'Kayıtlar yükleniyor...',
   'studentAppointments.hero.title': 'Etkinliklerim',
   'studentAppointments.hero.subtitle':
-      'Kaydolduğun etkinlikler, biletlerin ve katılım durumun burada.',
+      'Kayıtların, biletlerin ve katılım durumun.',
   'studentAppointments.active.title': 'Aktif Etkinliklerim',
   'studentAppointments.past.title': 'Geçmiş Etkinliklerim',
   'studentAppointments.modal.ariaLabel': 'Etkinlik Detayı',
@@ -465,7 +465,7 @@ const Map<String, String> kTranslationsTr = <String, String>{
       '{{clubName}} | {{scope}} | Durum: {{status}} | Son kayıt: {{deadline}} | Kayıt tarihi: {{registeredAt}}',
   'studentAppointments.modal.generateQr': 'Biletim',
   'studentAppointments.modal.qrTitle': 'Giriş Biletin',
-  'studentAppointments.modal.qrHint': 'Kapıda bu bileti kulüp görevlisine göster, o okutacak.',
+  'studentAppointments.modal.qrHint': 'Kapıda bu bileti görevliye göster.',
   'studentAppointments.modal.qrPreparing': 'Biletin hazırlanıyor...',
   'studentAppointments.modal.sessionProgressTitle': 'Oturum Katılımı',
   'studentAppointments.modal.sessionProgressText':
@@ -480,16 +480,16 @@ const Map<String, String> kTranslationsTr = <String, String>{
   'studentAppointments.card.club': 'Kulüp: {{clubName}}',
   'studentAppointments.card.deadline': 'Son kayıt: {{deadline}}',
   'studentAppointments.card.registeredAt': 'Kayıt tarihi: {{registeredAt}}',
-  'studentAppointments.empty.active': 'Yaklaşan bir etkinliğin yok. Etkinlikleri keşfet ve ilk kaydını yap!',
+  'studentAppointments.empty.active': 'Yaklaşan etkinliğin yok. Keşfet\'ten kaydolabilirsin.',
   'studentAppointments.empty.past': 'Henüz geçmiş etkinliğin yok.',
   'studentAppointments.feedback.loadError':
       'Etkinliklerin yüklenemedi. Tekrar dene.',
   'studentCertificates.title': 'Belgelerim',
   'studentCertificates.subtitle':
-      'Katıldığın etkinliklerden kazandığın katılım belgeleri. Her belge regipass.com/dogrula üzerinden doğrulanabilir.',
+      'Her belge regipass.com/dogrula\'da doğrulanabilir.',
   'studentCertificates.identityLoading': 'Belgeler yükleniyor...',
   'studentCertificates.empty':
-      'Henüz katılım belgen yok. Katıldığın etkinliklerde kulüp belge gönderdiğinde burada görünecek.',
+      'Henüz belgen yok. Kulüp belge gönderince burada görünür.',
   'studentCertificates.menu.download': 'İndir',
   'studentCertificates.menu.share': 'Paylaş',
   'studentCertificates.menu.delete': 'Sil',
@@ -514,13 +514,13 @@ const Map<String, String> kTranslationsTr = <String, String>{
   'clubDashboard.drawer.logout': 'Çıkış Yap',
   'clubDashboard.hero.title': 'Kampüste Neler Oluyor?',
   'clubDashboard.hero.subtitle':
-      'Kulübünün ve diğer kulüplerin yaklaşan etkinlikleri bir arada. Kendi etkinliklerini yönetmek için Etkinliklerim\'e geç.',
+      'Kampüsteki yaklaşan etkinlikler.',
   'clubDashboard.modal.ariaLabel': 'Etkinlik Detayı',
   'clubEvents.identityLoading': 'Kulüp etkinlikleri yükleniyor...',
   'clubEvents.newEventLink': 'Yeni Etkinlik',
   'clubEvents.hero.title': 'Etkinliklerim',
   'clubEvents.hero.subtitle':
-      'Kayıtları, kapı girişini, yoklamayı ve katılım belgelerini tek yerden yönet.',
+      'Kayıt, kapı girişi, yoklama ve belgeler tek yerde.',
   'clubEvents.activeSection.title': 'Aktif Etkinlikler',
   'clubEvents.pastSection.title': 'Geçmiş Etkinlikler',
   'clubEvents.modal.ariaLabel': 'Etkinlik Detayı',
@@ -531,17 +531,17 @@ const Map<String, String> kTranslationsTr = <String, String>{
   'clubEvents.modal.stopRegistrations': 'Kayıtları Durdur',
   'clubEvents.modal.qrScannerTitle': 'Bilet Okut',
   'clubEvents.modal.stopScan': 'Taramayı Durdur',
-  'clubEvents.modal.qrScannerHint': 'Kamerayı öğrencinin biletindeki QR koda tut.',
+  'clubEvents.modal.qrScannerHint': 'Öğrencinin biletindeki QR\'ı kameraya tut.',
   'clubEvents.modal.studentsTitle': 'Kayıtlı Öğrenciler',
   'clubEvents.modal.noStudents': 'Bu etkinlik için henüz kayıtlı öğrenci yok.',
   'clubCreateEvent.identityLoading': 'Kulüp hesabı yükleniyor...',
   'clubCreateEvent.title': 'Yeni Etkinlik Oluştur',
   'clubCreateEvent.subtitle':
-      'Bilgileri doldur, etkinliğin dakikalar içinde yayında olsun.',
+      '',
   'clubCreateEvent.createButton': 'Etkinliği Oluştur',
   'clubCreateEvent.editTitle': 'Etkinligi Duzenle',
   'clubCreateEvent.editSubtitle':
-      'Değişiklikleri kaydettiğinde etkinlik sayfası hemen güncellenir.',
+      'Kaydettiğin anda güncellenir.',
   'clubCreateEvent.updateButton': 'Etkinliği Güncelle',
   'clubCreateEvent.feedback.imageReadError':
       'Görsel dosyası okunamadı. Başka bir dosya dene.',
@@ -593,19 +593,19 @@ const Map<String, String> kTranslationsTr = <String, String>{
   'dashboard.qrMenu.myTicket': 'Biletim',
   'studentQrGenerate.hero.title': 'Biletim',
   'studentQrGenerate.hero.subtitle':
-      'Etkinliğe dokun, kapıda göstereceğin biletin hemen açılsın.',
+      'Biletini açmak için etkinliğe dokun.',
   'studentQrGenerate.active.title': 'Aktif Etkinliklerim',
   'dashboard.drawer.logout': 'Çıkış Yap',
   'dashboard.hero.title': 'Senin İçin Etkinlikler',
   'dashboard.hero.subtitle':
-      'Üniversitene ve bölümüne en uygun etkinlikler en üstte. Beğendiğine hemen kaydol.',
+      'Sana en uygun etkinlikler en üstte.',
   'dashboard.welcome': 'Merhaba {{name}}',
   'dashboard.userFallback': 'Kullanıcı',
   'dashboard.studentFallback': 'Öğrenci',
   'dashboard.clubFallback': 'Kulüp',
   'dashboard.eventFallback': 'Etkinlik',
   'dashboard.empty.title': 'Şu an listelenecek etkinlik yok',
-  'dashboard.empty.desc': 'Kulüpler yeni etkinlik yayınladıkça burada görünecek. Haberdar olmak için kulüpleri takip et.',
+  'dashboard.empty.desc': 'Kulüpleri takip et, yeni etkinliklerden haberdar ol.',
   'dashboard.priority.departmentUniversity': 'Öncelik: Bölüm + Üniversite',
   'dashboard.priority.university': 'Öncelik: Üniversite',
   'dashboard.priority.departmentRelated': 'Öncelik: Bölüm Uyumu',
@@ -684,7 +684,7 @@ const Map<String, String> kTranslationsTr = <String, String>{
       'Doğrulamanın süresi doldu. İşlemi baştan başlat.',
   'page.register.title': 'Hesap Oluştur | Regipass',
   'register.title': 'Hesap Oluştur',
-  'register.subtitle': 'Hesap türünü seç, birkaç bilgiyle hemen başla.',
+  'register.subtitle': 'Hesap türünü seç.',
   'register.role.student.name': 'Öğrenciyim',
   'register.role.student.desc': 'Etkinlikleri keşfet, kaydol, katılım belgeni al.',
   'register.role.club.name': 'Kulüp Yetkilisiyim',
@@ -733,12 +733,12 @@ const Map<String, String> kTranslationsEn = <String, String>{
   'cta.button': 'Sign In',
   'auth.modal.title': 'Sign In',
   'auth.modal.desc':
-      'You can sign in with email and password or create an account.',
+      '',
   'auth.role.student': 'I am a Student',
   'auth.role.club': 'We are a Club',
   'auth.roleStep.title': 'Choose Account Type',
   'auth.roleStep.desc':
-      'How will you use this account? Only one account type can be linked to an email address, so this choice is permanent.',
+      'The account type can\'t be changed later.',
   'auth.roleStep.student.desc': 'Discover events and join',
   'auth.roleStep.club.desc': 'Create and manage events',
   'auth.googleContinue': 'Continue with Google',
@@ -918,7 +918,7 @@ const Map<String, String> kTranslationsEn = <String, String>{
   'loginRedirect.clickHere': 'click here',
   'studentInfo.title': 'Complete Student Information',
   'studentInfo.subtitle':
-      'Complete your details once and start registering for events.',
+      'Fill this in once and start registering.',
   'studentInfo.feedback.invalidPhone': 'Enter a valid phone number for the selected country.',
   'studentInfo.feedback.invalidCity': 'Select your city from the list.',
   'studentInfo.feedback.invalidUniversity':
@@ -936,7 +936,7 @@ const Map<String, String> kTranslationsEn = <String, String>{
   'studentInfo.feedback.saving': 'Saving information...',
   'clubInfo.title': 'Complete Club Information',
   'clubInfo.subtitle':
-      'Introduce your club and its representative; your application is reviewed based on this.',
+      'Your application is reviewed with these details.',
   'clubInfo.save': 'Save Club Information',
   'clubInfo.feedback.invalidPhone': 'Enter a valid phone number.',
   'clubInfo.feedback.invalidCity': 'Select your city from the list.',
@@ -949,7 +949,7 @@ const Map<String, String> kTranslationsEn = <String, String>{
   'clubInfo.feedback.saving': 'Saving club information...',
   'clubDocuments.title': 'Upload Club Documents',
   'clubDocuments.subtitle':
-      'Upload the documents below so we can verify your club. Access to the club panel opens once they are reviewed.',
+      'Your club panel opens once your documents are reviewed.',
   'clubDocuments.doc.establishment.title':
       'Club Establishment Approval Document',
   'clubDocuments.doc.establishment.desc':
@@ -1001,7 +1001,7 @@ const Map<String, String> kTranslationsEn = <String, String>{
   'clubPending.error': 'Couldn\'t check the status. Check your connection and try again.',
   'phoneVerify.title': 'Verify Your Phone Number',
   'phoneVerify.subtitle':
-      'For your account\'s security, enter the code we send by SMS to your registered number.',
+      'Enter the code we sent by SMS.',
   'phoneVerify.sendCode': 'Send Verification Code',
   'phoneVerify.changeNumber': 'Wrong number? Change it',
   'phoneVerify.codeLabel': 'Enter the 6-digit code sent via SMS',
@@ -1037,7 +1037,7 @@ const Map<String, String> kTranslationsEn = <String, String>{
   'phoneVerify.error.loadFailed': 'The page could not load. Please try again.',
   'phoneChange.title': 'Change Your Phone Number',
   'phoneChange.subtitle':
-      'If your registered number is wrong, enter the correct one below and save. You\'ll need to verify the new number via SMS in the next step.',
+      'Enter your new number; you\'ll verify it by SMS next.',
   'phoneChange.currentLabel': 'Currently registered number',
   'phoneChange.noCurrentPhone': 'No registered number found',
   'phoneChange.newLabel': 'New Phone Number',
@@ -1129,7 +1129,7 @@ const Map<String, String> kTranslationsEn = <String, String>{
   'admin.ban.loadError': 'The student list could not be loaded. Try again.',
   'studentAccount.title': 'My Account',
   'studentAccount.subtitle':
-      'View and update your details here.',
+      '',
   'studentAccount.edit': 'Edit Information',
   'studentAccount.identityLoading': 'User information is loading...',
   'studentAccount.userFallback': 'User',
@@ -1144,7 +1144,7 @@ const Map<String, String> kTranslationsEn = <String, String>{
       'Your details could not load. Please try again.',
   'clubAccount.title': 'Club Account',
   'clubAccount.subtitle':
-      'You can view and update club information here anytime.',
+      '',
   'clubAccount.edit': 'Edit Information',
   'clubAccount.identityLoading': 'Club information is loading...',
   'clubAccount.fallbackClubName': 'Club',
@@ -1161,7 +1161,7 @@ const Map<String, String> kTranslationsEn = <String, String>{
   'studentAppointments.identityLoading': 'Registrations are loading...',
   'studentAppointments.hero.title': 'My Events',
   'studentAppointments.hero.subtitle':
-      'Your registered events, tickets and attendance, all in one place.',
+      'Your registrations, tickets and attendance.',
   'studentAppointments.active.title': 'My Active Events',
   'studentAppointments.past.title': 'My Past Events',
   'studentAppointments.modal.ariaLabel': 'Event Details',
@@ -1169,7 +1169,7 @@ const Map<String, String> kTranslationsEn = <String, String>{
       '{{clubName}} | {{scope}} | Status: {{status}} | Deadline: {{deadline}} | Registration date: {{registeredAt}}',
   'studentAppointments.modal.generateQr': 'My Ticket',
   'studentAppointments.modal.qrTitle': 'Your Entry Ticket',
-  'studentAppointments.modal.qrHint': 'Show this ticket to the club staff at the door; they will scan it.',
+  'studentAppointments.modal.qrHint': 'Show this ticket to the staff at the door.',
   'studentAppointments.modal.qrPreparing': 'Preparing your ticket...',
   'studentAppointments.modal.sessionProgressTitle': 'Session Attendance',
   'studentAppointments.modal.sessionProgressText':
@@ -1185,17 +1185,17 @@ const Map<String, String> kTranslationsEn = <String, String>{
   'studentAppointments.card.registeredAt':
       'Registration date: {{registeredAt}}',
   'studentAppointments.empty.active':
-      'No upcoming events yet. Discover events and make your first registration!',
+      'No upcoming events. Find one in Explore.',
   'studentAppointments.empty.past':
       'You do not have any past events yet.',
   'studentAppointments.feedback.loadError':
       'Your events could not be loaded. Try again.',
   'studentCertificates.title': 'My Certificates',
   'studentCertificates.subtitle':
-      'Certificates of attendance you earned at events. Each can be verified at regipass.com/dogrula.',
+      'Every certificate can be verified at regipass.com/dogrula.',
   'studentCertificates.identityLoading': 'Loading certificates...',
   'studentCertificates.empty':
-      'No certificates of attendance yet. When a club sends certificates for an event you attended, they\'ll appear here.',
+      'No certificates yet. They appear here when a club sends them.',
   'studentCertificates.menu.download': 'Download',
   'studentCertificates.menu.share': 'Share',
   'studentCertificates.menu.delete': 'Delete',
@@ -1220,13 +1220,13 @@ const Map<String, String> kTranslationsEn = <String, String>{
   'clubDashboard.drawer.logout': 'Log Out',
   'clubDashboard.hero.title': 'What\'s On Campus',
   'clubDashboard.hero.subtitle':
-      'Upcoming events from your club and other clubs in one place. Go to My Events to manage your own.',
+      'Upcoming events on campus.',
   'clubDashboard.modal.ariaLabel': 'Event Details',
   'clubEvents.identityLoading': 'Club events are loading...',
   'clubEvents.newEventLink': 'New Event',
   'clubEvents.hero.title': 'My Events',
   'clubEvents.hero.subtitle':
-      'Manage registrations, door check-in, attendance and certificates in one place.',
+      'Registrations, door entry, attendance and certificates in one place.',
   'clubEvents.activeSection.title': 'Active Events',
   'clubEvents.pastSection.title': 'Past Events',
   'clubEvents.modal.ariaLabel': 'Event Details',
@@ -1237,17 +1237,17 @@ const Map<String, String> kTranslationsEn = <String, String>{
   'clubEvents.modal.stopRegistrations': 'Stop Registrations',
   'clubEvents.modal.qrScannerTitle': 'Scan Ticket',
   'clubEvents.modal.stopScan': 'Stop Scanning',
-  'clubEvents.modal.qrScannerHint': 'Point the camera at the QR code on the student\'s ticket.',
+  'clubEvents.modal.qrScannerHint': 'Hold the student\'s ticket QR up to the camera.',
   'clubEvents.modal.studentsTitle': 'Registered Students',
   'clubEvents.modal.noStudents':
       'There are no registered students for this event yet.',
   'clubCreateEvent.identityLoading': 'Club account is loading...',
   'clubCreateEvent.title': 'Create New Event',
-  'clubCreateEvent.subtitle': 'Fill in the details and have your event live in minutes.',
+  'clubCreateEvent.subtitle': '',
   'clubCreateEvent.createButton': 'Create Event',
   'clubCreateEvent.editTitle': 'Edit Event',
   'clubCreateEvent.editSubtitle':
-      'The event page updates as soon as you save your changes.',
+      'Changes go live as soon as you save.',
   'clubCreateEvent.updateButton': 'Update Event',
   'clubCreateEvent.feedback.imageReadError':
       'The image file could not be read. Try another file.',
@@ -1301,19 +1301,19 @@ const Map<String, String> kTranslationsEn = <String, String>{
   'dashboard.qrMenu.myTicket': 'My Ticket',
   'studentQrGenerate.hero.title': 'My Ticket',
   'studentQrGenerate.hero.subtitle':
-      'Tap an event to open the ticket you\'ll show at the door.',
+      'Tap an event to open your ticket.',
   'studentQrGenerate.active.title': 'My Active Events',
   'dashboard.drawer.logout': 'Log Out',
   'dashboard.hero.title': 'Events For You',
   'dashboard.hero.subtitle':
-      'Events that best match your university and department come first. Found one you like? Register now.',
+      'Events that fit you best come first.',
   'dashboard.welcome': 'Hello {{name}}',
   'dashboard.userFallback': 'User',
   'dashboard.studentFallback': 'Student',
   'dashboard.clubFallback': 'Club',
   'dashboard.eventFallback': 'Event',
   'dashboard.empty.title': 'No events to show right now',
-  'dashboard.empty.desc': 'New events will appear here as clubs publish them. Follow clubs to stay in the loop.',
+  'dashboard.empty.desc': 'Follow clubs to hear about new events.',
   'dashboard.priority.departmentUniversity':
       'Priority: Department + University',
   'dashboard.priority.university': 'Priority: University',
@@ -1397,7 +1397,7 @@ const Map<String, String> kTranslationsEn = <String, String>{
       'The verification timed out. Please start over.',
   'page.register.title': 'Create Account | Regipass',
   'register.title': 'Create Account',
-  'register.subtitle': 'Choose your account type and get started in a few steps.',
+  'register.subtitle': 'Choose your account type.',
   'register.role.student.name': 'I\'m a Student',
   'register.role.student.desc': 'Discover events, register, get certificates',
   'register.role.club.name': 'We\'re a Club',

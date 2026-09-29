@@ -150,11 +150,16 @@ class _AppointmentDetailSheetState
     });
   }
 
-  Future<void> _saveTicketImage(BuildContext buttonContext, RegistrationWithEvent item) async {
+  Future<void> _saveTicketImage(
+    BuildContext buttonContext,
+    RegistrationWithEvent item,
+  ) async {
     final AppEvent? event = item.event;
     if (event == null) return;
     final RenderBox? box = buttonContext.findRenderObject() as RenderBox?;
-    final Rect? origin = box == null ? null : box.localToGlobal(Offset.zero) & box.size;
+    final Rect? origin = box == null
+        ? null
+        : box.localToGlobal(Offset.zero) & box.size;
     setState(() => _ticketSaving = true);
     try {
       await shareTicketImage(
@@ -187,16 +192,18 @@ class _AppointmentDetailSheetState
     return null;
   }
 
-  Widget _feedbackCard(RegistrationWithEvent item, {bool startEditing = false}) =>
-      EventFeedbackCard(
-        eventId: item.registration.eventId,
-        window: feedbackWindowFor(
-          item.event,
-          item.registration,
-          DateTime.now().millisecondsSinceEpoch,
-        ),
-        startEditing: startEditing,
-      );
+  Widget _feedbackCard(
+    RegistrationWithEvent item, {
+    bool startEditing = false,
+  }) => EventFeedbackCard(
+    eventId: item.registration.eventId,
+    window: feedbackWindowFor(
+      item.event,
+      item.registration,
+      DateTime.now().millisecondsSinceEpoch,
+    ),
+    startEditing: startEditing,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -280,13 +287,17 @@ class _AppointmentDetailSheetState
                                   'reason': item.event!.cancelReason,
                                 },
                               )
-                            : context.t('registration.status.cancelledNoReason'),
+                            : context.t(
+                                'registration.status.cancelledNoReason',
+                              ),
                         tone: FeedbackTone.error,
                       ),
                     ] else if (item.paymentPending) ...<Widget>[
                       const SizedBox(height: 12),
                       FeedbackBanner(
-                        message: context.t('registration.ticket.paymentPendingHint'),
+                        message: context.t(
+                          'registration.ticket.paymentPendingHint',
+                        ),
                         tone: FeedbackTone.warning,
                       ),
                     ],
@@ -464,11 +475,17 @@ class _AppointmentDetailSheetState
                                   // yazıyı görünmez yapıyordu; saydam zeminde de
                                   // arkadaki metin sızıyordu → koyu dolu zemin.
                                   backgroundColor: BrandColors.blackDeep,
-                                  side: const BorderSide(color: BrandColors.white),
+                                  side: const BorderSide(
+                                    color: BrandColors.white,
+                                  ),
                                 ),
                                 icon: const Icon(Icons.download_outlined),
-                                label: Text(context.t('postRegistration.ticketSave')),
-                                onPressed: _ticketSaving ? null : () => _saveTicketImage(b, item),
+                                label: Text(
+                                  context.t('postRegistration.ticketSave'),
+                                ),
+                                onPressed: _ticketSaving
+                                    ? null
+                                    : () => _saveTicketImage(b, item),
                               ),
                             ),
                             // İP-W: cüzdana ekle (app_config/wallet kapalıyken görünmez).
