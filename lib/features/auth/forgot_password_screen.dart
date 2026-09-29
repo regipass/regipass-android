@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../app/system_ui.dart';
 import '../../app/theme.dart';
 import '../../core/app_log.dart';
+import '../../services/account_mail_service.dart';
 import '../../services/password_reset_auth_session.dart';
 import '../../core/input_guard.dart';
 import '../../core/password_policy.dart';
@@ -458,6 +459,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
           .timeout(_kOperationTimeout);
       if (!mounted || !_isCurrent(attempt)) return;
       ref.read(passwordResetInProgressProvider.notifier).end();
+      // İP-E1: ana oturum açıldı; "şifren değişti" e-postası (beklenmez).
+      unawaited(notifyPasswordChanged('reset'));
       unawaited(auth.close());
       _resetAuth = null;
       context.go(Routes.roleSelect);

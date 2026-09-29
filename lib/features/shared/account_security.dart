@@ -16,6 +16,8 @@
 /// burada oturum zaten açık olduğu için numara doğrudan gösterilir.
 library;
 
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -24,6 +26,7 @@ import '../../app/theme.dart';
 import '../../core/input_guard.dart';
 import '../../core/password_policy.dart';
 import '../../l10n/app_strings.dart';
+import '../../services/account_mail_service.dart';
 import '../../services/auth_repository.dart';
 import '../../state/providers.dart';
 import '../auth/phone_auth_errors.dart';
@@ -291,6 +294,7 @@ class _ChangePasswordDialogState extends ConsumerState<_ChangePasswordDialog> {
 
       if (_hasPassword) {
         await auth.updatePassword(next);
+        unawaited(notifyPasswordChanged('change'));
       } else {
         await auth.linkPassword(user, next);
       }
