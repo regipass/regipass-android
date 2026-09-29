@@ -28,6 +28,7 @@ String eventScopeLabel(BuildContext context, String targetScope) =>
 /// dashboard.js#getPriorityLabel
 String eventPriorityLabel(BuildContext context, int priority) =>
     switch (priority) {
+      -1 => context.t('dashboard.priority.followed'),
       0 => context.t('dashboard.priority.departmentUniversity'),
       1 => context.t('dashboard.priority.university'),
       2 => context.t('dashboard.priority.departmentRelated'),

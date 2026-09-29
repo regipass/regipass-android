@@ -128,11 +128,17 @@ class _StudentDashboardScreenState
             // yine RegistrationService + Firestore kurallarıyla doğrulanır.
             _openRequestedEvent(context, all, directEvent);
             // İP-TK: "Tümü | Takip ettiklerim".
-            final List<AppEvent> list = filterByFollow<AppEvent>(
-              all,
-              followFilter,
-              followedIds,
-              (AppEvent e) => e.clubId,
+            // Takip edilen kulüplerin etkinlikleri +60 puanla yeniden sıralanır
+            // (web ile aynı keşif puanı; bkz. getStudentEventScore).
+            final List<AppEvent> list = sortEventsForStudent(
+              filterByFollow<AppEvent>(
+                all,
+                followFilter,
+                followedIds,
+                (AppEvent e) => e.clubId,
+              ),
+              session.studentProfile,
+              followedClubIds: followedIds,
             );
             final Widget filterBar = Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -178,10 +184,10 @@ class _StudentDashboardScreenState
                 final AppEvent event = list[index - 1];
                 return _EventCard(
                   event: event,
-                  priority: getStudentEventPriority(
-                    event,
-                    session.studentProfile,
-                  ),
+                  // -1: takip edilen kulüp (kartta "Takip ettiğin kulüp").
+                  priority: followedIds.contains(event.clubId)
+                      ? -1
+                      : getStudentEventPriority(event, session.studentProfile),
                   view: studentRegistrationView(
                     event: event,
                     registered: registeredIds.contains(event.id),

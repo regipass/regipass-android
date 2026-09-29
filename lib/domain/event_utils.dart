@@ -368,29 +368,84 @@ int getStudentEventPriority(AppEvent event, StudentProfile? profile) {
   return 3;
 }
 
-/// dashboard.js#renderEvents sıralaması:
-/// öncelik -> alan ağırlığı (büyükten küçüğe) -> geçmiş olanlar sona ->
-/// son başvuruya yakın olan önce.
+/// Keşif puan ağırlıkları — web ile aynı (js/modules/events/event-utils.js
+/// DISCOVERY_WEIGHTS). Büyük puan önce gösterilir.
+abstract final class DiscoveryWeights {
+  static const int university = 100;
+  static const int departmentExact = 50;
+  static const int fieldRelation = 40;
+
+  /// Öğrencinin takip ettiği kulübün etkinliği (ilgiyi kendisi gösterdi).
+  static const int followedClub = 60;
+}
+
+bool _isSameUniversity(AppEvent event, StudentProfile? profile) {
+  final String studentUniversity = foldTr(profile?.university);
+  if (studentUniversity.isEmpty) return false;
+  final List<String> eventUniversities = event.targetUniversities.isNotEmpty
+      ? event.targetUniversities
+      : <String>[event.clubUniversity];
+  return eventUniversities.any(
+    (String university) => foldTr(university) == studentUniversity,
+  );
+}
+
+bool _isDepartmentExact(AppEvent event, StudentProfile? profile) {
+  final String studentDepartment = foldTr(profile?.department);
+  if (studentDepartment.isEmpty) return false;
+  return event.targetDepartments.any(
+        (String target) => studentDepartment == foldTr(target),
+      ) ||
+      studentDepartment == foldTr(event.targetSector) ||
+      eventClubFields(
+        event,
+      ).any((String field) => studentDepartment == foldTr(field));
+}
+
+/// Web ile aynı keşif puanı: üniversite +100, bölüm tam eşleşme +50,
+/// kulüp alanı yakınlığı 0–40, takip edilen kulüp +60.
+int getStudentEventScore(
+  AppEvent event,
+  StudentProfile? profile, {
+  Set<String> followedClubIds = const <String>{},
+}) {
+  int score = 0;
+  if (event.clubId.isNotEmpty && followedClubIds.contains(event.clubId)) {
+    score += DiscoveryWeights.followedClub;
+  }
+  if (_isSameUniversity(event, profile)) score += DiscoveryWeights.university;
+  if (_isDepartmentExact(event, profile)) {
+    score += DiscoveryWeights.departmentExact;
+  }
+  score += (getDepartmentFieldWeight(event, profile) *
+          DiscoveryWeights.fieldRelation)
+      .round();
+  return score;
+}
+
+/// dashboard.js#renderEvents sıralaması: puan (büyükten küçüğe) ->
+/// geçmiş olanlar sona -> son kayda en yakın olan önce.
 List<AppEvent> sortEventsForStudent(
   List<AppEvent> events,
-  StudentProfile? profile,
-) {
+  StudentProfile? profile, {
+  Set<String> followedClubIds = const <String>{},
+}) {
   final List<AppEvent> sorted = List<AppEvent>.of(events);
+  final Map<String, int> scores = <String, int>{
+    for (final AppEvent e in sorted)
+      e.id: getStudentEventScore(e, profile, followedClubIds: followedClubIds),
+  };
 
   sorted.sort((AppEvent a, AppEvent b) {
-    final int priorityA = getStudentEventPriority(a, profile);
-    final int priorityB = getStudentEventPriority(b, profile);
-    if (priorityA != priorityB) return priorityA.compareTo(priorityB);
-
-    final double weightA = getDepartmentFieldWeight(a, profile);
-    final double weightB = getDepartmentFieldWeight(b, profile);
-    if (weightA != weightB) return weightB.compareTo(weightA);
+    final int scoreA = scores[a.id] ?? 0;
+    final int scoreB = scores[b.id] ?? 0;
+    if (scoreA != scoreB) return scoreB.compareTo(scoreA);
 
     final bool pastA = isPastEvent(a);
     final bool pastB = isPastEvent(b);
     if (pastA != pastB) return pastA ? 1 : -1;
 
-    // Geçmiş etkinliklerde en yeni önce, aktiflerde en yakın son başvuru önce.
+    // Geçmiş etkinliklerde en yeni önce, aktiflerde en yakın son kayıt önce.
     return pastA
         ? b.deadlineAtMs.compareTo(a.deadlineAtMs)
         : a.deadlineAtMs.compareTo(b.deadlineAtMs);
