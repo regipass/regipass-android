@@ -71,6 +71,8 @@ class AppEvent {
     required this.certificateTemplateType,
     required this.certificateDocuments,
     this.clubConsentLog,
+    this.demoCopy = false,
+    this.demoCopyOf = '',
   });
 
   factory AppEvent.fromMap(String id, Map<String, dynamic> data) {
@@ -171,6 +173,8 @@ class AppEvent {
         data,
         role: PaidEventConsentRole.club,
       ),
+      demoCopy: data['demoCopy'] == true,
+      demoCopyOf: asString(data['demoCopyOf']),
     );
   }
 
@@ -333,6 +337,17 @@ class AppEvent {
   bool get quotaSetupPending => registrationClosed && registrationClosedReason == 'quota-setup';
   final bool hiddenFromClubList;
   final bool hiddenGlobally;
+
+  /// İP-DM2 (yalnızca demo projesi): organizatör havuzundaki hesabın
+  /// örnek kulüpten kopyalanmış etkinliği; [demoCopyOf] kaynağın kimliği.
+  final bool demoCopy;
+  final String demoCopyOf;
+
+  /// Demo organizatör havuzunun etkinliği mi? (kopya ya da ziyaretçinin
+  /// oluşturduğu). Başka hiç kimseye görünmez. Kimlik deseni sunucudaki
+  /// functions/demo/seed.js#isOrganizerUid ile aynı; canlıda böyle hesap yok.
+  bool get isDemoSandbox => demoCopy || _demoOrganizerUid.hasMatch(clubId);
+  static final RegExp _demoOrganizerUid = RegExp(r'^demo-o\d+$');
   final int currentSession;
   final bool sessionsCompleted;
   final int createdAtMs;

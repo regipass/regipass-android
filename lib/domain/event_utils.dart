@@ -258,6 +258,8 @@ bool matchesTargetDepartment(AppEvent event, StudentProfile? profile) {
 /// Öğrenci bu etkinliği görebilir mi? (hedef kitle filtresi)
 bool canStudentSeeEvent(AppEvent event, StudentProfile? profile) {
   if (event.hiddenGlobally) return false;
+  // Demo: organizatör havuzunun etkinlikleri öğrencilere görünmez (İP-DM2).
+  if (event.isDemoSandbox) return false;
 
   switch (event.targetScope) {
     case TargetScope.public:

@@ -134,7 +134,22 @@ clubDiscoverEventsProvider = StreamProvider<List<AppEvent>>((Ref ref) {
     // Tek ölçüt etkinliğin AKTİF olmasıdır: kulübün herkesten kaldırdığı
     // (`hiddenGlobally`), süresi geçmiş, kaydı kapatılmış ya da fiilen başlamış
     // etkinlikler yine dışarıda kalır (bkz. [isDiscoverableEvent]).
-    final List<AppEvent> visible = all.where(isDiscoverableEvent).toList();
+    // Demo (İP-DM2): başka organizatörlerin kopyaları görünmez; kendi
+    // kopyası olan örnek etkinlik de ikinci kez listelenmez.
+    final String viewer = club?.uid ?? '';
+    final Set<String> shadowed = <String>{
+      for (final AppEvent e in all)
+        if (viewer.isNotEmpty && e.clubId == viewer && e.demoCopyOf.isNotEmpty)
+          e.demoCopyOf,
+    };
+    final List<AppEvent> visible = all
+        .where(
+          (AppEvent e) =>
+              !shadowed.contains(e.id) &&
+              (!e.isDemoSandbox || e.clubId == viewer) &&
+              isDiscoverableEvent(e),
+        )
+        .toList();
 
     // Sözde öğrenci profili filtre olarak değil, yalnızca SIRALAMA ölçütü
     // olarak kullanılmaya devam eder: kulübün üniversitesine/alanına yakın

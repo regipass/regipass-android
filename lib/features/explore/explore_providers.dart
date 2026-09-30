@@ -89,6 +89,8 @@ final FutureProvider<ExploreResult> exploreEventsProvider =
               (QueryDocumentSnapshot<Map<String, dynamic>> d) =>
                   AppEvent.fromMap(d.id, d.data()),
             )
+            // Demo: organizatör havuzunun etkinlikleri vitrinde yok (İP-DM2).
+            .where((AppEvent e) => !e.isDemoSandbox)
             .toList();
 
         events.shuffle(math.Random(seed));
