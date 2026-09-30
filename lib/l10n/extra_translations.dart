@@ -55,6 +55,8 @@ kExtraTranslations = <String, Map<String, String>>{
     'cert.reason.name-missing': 'profilde ad yok',
     'cert.reason.not-allowed': 'Bu belgeyi açma yetkin yok.',
     'cert.reason.not-event-club': 'Bu etkinlik kulübüne ait değil.',
+    'cert.reason.demo-locked':
+        'Demoda hazır etkinliklerin belge ayarları değiştirilemez. Önizleyebilir ve belge gönderebilirsin.',
     'cert.reason.render-failed': 'belge üretilemedi',
     'cert.reason.sessions-not-finished': 'Gönderim kilitli: önce etkinlik ekranında “Oturumları Bitir”e bas.',
     'cert.reason.student-name-missing': 'profilde ad yok',
@@ -339,6 +341,8 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubBlock.errors.club-banned': 'Kulüp hesabın askıda.',
     'clubBlock.errors.not-a-club': 'Bu işlem yalnızca kulüp hesabıyla yapılır.',
     'clubBlock.errors.invalid-student': 'Öğrenci bulunamadı.',
+    'clubBlock.errors.demo-locked':
+        'Demoda öğrenci engelleme kapalı (herkes aynı kulüp hesabını kullanıyor).',
     'registration.errors.blocked-by-club':
         'Bu kulübün etkinliklerine kaydolamıyorsun.',
     // İP-M1: yönetim hesabı (rol etiketi + doğrulayıcı uygulama)
@@ -1413,6 +1417,8 @@ kExtraTranslations = <String, Map<String, String>>{
     'registration.errors.below-registered': 'Kontenjan, kayıtlı öğrenci sayısının ({{registered}}) altına indirilemez. Daha yüksek bir kontenjan gir.',
     'registration.errors.busy': 'Şu an yoğunluk var. Birkaç saniye sonra tekrar dene.',
     'registration.errors.cancel-locked': 'Oturumlar başladığı için kaydını artık kendin iptal edemezsin. Gerekirse kulüple iletişime geç.',
+    'registration.errors.demo-locked':
+        'Demoda hazır etkinliklerde bu işlem kapalı. Kendi oluşturduğun bir etkinlikte deneyebilirsin.',
     'registration.errors.club-banned': 'Bu kulübün etkinliklerine şu anda kayıt alınmıyor.',
     'registration.errors.deadline-passed': 'Son kayıt tarihi geçti.',
     'registration.errors.event-cancelled': 'Bu etkinlik iptal edildi.',
@@ -1525,6 +1531,8 @@ kExtraTranslations = <String, Map<String, String>>{
     'cert.reason.name-missing': 'no name in profile',
     'cert.reason.not-allowed': 'You cannot open this certificate.',
     'cert.reason.not-event-club': 'This event does not belong to your club.',
+    'cert.reason.demo-locked':
+        "In the demo, certificate settings of the sample events can't be changed. You can preview and send certificates.",
     'cert.reason.render-failed': 'could not be generated',
     'cert.reason.sessions-not-finished': 'Send is locked: press “Finish sessions” on the event screen first.',
     'cert.reason.student-name-missing': 'no name in profile',
@@ -1807,6 +1815,8 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubBlock.errors.club-banned': 'Your club account is suspended.',
     'clubBlock.errors.not-a-club': 'Only club accounts can do this.',
     'clubBlock.errors.invalid-student': 'Student not found.',
+    'clubBlock.errors.demo-locked':
+        'Blocking students is turned off in the demo (everyone shares the same club account).',
     'registration.errors.blocked-by-club':
         'You can\'t register for this club\'s events.',
     // İP-M1: staff account (role claim + authenticator app)
@@ -2822,6 +2832,8 @@ kExtraTranslations = <String, Map<String, String>>{
     'registration.errors.below-registered': 'Capacity can\'t be lower than the number of registered students ({{registered}}). Enter a higher capacity.',
     'registration.errors.busy': 'It\'s very busy right now. Try again in a few seconds.',
     'registration.errors.cancel-locked': 'Sessions have started, so you can no longer cancel your registration yourself. Contact the club if needed.',
+    'registration.errors.demo-locked':
+        'This action is turned off for the sample events in the demo. Try it on an event you create.',
     'registration.errors.club-banned': 'This club\'s events are not accepting registrations right now.',
     'registration.errors.deadline-passed': 'The registration deadline has passed.',
     'registration.errors.event-cancelled': 'This event was cancelled.',

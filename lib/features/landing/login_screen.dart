@@ -120,9 +120,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final HttpsCallableResult<dynamic> res = await fbFunctions
         .httpsCallable(
           'demoSignIn',
-          options: HttpsCallableOptions(timeout: const Duration(seconds: 25)),
+          options: HttpsCallableOptions(timeout: const Duration(seconds: 50)),
         )
-        .call(<String, dynamic>{'role': role});
+        // İP-DM: öğrenci hesabı sunucudaki 50 hesaplık havuzdan gelir;
+        // ekran görüntüsü kipinde sabit örnek öğrenci (Arda Güler).
+        .call(<String, dynamic>{
+          'role': role,
+          if (kShotsMode && role == 'student') 'persona': 'ana',
+        });
     final String token =
         '${(res.data as Map<dynamic, dynamic>)['token'] ?? ''}';
     final UserCredential result = await fbAuth.signInWithCustomToken(token);
