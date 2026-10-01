@@ -51,7 +51,7 @@ Son güncelleme tarihi: 02.10.2026 · Sürüm v1.1
 ÖNEMLİ: Lütfen bu Sözleşme'yi dikkatle okuyun. Platform'u kullanarak, hesap oluşturarak veya hesap oluşturmadan bir Etkinliğe kaydolarak bu Sözleşme'yi kabul etmiş olursunuz. Özellikle 6, 7, 9, 10, 16-19, 23, 24 ve 25. maddeler Regipass'in sorumluluğunu sınırlayan ve size yükümlülük getiren hükümler içerir; bu hükümler okunması kolay olsun diye ayrıca vurgulanmıştır.
 
 1. Taraflar ve Tanımlar
-1.1. İşbu Sözleşme ("Sözleşme"), bir yanda "Regipass" markası altında hizmet sunan gerçek kişi Arda Güler (iletişim: product@regipass.com) ("Regipass", "biz") ile diğer yanda:
+1.1. İşbu Sözleşme ("Sözleşme"), bir yanda Regipass (iletişim: product@regipass.com) ("Regipass", "biz") ile diğer yanda:
 — Platform'u indiren, kaydolan, hesap oluşturmadan bir Etkinliğe kaydolan veya Platform'u herhangi bir şekilde kullanan gerçek kişi ("Kullanıcı", "Katılımcı", "siz") ve/veya
 — Platform üzerinde organizatör hesabı oluşturan öğrenci kulübü, topluluk, kuruluş veya bunlar adına hareket eden yetkili kişi ("Organizatör")
 arasında, ilgili tarafın Sözleşme'yi elektronik ortamda onaylaması veya Platform'u kullanmaya başlaması ile yürürlüğe girer. Aynı kişi hem Katılımcı hem de bir Organizatör'ü temsil eden yetkili olabilir; bu durumda Sözleşme'nin hem Bölüm A hem Bölüm B hükümleri o kişi için geçerlidir. Organizatör adına işlem yapan kişi, bu işlemi yapmaya yetkili olduğunu; yetkisiz olması hâlinde doğacak her türlü sonuçtan Organizatör ile birlikte müteselsilen sorumlu olduğunu kabul, beyan ve taahhüt eder.
@@ -251,7 +251,7 @@ Last updated: 02.10.2026 · Version v1.1
 IMPORTANT: Please read this Agreement carefully. By using the Platform, creating an account or registering for an Event without an account, you accept this Agreement. In particular, Sections 6, 7, 9, 10, 16-19, 23, 24 and 25 contain provisions that limit Regipass's liability and impose obligations on you; they are highlighted so that they are easy to read.
 
 1. Parties and Definitions
-1.1. This Agreement (the "Agreement") is entered into between Arda Güler, an individual providing services under the "Regipass" brand (contact: product@regipass.com) ("Regipass", "we"), on the one hand, and on the other hand:
+1.1. This Agreement (the "Agreement") is entered into between Regipass (contact: product@regipass.com) ("Regipass", "we"), on the one hand, and on the other hand:
 — any natural person who downloads, signs up for, registers for an Event without an account or otherwise uses the Platform ("User", "Participant", "you"), and/or
 — any student club, community, organization or authorized person acting on their behalf who creates an organizer account on the Platform ("Organizer"),
 and enters into force when the relevant party accepts this Agreement electronically or starts using the Platform. The same person may be both a Participant and an authorized representative of an Organizer; in that case both Part A and Part B apply to that person. A person acting on behalf of an Organizer represents and warrants that they are authorized to do so and agrees to be jointly and severally liable with the Organizer for all consequences if they are not.
@@ -449,7 +449,7 @@ REGİPASS KİŞİSEL VERİLERİN KORUNMASI KANUNU (KVKK) AYDINLATMA METNİ VE A�
 Son güncelleme tarihi: 02.10.2026 · Sürüm v1.1
 
 1. Veri Sorumlusu
-6698 sayılı Kişisel Verilerin Korunması Kanunu ("KVKK") uyarınca kişisel verileriniz, veri sorumlusu sıfatıyla "Regipass" markası altında hizmet veren gerçek kişi Arda Güler tarafından aşağıda açıklanan kapsamda işlenmektedir.
+6698 sayılı Kişisel Verilerin Korunması Kanunu ("KVKK") uyarınca kişisel verileriniz, veri sorumlusu sıfatıyla Regipass tarafından aşağıda açıklanan kapsamda işlenmektedir.
 E-posta: product@regipass.com · Telefon: 0850 888 35 58
 Bu metin; Platform'u hesap oluşturarak kullanan Katılımcılar ve Organizatör yetkilileri, hesap oluşturmadan Etkinlik Linki üzerinden kaydolan Misafir Katılımcılar, web sitesi ziyaretçileri ve iletişim formunu kullanan kişiler için geçerlidir. Terimler, Regipass Kullanıcı ve Organizatör Sözleşmesi'ndeki anlamlarıyla kullanılmıştır.
 
@@ -541,7 +541,7 @@ REGIPASS PERSONAL DATA PROTECTION LAW (KVKK) DATA PROTECTION NOTICE AND EXPLICIT
 Last updated: 02.10.2026 · Version v1.1
 
 1. Data Controller
-Under Turkish Personal Data Protection Law No. 6698 ("KVKK"), your personal data is processed, as data controller, by Arda Güler, an individual providing services under the "Regipass" brand, within the scope described below.
+Under Turkish Personal Data Protection Law No. 6698 ("KVKK"), your personal data is processed, as data controller, by Regipass within the scope described below.
 Email: product@regipass.com · Phone: 0850 888 35 58
 This notice applies to Participants and Organizer representatives who use the Platform with an account, Guest Participants who register through an Event Link without an account, website visitors and people who use the contact form. Terms have the meanings given in the Regipass User and Organizer Agreement.
 
