@@ -44,6 +44,9 @@ class Routes {
   static const String phoneVerify = '/phone-verify'; // phone-verify.html
   static const String phoneChange = '/phone-change'; // phone-change.html
 
+  /// İP-HK: güncellenen sözleşmelerin yeniden onayı.
+  static const String legalUpdate = '/legal-update';
+
   static const String studentHome = '/student'; // dashboard.html
   static const String studentAppointments = '/student/appointments';
   static const String studentQrGenerate = '/student/qr';

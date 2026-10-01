@@ -373,7 +373,7 @@ kExtraTranslations = <String, Map<String, String>>{
     // düğmesi zaten pasif kalır; bu metin yalnızca Enter/gönder ile
     // tetiklenen kenar durumlar için (bkz. register_screen.dart).
     'auth.feedback.termsRequired':
-        'Devam etmek için Kullanıcı ve Kulüp Sözleşmesi ile KVKK Aydınlatma '
+        'Devam etmek için Kullanıcı ve Organizatör Sözleşmesi ile KVKK Aydınlatma '
         'Metni\'ni onaylamalısın.',
     // Onay özeti — bilgi formunun altında ve hesap kartlarında.
     'legal.consent.summaryTitle': 'Onayladığın metinler',
@@ -1876,7 +1876,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'auth.error.emailRegisteredWrongPassword':
         'This email is registered, but the password is wrong.',
     'auth.feedback.termsRequired':
-        'To continue, you must approve the User and Club Agreement and the '
+        'To continue, you must approve the User and Organizer Agreement and the '
         'Data Protection Notice.',
     'legal.consent.summaryTitle': 'Documents you approved',
     'legal.consent.acceptedAt': 'Consent time',

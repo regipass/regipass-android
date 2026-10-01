@@ -37,7 +37,10 @@ class LegalDocumentScreen extends StatelessWidget {
     final List<String> paragraphs = document
         .body(language)
         .trim()
-        .split('\n\n');
+        .split('\n')
+        .map((String line) => line.trim())
+        .where((String line) => line.isNotEmpty)
+        .toList();
 
     return Scaffold(
       appBar: AppBar(title: Text(document.title(language))),

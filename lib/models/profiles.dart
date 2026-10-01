@@ -87,6 +87,8 @@ class AppUser {
     required this.termsAcceptedAtMs,
     required this.marketingConsent,
     required this.termsVersion,
+    this.webTermsGiven = false,
+    this.webTermsVersion = '',
   });
 
   factory AppUser.fromMap(String uid, Map<String, dynamic> data) {
@@ -110,7 +112,19 @@ class AppUser {
       termsAcceptedAtMs: asEpochMilliseconds(data['termsAcceptedAt']),
       marketingConsent: data['marketingConsent'] == true,
       termsVersion: asString(data['termsVersion']),
+      webTermsGiven: _webTerms(data)['given'] == true,
+      webTermsVersion: asString(_webTerms(data)['version']),
     );
+  }
+
+  /// Web'in yazdığı `consent.tosAndKvkk` alanı (yoksa boş).
+  static Map<Object?, Object?> _webTerms(Map<String, dynamic> data) {
+    final Object? consent = data['consent'];
+    if (consent is Map) {
+      final Object? terms = consent['tosAndKvkk'];
+      if (terms is Map) return terms;
+    }
+    return const <Object?, Object?>{};
   }
 
   static AppUser? fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) =>
@@ -139,6 +153,11 @@ class AppUser {
 
   /// Onaylanan belge sürümü (bkz. [kLegalDocsVersion]).
   final String termsVersion;
+
+  /// Web'den verilen onay (`consent.tosAndKvkk`): web ve mobil farklı alana
+  /// yazıyordu; güncel sürüm kontrolü ikisine birden bakar.
+  final bool webTermsGiven;
+  final String webTermsVersion;
 
   bool get hasStudentRole => roles['student'] == true;
   bool get hasClubRole => roles['club'] == true;
@@ -228,7 +247,7 @@ class StudentProfile {
   /// anlık görüntüde `null` görünür — okuyan taraf bunu hesaba katmalı.
   final int? createdAtMs;
 
-  /// Kayıt ekranındaki zorunlu onay (Kullanıcı ve Kulüp Sözleşmesi + KVKK
+  /// Kayıt ekranındaki zorunlu onay (Kullanıcı ve Organizatör Sözleşmesi + KVKK
   /// Aydınlatma Metni). Bilgi formu bu onay olmadan kaydedilemez, bu yüzden
   /// tamamlanmış her profilde true olması beklenir.
   final bool termsAccepted;
@@ -417,7 +436,7 @@ class ClubProfile {
   final bool hasPassword;
   final Map<String, Map<String, dynamic>> documents;
 
-  /// Kayıt ekranındaki zorunlu onay (Kullanıcı ve Kulüp Sözleşmesi + KVKK
+  /// Kayıt ekranındaki zorunlu onay (Kullanıcı ve Organizatör Sözleşmesi + KVKK
   /// Aydınlatma Metni). Bilgi formu bu onay olmadan kaydedilemez.
   final bool termsAccepted;
   final int? termsAcceptedAtMs;

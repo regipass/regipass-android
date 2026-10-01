@@ -87,8 +87,8 @@ void main() {
     await pumpHost(tester);
     await tapChipAndPop(
       tester,
-      'Kullanıcı ve Kulüp Sözleşmesi',
-      'Kullanıcı ve Kulüp Sözleşmesi',
+      'Kullanıcı ve Organizatör Sözleşmesi',
+      'Kullanıcı ve Organizatör Sözleşmesi',
       'tr',
     );
     await tapChipAndPop(
@@ -105,8 +105,8 @@ void main() {
     await pumpHost(tester, language: 'en');
     await tapChipAndPop(
       tester,
-      'User and Club Agreement',
-      'User and Club Agreement',
+      'User and Organizer Agreement',
+      'User and Organizer Agreement',
       'en',
     );
     await tapChipAndPop(

@@ -8,7 +8,7 @@ import 'legal_document_screen.dart';
 
 /// Kayıt ekranındaki iki zorunlu/opsiyonel onay satırı.
 ///
-/// 1. satır ZORUNLUDUR: Kullanıcı ve Kulüp Sözleşmesi + KVKK Aydınlatma
+/// 1. satır ZORUNLUDUR: Kullanıcı ve Organizatör Sözleşmesi + KVKK Aydınlatma
 ///    Metni'nin okunduğunu onaylar; bu onay verilmeden kayıt tamamlanamaz.
 ///    Belge adları artık ortak bir cümlenin İÇİNE gömülü linkler değil,
 ///    onay metninin ALTINDA kendi başına duran, geniş dokunma alanlı iki ayrı

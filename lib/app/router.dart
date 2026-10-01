@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/constants.dart';
+import '../domain/legal_reconsent.dart';
 import '../domain/routing.dart';
 import '../features/admin/admin_clubs_screen.dart';
 import '../features/admin/admin_notifications_screen.dart';
@@ -45,8 +46,10 @@ import '../features/student/student_notifications_screen.dart';
 import '../features/student/student_qr_checkin_screen.dart';
 import '../features/student/student_qr_generate_screen.dart';
 import '../features/student/student_shell.dart';
+import '../features/legal/legal_update_screen.dart';
 import '../services/event_link_service.dart';
 import '../state/providers.dart';
+import 'demo_mode.dart';
 
 /// Oturum değiştiğinde router'ı yeniden değerlendirmek için köprü.
 /// (go_router'ın `refreshListenable` beklentisi.)
@@ -135,6 +138,11 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
         path: Routes.phoneVerify,
         pageBuilder: (_, state) =>
             _instantPage(state, const PhoneVerifyScreen()),
+      ),
+      GoRoute(
+        path: Routes.legalUpdate,
+        pageBuilder: (_, state) =>
+            _instantPage(state, const LegalUpdateScreen()),
       ),
       GoRoute(
         path: Routes.phoneChange,
@@ -434,6 +442,13 @@ String? _resolveRedirect(Session session, Uri uri) {
     return location == target
         ? null
         : routeWithExternalQrContinuation(target, uri);
+  }
+
+  // ── İP-HK: güncellenen sözleşmelerin yeniden onayı ──────────────
+  // Daha önce onay vermiş ama güncel sürümü onaylamamış kullanıcı panele
+  // geçmeden önce bir kez onay ekranını görür (demo uygulamasında yok).
+  if (!kDemoMode && needsLegalReconsent(session.appUser)) {
+    return location == Routes.legalUpdate ? null : Routes.legalUpdate;
   }
 
   // Giriş, rol seçimi, profil formu ve SMS doğrulaması bitince kullanıcıyı

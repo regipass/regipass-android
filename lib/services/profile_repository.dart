@@ -46,6 +46,31 @@ class ProfileRepository {
   ///
   /// [acceptedAtMs] kullanıcının kaydol düğmesine bastığı andır; sunucu
   /// damgası değil, çünkü aranan bilgi yazımın değil ONAYIN zamanı.
+  /// İP-HK: güncellenen metinlerin yeniden onayı. Web (`consent.tosAndKvkk`)
+  /// ve mobil (`termsAccepted`/`termsVersion`) alanlarına birlikte yazılır;
+  /// sunucu tetikleyicisi bunu değiştirilemez `consent_log` kaydına geçirir.
+  Future<void> acceptLegalUpdate(String uid, String version) {
+    return userDoc(uid).set(<String, dynamic>{
+      'consent': <String, dynamic>{
+        'tosAndKvkk': <String, dynamic>{
+          'given': true,
+          'version': version,
+          'givenAt': FieldValue.serverTimestamp(),
+        },
+      },
+      'termsAccepted': true,
+      'termsVersion': version,
+      'termsAcceptedAt': FieldValue.serverTimestamp(),
+      'consentHistory': FieldValue.arrayUnion(<Map<String, dynamic>>[
+        <String, dynamic>{
+          'version': version,
+          'atMs': DateTime.now().millisecondsSinceEpoch,
+          'source': 'mobile-reconsent',
+        },
+      ]),
+    }, SetOptions(merge: true));
+  }
+
   Future<void> recordConsent({
     required String uid,
     required bool termsAccepted,
