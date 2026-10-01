@@ -140,10 +140,10 @@ void main() {
       ),
     );
     await tester.pump();
-    expect(find.text('Takip ettiğim kulüpler'), findsOneWidget);
+    expect(find.text('Takip ettiğim organizatörler'), findsOneWidget);
     expect(find.text('Farma Kulübü'), findsOneWidget);
     expect(find.text('Ege · İzmir'), findsOneWidget);
-    expect(find.text('Bu kulüp şu an etkinlik yayınlamıyor.'), findsOneWidget);
+    expect(find.text('Bu organizatör şu an etkinlik yayınlamıyor.'), findsOneWidget);
     expect(find.text('Takibi bırak'), findsOneWidget);
   });
 

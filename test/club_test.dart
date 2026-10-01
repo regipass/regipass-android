@@ -785,7 +785,7 @@ void main() {
     // Görüntüleme kipi: metin kutusu yok, bölüm başlıkları ve değerler var.
     expect(find.byType(TextField), findsNothing);
     expect(find.text('Yetkili Bilgileri'), findsOneWidget);
-    expect(find.text('Kulüp Bilgileri'), findsOneWidget);
+    expect(find.text('Organizatör Bilgileri'), findsOneWidget);
     expect(find.text('Boğaziçi Üniversitesi'), findsOneWidget);
     expect(find.byIcon(Icons.account_balance_outlined), findsWidgets);
 

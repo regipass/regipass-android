@@ -170,8 +170,8 @@ void main() {
   group('genel duyuru üç hedef kitlenin her biri için gönderilir', () {
     for (final ({String label, String value}) target
         in <({String label, String value})>[
-          (label: 'Öğrenciler', value: AnnouncementAudience.students),
-          (label: 'Kulüpler', value: AnnouncementAudience.clubs),
+          (label: 'Katılımcılar', value: AnnouncementAudience.students),
+          (label: 'Organizatörler', value: AnnouncementAudience.clubs),
           (label: 'Her ikisi', value: AnnouncementAudience.all),
         ]) {
       testWidgets(target.label, (WidgetTester tester) async {
