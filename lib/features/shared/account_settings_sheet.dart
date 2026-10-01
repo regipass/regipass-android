@@ -374,6 +374,9 @@ class _ConsentPreferencesCardState
     extends ConsumerState<ConsentPreferencesCard> {
   String? _busyKey;
   String? _message;
+  // Kaydedilirken anahtar hemen yeni konumda durur (sunucudan güncel değer
+  // gelene kadar eski renge dönüp yanıp sönmesin).
+  final Map<String, bool> _pending = <String, bool>{};
 
   Future<void> _set(String key, bool on) async {
     final String? uid = ref.read(sessionProvider).user?.uid;
@@ -382,6 +385,7 @@ class _ConsentPreferencesCardState
     setState(() {
       _busyKey = key;
       _message = null;
+      _pending[key] = on;
     });
     try {
       await ref
@@ -391,11 +395,12 @@ class _ConsentPreferencesCardState
       setState(() => _message = en ? 'Saved.' : 'Kaydedildi.');
     } catch (_) {
       if (!mounted) return;
-      setState(
-        () => _message = en
+      setState(() {
+        _pending.remove(key);
+        _message = en
             ? 'Could not save, try again.'
-            : 'Kaydedilemedi, tekrar dene.',
-      );
+            : 'Kaydedilemedi, tekrar dene.';
+      });
     } finally {
       if (mounted) setState(() => _busyKey = null);
     }
@@ -405,14 +410,25 @@ class _ConsentPreferencesCardState
   Widget build(BuildContext context) {
     final bool en = context.lang == 'en';
     final user = ref.watch(sessionProvider).appUser;
-    final bool commercial = user?.commercialMessages ?? false;
-    final bool share = user?.thirdPartyShare ?? false;
+    final bool commercialServer = user?.commercialMessages ?? false;
+    final bool shareServer = user?.thirdPartyShare ?? false;
+    // Sunucu yeni değeri gönderince bekleyen değer bırakılır.
+    if (_pending['commercialMessages'] == commercialServer) {
+      _pending.remove('commercialMessages');
+    }
+    if (_pending['marketingThirdPartyShare'] == shareServer) {
+      _pending.remove('marketingThirdPartyShare');
+    }
+    final bool commercial = _pending['commercialMessages'] ?? commercialServer;
+    final bool share = _pending['marketingThirdPartyShare'] ?? shareServer;
 
     Widget row(String key, String title, String note, bool value) {
       return SwitchListTile.adaptive(
         contentPadding: EdgeInsets.zero,
         value: value,
-        activeThumbColor: BrandColors.red,
+        // iOS'ta varsayılan yeşil yerine marka kırmızısı (açıkken her zaman aynı renk).
+        activeThumbColor: Colors.white,
+        activeTrackColor: BrandColors.red,
         onChanged: _busyKey == null ? (bool v) => _set(key, v) : null,
         title: Text(
           title,

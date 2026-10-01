@@ -3,6 +3,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../domain/profile_change.dart';
 import '../../l10n/app_strings.dart';
@@ -24,6 +25,25 @@ class ClubProfileChangeBanner extends ConsumerStatefulWidget {
 class _ClubProfileChangeBannerState
     extends ConsumerState<ClubProfileChangeBanner> {
   bool _busy = false;
+
+  // "Onaylanmadı" uyarısı kapatılınca o red (reviewedAtMs) için bir daha
+  // gösterilmez; yeni bir red gelirse yine çıkar. Cihazda saklanır.
+  static const String _dismissKey = 'profileChangeRejectDismissedAt';
+  int? _dismissedAt;
+
+  @override
+  void initState() {
+    super.initState();
+    SharedPreferences.getInstance().then((SharedPreferences p) {
+      if (mounted) setState(() => _dismissedAt = p.getInt(_dismissKey) ?? 0);
+    });
+  }
+
+  Future<void> _dismiss(int reviewedAtMs) async {
+    setState(() => _dismissedAt = reviewedAtMs);
+    final SharedPreferences p = await SharedPreferences.getInstance();
+    await p.setInt(_dismissKey, reviewedAtMs);
+  }
 
   Future<void> _withdraw() async {
     final bool? ok = await showDialog<bool>(
@@ -67,6 +87,10 @@ class _ClubProfileChangeBannerState
         (!change.isPending && !change.recentlyRejected(now))) {
       return const SizedBox.shrink();
     }
+    if (!change.isPending &&
+        (_dismissedAt == null || _dismissedAt == change.reviewedAtMs)) {
+      return const SizedBox.shrink();
+    }
     final bool pending = change.isPending;
     final Color fg = pending ? _pendingFg : _rejectFg;
     final TextTheme text = Theme.of(context).textTheme;
@@ -81,16 +105,33 @@ class _ClubProfileChangeBannerState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text(
-            context.t(
-              pending
-                  ? 'profileChange.pendingTitle'
-                  : 'profileChange.rejectedTitle',
-            ),
-            style: text.titleSmall?.copyWith(
-              color: fg,
-              fontWeight: FontWeight.w800,
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Expanded(
+                child: Text(
+                  context.t(
+                    pending
+                        ? 'profileChange.pendingTitle'
+                        : 'profileChange.rejectedTitle',
+                  ),
+                  style: text.titleSmall?.copyWith(
+                    color: fg,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              if (!pending)
+                IconButton(
+                  key: const Key('profileChangeDismiss'),
+                  tooltip: context.t('common.close'),
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  icon: Icon(Icons.close, size: 20, color: fg),
+                  onPressed: () => _dismiss(change.reviewedAtMs),
+                ),
+            ],
           ),
           const SizedBox(height: 4),
           Text(
