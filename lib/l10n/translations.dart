@@ -735,7 +735,7 @@ const Map<String, String> kTranslationsEn = <String, String>{
   'auth.modal.desc':
       '',
   'auth.role.student': 'I am a Participant',
-  'auth.role.club': 'I'm an organizer',
+  'auth.role.club': 'I am an Organizer',
   'auth.roleStep.title': 'Choose Account Type',
   'auth.roleStep.desc':
       'The account type can\'t be changed later.',

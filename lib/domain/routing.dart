@@ -28,7 +28,7 @@ class Routes {
   /// Universal Link doğrudan bu rotaya gelir.
   static const String qrEntry = '/qr.html';
 
-  /// İP-EL: etkinlik linki (regipass.com/e/<kod>). Uygulama kuruluysa App
+  /// İP-EL: etkinlik linki (`regipass.com/e/<kod>`). Uygulama kuruluysa App
   /// Link/Universal Link bu rotaya gelir; oturum yoksa da açılır.
   static const String eventLinkPrefix = '/e/';
   static const String eventLink = '/e/:code';

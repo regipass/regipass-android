@@ -1,4 +1,4 @@
-/// İP-EL: etkinlik linki (regipass.com/e/<kod>) — functions/eventLinks.js karşılığı.
+/// İP-EL: etkinlik linki (`regipass.com/e/<kod>`) — functions/eventLinks.js karşılığı.
 ///
 /// - Katılımcı: "Paylaş" düğmesi etkinliğin kısa linkini alır (getShareLink).
 /// - Organizatör: link, özel ad ve ziyaret/kayıt sayıları (getEventLink).

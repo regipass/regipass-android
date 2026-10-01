@@ -337,7 +337,7 @@ class AppEvent {
   final bool hiddenGlobally;
 
   /// İP-EL: `link` ise etkinlik keşfette/listelerde görünmez; yalnızca
-  /// regipass.com/e/<kod> bağlantısını alan kişi açar.
+  /// `regipass.com/e/<kod>` bağlantısını alan kişi açar.
   final String visibility;
   bool get isLinkOnly => visibility == 'link';
   final int currentSession;

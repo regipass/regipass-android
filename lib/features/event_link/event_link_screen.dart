@@ -1,4 +1,4 @@
-/// İP-EL: regipass.com/e/<kod> uygulamada açıldığında.
+/// İP-EL: `regipass.com/e/<kod>` uygulamada açıldığında.
 ///
 /// - Katılımcı hesabıyla girilmişse: etkinlik penceresi doğrudan açılır.
 /// - Organizatör kendi etkinliğiyse: etkinlik detayı açılır.
