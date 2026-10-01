@@ -89,6 +89,8 @@ class AppUser {
     required this.termsVersion,
     this.webTermsGiven = false,
     this.webTermsVersion = '',
+    this.commercialMessages = false,
+    this.thirdPartyShare = false,
   });
 
   factory AppUser.fromMap(String uid, Map<String, dynamic> data) {
@@ -114,7 +116,23 @@ class AppUser {
       termsVersion: asString(data['termsVersion']),
       webTermsGiven: _webTerms(data)['given'] == true,
       webTermsVersion: asString(_webTerms(data)['version']),
+      commercialMessages:
+          data['commercialMessages'] == true ||
+          _consentGiven(data, 'commercialMessages') == true,
+      thirdPartyShare:
+          _consentGiven(data, 'marketingThirdPartyShare') ??
+          (data['marketingConsent'] == true),
     );
+  }
+
+  /// `consent.<key>.given` (yoksa null).
+  static bool? _consentGiven(Map<String, dynamic> data, String key) {
+    final Object? consent = data['consent'];
+    if (consent is Map) {
+      final Object? item = consent[key];
+      if (item is Map && item['given'] is bool) return item['given'] as bool;
+    }
+    return null;
   }
 
   /// Web'in yazdığı `consent.tosAndKvkk` alanı (yoksa boş).
@@ -158,6 +176,12 @@ class AppUser {
   /// yazıyordu; güncel sürüm kontrolü ikisine birden bakar.
   final bool webTermsGiven;
   final String webTermsVersion;
+
+  /// İP-PZ: kampanya bildirimi (ticari ileti) izni — varsayılan kapalı.
+  final bool commercialMessages;
+
+  /// Verilerin üçüncü kurumlarla pazarlama amaçlı paylaşılması izni.
+  final bool thirdPartyShare;
 
   bool get hasStudentRole => roles['student'] == true;
   bool get hasClubRole => roles['club'] == true;

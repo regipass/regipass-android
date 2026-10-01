@@ -16,7 +16,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/demo_mode.dart';
 import '../../app/theme.dart';
+import '../../domain/legal_docs.dart';
 import '../../l10n/app_strings.dart';
+import '../../state/providers.dart';
 import '../../state/theme_mode.dart';
 import 'account_security.dart';
 import 'support_contact.dart';
@@ -156,6 +158,10 @@ class _AccountSettingsSheet extends StatelessWidget {
                   child: Column(
                     children: <Widget>[
                       const AccountPreferencesCard(),
+                      if (!kDemoMode) ...<Widget>[
+                        const SizedBox(height: 14),
+                        const ConsentPreferencesCard(),
+                      ],
                       // Demo: ortak hazır hesapta şifre değiştirme / hesap
                       // silme gösterilmez (web demosuyla aynı).
                       if (!kDemoMode) ...<Widget>[
@@ -347,6 +353,121 @@ class _ChoiceChip extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ── Açık rıza tercihleri (İP-PZ) ──────────────────────────────────────
+
+/// KVKK metni "her tercih ayarlardan geri çekilebilir" diyor: kampanya
+/// bildirimi (ticari ileti) ve üçüncü kurumla paylaşım burada açılıp kapanır.
+class ConsentPreferencesCard extends ConsumerStatefulWidget {
+  const ConsentPreferencesCard({super.key});
+
+  @override
+  ConsumerState<ConsentPreferencesCard> createState() =>
+      _ConsentPreferencesCardState();
+}
+
+class _ConsentPreferencesCardState
+    extends ConsumerState<ConsentPreferencesCard> {
+  String? _busyKey;
+  String? _message;
+
+  Future<void> _set(String key, bool on) async {
+    final String? uid = ref.read(sessionProvider).user?.uid;
+    if (uid == null) return;
+    final bool en = context.lang == 'en';
+    setState(() {
+      _busyKey = key;
+      _message = null;
+    });
+    try {
+      await ref
+          .read(profileRepositoryProvider)
+          .setConsentPreference(uid, key, on, kLegalDocsVersion);
+      if (!mounted) return;
+      setState(() => _message = en ? 'Saved.' : 'Kaydedildi.');
+    } catch (_) {
+      if (!mounted) return;
+      setState(
+        () => _message = en
+            ? 'Could not save, try again.'
+            : 'Kaydedilemedi, tekrar dene.',
+      );
+    } finally {
+      if (mounted) setState(() => _busyKey = null);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool en = context.lang == 'en';
+    final user = ref.watch(sessionProvider).appUser;
+    final bool commercial = user?.commercialMessages ?? false;
+    final bool share = user?.thirdPartyShare ?? false;
+
+    Widget row(String key, String title, String note, bool value) {
+      return SwitchListTile.adaptive(
+        contentPadding: EdgeInsets.zero,
+        value: value,
+        activeThumbColor: BrandColors.red,
+        onChanged: _busyKey == null ? (bool v) => _set(key, v) : null,
+        title: Text(
+          title,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        ),
+        subtitle: Text(
+          note,
+          style: TextStyle(fontSize: 12.5, color: context.inkMuted),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+      decoration: BoxDecoration(
+        color: context.surface,
+        borderRadius: BorderRadius.circular(BrandShape.controlRadius),
+        border: Border.all(color: context.hairline),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          _PreferenceLabel(
+            icon: Icons.verified_user_outlined,
+            label: en ? 'Privacy preferences' : 'Gizlilik tercihlerim',
+          ),
+          row(
+            'commercialMessages',
+            en
+                ? 'Campaign and announcement notifications'
+                : 'Kampanya ve duyuru bildirimleri',
+            en
+                ? 'Regipass campaigns and partnerships (commercial messages). Event and account notifications are not affected.'
+                : "Regipass'in kampanya ve iş birliği bildirimleri (ticari ileti). Etkinlik ve hesap bildirimleri bundan etkilenmez.",
+            commercial,
+          ),
+          row(
+            'marketingThirdPartyShare',
+            en
+                ? 'Sharing my data with third parties for marketing'
+                : 'Verilerimin üçüncü kurumlarla pazarlama amaçlı paylaşılması',
+            en
+                ? 'Data Protection Notice section 5.7.'
+                : 'KVKK Aydınlatma Metni madde 5.7.',
+            share,
+          ),
+          if (_message != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Text(
+                _message!,
+                style: TextStyle(fontSize: 12.5, color: context.inkMuted),
+              ),
+            ),
+        ],
       ),
     );
   }

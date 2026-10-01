@@ -71,6 +71,28 @@ class ProfileRepository {
     }, SetOptions(merge: true));
   }
 
+  /// İP-PZ: açık rıza tercihi (Hesap ayarları). [key]: `commercialMessages`
+  /// ya da `marketingThirdPartyShare`. Web ve mobil alanlarına birlikte
+  /// yazılır; sunucu tetikleyicisi consent_log'a geçirir.
+  Future<void> setConsentPreference(
+    String uid,
+    String key,
+    bool on,
+    String version,
+  ) {
+    return userDoc(uid).set(<String, dynamic>{
+      'consent': <String, dynamic>{
+        key: <String, dynamic>{
+          'given': on,
+          'version': version,
+          'givenAt': FieldValue.serverTimestamp(),
+        },
+      },
+      if (key == 'commercialMessages') 'commercialMessages': on,
+      if (key == 'marketingThirdPartyShare') 'marketingConsent': on,
+    }, SetOptions(merge: true));
+  }
+
   Future<void> recordConsent({
     required String uid,
     required bool termsAccepted,

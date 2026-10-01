@@ -268,6 +268,8 @@ class _SendMessageDialogState extends ConsumerState<_SendMessageDialog> {
   EventMessageResult? _preview;
   bool _counting = true;
   bool _sending = false;
+  // İP-HK: 'içerikten ben sorumluyum' onayı (sunucuda contentAck olarak kaydedilir).
+  bool _ack = false;
   String? _error;
   int _previewSeq = 0;
   late final Map<String, String> _context = eventTagContext(
@@ -366,6 +368,14 @@ class _SendMessageDialogState extends ConsumerState<_SendMessageDialog> {
       setState(() => _error = context.t('eventNotify.errors.fill'));
       return;
     }
+    if (!_ack) {
+      setState(
+        () => _error = context.lang == 'en'
+            ? 'Confirm that you are responsible for the message content.'
+            : 'Göndermek için mesajın içeriğinden sorumlu olduğunu onayla.',
+      );
+      return;
+    }
     setState(() {
       _sending = true;
       _error = null;
@@ -379,6 +389,7 @@ class _SendMessageDialogState extends ConsumerState<_SendMessageDialog> {
             title: title,
             message: message,
             templateId: _templateId,
+            contentAck: true,
           );
       if (!mounted) return;
       Navigator.of(context).pop();
@@ -556,6 +567,22 @@ class _SendMessageDialogState extends ConsumerState<_SendMessageDialog> {
                     style: text.bodySmall,
                   ),
                 ],
+              ),
+            ),
+            const SizedBox(height: 6),
+            CheckboxListTile(
+              key: const Key('eventNotifyAck'),
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+              value: _ack,
+              onChanged: _sending
+                  ? null
+                  : (bool? v) => setState(() => _ack = v == true),
+              title: Text(
+                context.lang == 'en'
+                    ? 'I am responsible for this message. It only concerns this event and contains no advertising, political propaganda, insults or illegal content. Regipass only delivers it.'
+                    : 'Mesajın içeriğinden ben sorumluyum. Yalnızca bu etkinlikle ilgilidir; reklam, siyasi propaganda, hakaret ya da yasa dışı içerik barındırmaz. Regipass mesajı yalnızca iletir.',
+                style: text.bodySmall,
               ),
             ),
             if (_error != null) ...<Widget>[

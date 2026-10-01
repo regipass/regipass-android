@@ -123,7 +123,8 @@ Bu onay verilmeden ücretli Etkinlik kaydı tamamlanamaz.
 
 11. Bildirimler, Değerlendirmeler ve Takip
 11.1. Regipass ve Organizatörler; hesabınız, kayıtlarınız, Etkinlik değişiklikleri, hatırlatmalar, Katılım Belgeleri ve güvenlik konularında size uygulama içi bildirim, anlık bildirim, e-posta ve/veya SMS gönderebilir. Bildirimlerin zamanında ulaşacağı, hiç ulaşmayacağı veya spam klasörüne düşmeyeceği garanti edilmez; önemli bilgileri Platform'dan kontrol etmek sizin sorumluluğunuzdadır.
-11.2. Ticari elektronik iletiler yalnızca 6563 sayılı Kanun uyarınca ayrıca alınan onayınızla gönderilir ve dilediğiniz zaman ücretsiz olarak bu onaydan vazgeçebilirsiniz.
+11.2. Ticari elektronik iletiler (kampanya bildirimleri) yalnızca 6563 sayılı Kanun uyarınca ayrıca alınan onayınızla gönderilir; bu onay varsayılan olarak kapalıdır ve Hesap ayarlarından dilediğiniz zaman ücretsiz olarak açıp kapatabilirsiniz.
+11.2a. Organizatörlerin Etkinlikleri hakkında size gönderdiği mesajların içeriğinden ilgili Organizatör sorumludur; bu mesajlar Regipass tarafından önceden denetlenmez ve yalnızca iletilir. Uygunsuz bir mesajı product@regipass.com adresine bildirebilirsiniz.
 11.3. Etkinlikler hakkında yaptığınız değerlendirmeler ve yorumlar ilgili Organizatör tarafından görülebilir. Değerlendirmelerinizin doğru, saygılı ve hukuka uygun olmasından siz sorumlusunuz.
 11.4. Bir Organizatörü takip ettiğinizde, o Organizatör'ün yeni Etkinliklerine ilişkin bildirim alırsınız; takibi dilediğiniz zaman bırakabilirsiniz.
 
@@ -151,7 +152,7 @@ Organizatör aşağıdakileri kabul, beyan ve taahhüt eder:
 16.2. Etkinliklerin ve tüm İçeriklerin yürürlükteki mevzuata, kamu düzenine ve genel ahlaka uygun olduğunu; madde 21'de sayılan hiçbir İçerik veya Etkinlik oluşturmayacağını;
 16.3. Etkinliğin güvenli bir şekilde yürütülmesinden; mekân, kapasite, yangın, ilk yardım, güvenlik, sigorta, alkol, gıda, ses ve benzeri konulardaki tüm izin, ruhsat ve tedbirlerden; üniversite veya mekân yönetiminin kurallarına uyulmasından; katılımcıların can ve mal güvenliğinden ve Etkinlik sırasında doğabilecek her türlü zarardan bizzat ve münhasıran sorumlu olduğunu;
 16.4. Etkinlik Linklerini, QR afişlerini ve Yalnızca Linkle Etkinlikleri kimlerle paylaşacağına kendisinin karar verdiğini ve linkin yayılmasından doğan sonuçlardan sorumlu olduğunu;
-16.5. Katılımcılara gönderdiği mesaj ve bildirimlerin yalnızca ilgili Etkinlikle ilgili olacağını; reklam, siyasi propaganda, spam veya rahatsız edici içerik göndermeyeceğini;
+16.5. Katılımcılara gönderdiği mesaj ve bildirimlerin yalnızca ilgili Etkinlikle ilgili olacağını; reklam, siyasi propaganda, spam veya rahatsız edici içerik göndermeyeceğini; Platform üzerinden gönderdiği her mesaj ve bildirimin içeriğinden münhasıran kendisinin sorumlu olduğunu, Regipass'in bu içerikleri önceden denetlemediğini, onaylamadığını ve yalnızca teknik olarak ilettiğini; bu sorumluluğu her gönderimde ayrıca onayladığını ve bu onayın kayıt altına alındığını;
 16.6. Kapıda bilet okutma, yoklama, kayıt kaldırma, engelleme, "Ödendi" işaretleme ve Katılım Belgesi gönderme/geri alma işlemlerini doğru ve dürüst şekilde yapacağını; bu işlemlerin sonuçlarından kendisinin sorumlu olduğunu;
 16.7. Regipass marka, logo ve materyallerini yalnızca Regipass'in önceden yazılı onayı ile kullanacağını;
 16.8. Ücretli Etkinliklerde, ödemeyi organize edecek yetkili temsilcisinin güncel telefon ve/veya e-posta bilgisini doğru şekilde gireceğini ve bu bilgilerin ilgili Etkinliğe kaydolan Katılımcılara gösterilmesine onay verdiğini.
@@ -323,7 +324,8 @@ Registration for a paid Event cannot be completed without this acknowledgment.
 
 11. Notifications, Reviews and Following
 11.1. Regipass and Organizers may send you in-app notifications, push notifications, emails and/or SMS about your account, registrations, Event changes, reminders, Participation Certificates and security. It is not guaranteed that notifications will arrive on time, arrive at all or not end up in spam; it is your responsibility to check important information on the Platform.
-11.2. Commercial electronic messages are sent only with your separate consent under Law No. 6563, and you may withdraw this consent free of charge at any time.
+11.2. Commercial electronic messages (campaign notifications) are sent only with your separate consent under Law No. 6563; this consent is off by default and you can turn it on or off free of charge at any time in Account settings.
+11.2a. The relevant Organizer is responsible for the content of messages it sends you about its Events; Regipass does not review these messages in advance and only delivers them. You can report an inappropriate message to product@regipass.com.
 11.3. Your reviews and comments about Events can be seen by the relevant Organizer. You are responsible for your reviews being accurate, respectful and lawful.
 11.4. When you follow an Organizer, you receive notifications about its new Events; you may unfollow at any time.
 
@@ -351,7 +353,7 @@ The Organizer accepts, represents and warrants:
 16.2. that Events and all Content comply with applicable law, public order and morals, and that it will not create any Content or Event listed in Section 21;
 16.3. that it is personally and solely responsible for running the Event safely; for all permits, licences and measures regarding venue, capacity, fire, first aid, security, insurance, alcohol, food, noise and similar matters; for complying with university or venue rules; for the safety of participants' lives and property; and for any damage arising during the Event;
 16.4. that it decides with whom it shares Event Links, QR posters and Link-only Events and is responsible for the consequences of a link spreading;
-16.5. that the messages and notifications it sends to Participants will relate only to the relevant Event, and that it will not send advertising, political propaganda, spam or disturbing content;
+16.5. that the messages and notifications it sends to Participants will relate only to the relevant Event, and that it will not send advertising, political propaganda, spam or disturbing content; that it is solely responsible for the content of every message and notification it sends through the Platform, that Regipass does not review or approve such content in advance and only delivers it technically; and that it confirms this responsibility separately at each sending and that this confirmation is recorded;
 16.6. that it will perform door scanning, attendance, removing registrations, blocking, marking as "Paid" and sending/revoking Participation Certificates accurately and honestly, and that it is responsible for the results of these actions;
 16.7. that it will use Regipass's brand, logo and materials only with Regipass's prior written consent;
 16.8. that for paid Events it will correctly enter the current phone and/or email of the authorized representative who will arrange payment, and that it consents to these details being shown to Participants registering for the Event.

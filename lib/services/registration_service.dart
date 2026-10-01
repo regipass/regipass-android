@@ -346,6 +346,7 @@ class RegistrationService {
     required String title,
     required String message,
     String templateId = '',
+    bool contentAck = false,
   }) async => EventMessageResult.fromMap(
     await _call('clubSendEventMessage', <String, Object?>{
       'eventId': eventId,
@@ -353,6 +354,7 @@ class RegistrationService {
       'title': title,
       'message': message,
       'templateId': templateId,
+      'contentAck': contentAck,
     }, timeout: const Duration(seconds: 120)),
   );
 
