@@ -232,7 +232,9 @@ bool isEventOverForAttendee(AppEvent? event, {DateTime? now}) {
 /// Görünürlük ve son başvuru kurallarını tek bir noktada tutmak, iki ekranda
 /// aynı geçmiş etkinliğin farklı davranmasını engeller.
 bool isDiscoverableEvent(AppEvent event, {DateTime? now}) =>
-    !event.hiddenGlobally && !isRegistrationClosed(event, now: now);
+    !event.hiddenGlobally &&
+    !event.isLinkOnly &&
+    !isRegistrationClosed(event, now: now);
 
 // ── Görünürlük ────────────────────────────────────────────────────────
 

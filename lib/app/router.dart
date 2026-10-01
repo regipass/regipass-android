@@ -20,6 +20,7 @@ import '../features/auth/phone_verify_screen.dart';
 import '../features/auth/register_screen.dart';
 import '../features/auth/role_select_screen.dart';
 import '../features/club/club_account_screen.dart';
+import '../features/event_link/event_link_screen.dart';
 import '../features/club/club_blocked_students_screen.dart';
 import '../features/club/club_create_event_screen.dart';
 import '../features/club/club_dashboard_screen.dart';
@@ -44,6 +45,7 @@ import '../features/student/student_notifications_screen.dart';
 import '../features/student/student_qr_checkin_screen.dart';
 import '../features/student/student_qr_generate_screen.dart';
 import '../features/student/student_shell.dart';
+import '../services/event_link_service.dart';
 import '../state/providers.dart';
 
 /// Oturum değiştiğinde router'ı yeniden değerlendirmek için köprü.
@@ -90,6 +92,13 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
             initialEventId: CheckinQrDeepLink.parse(state.uri)?.eventId ?? '',
             externalQrUri: state.uri,
           ),
+        ),
+      ),
+      GoRoute(
+        path: Routes.eventLink,
+        pageBuilder: (_, GoRouterState state) => _instantPage(
+          state,
+          EventLinkScreen(code: state.pathParameters['code'] ?? ''),
         ),
       ),
       GoRoute(
@@ -344,7 +353,16 @@ String? _resolveRedirect(Session session, Uri uri) {
       Routes.explore,
       Routes.qrEntry,
     };
+    if (location.startsWith(Routes.eventLinkPrefix)) return null;
     return publicRoutes.contains(location) ? null : Routes.landing;
+  }
+
+  // İP-EL: link oturum açıkken ama hesap henüz tamamlanmamışken geldiyse,
+  // kurulum bitince o etkinliğe dönülsün diye kod saklanır.
+  final bool isEventLink = location.startsWith(Routes.eventLinkPrefix);
+  if (isEventLink) {
+    final String key = eventLinkKeyFromPath(location);
+    if (key.isNotEmpty) pendingEventLinkCode = key;
   }
 
   // ── Yönetici ────────────────────────────────────────────────────
@@ -434,6 +452,17 @@ String? _resolveRedirect(Session session, Uri uri) {
   // Bunlar dışlanırsa "Bilgileri Düzenle" / "Numaramı Değiştir" düğmeleri
   // kullanıcıyı anında panele geri fırlatır.
   if (location == Routes.phoneChange) return null;
+
+  // İP-EL: link ekranı etkinliği çözüp kullanıcıyı kendi paneline götürür.
+  if (isEventLink) {
+    pendingEventLinkCode = null;
+    return null;
+  }
+  final String? pendingLink = pendingEventLinkCode;
+  if (pendingLink != null) {
+    pendingEventLinkCode = null;
+    return '${Routes.eventLinkPrefix}$pendingLink';
+  }
 
   if (role == UserRole.student) {
     if (location == Routes.studentOnboarding) return null;

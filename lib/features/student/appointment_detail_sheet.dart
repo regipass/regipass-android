@@ -12,6 +12,7 @@ import '../../models/event.dart';
 import '../../state/connectivity.dart';
 import '../../state/providers.dart';
 import '../shared/add_to_calendar_button.dart';
+import '../shared/event_link_widgets.dart';
 import '../shared/common_widgets.dart';
 import '../shared/event_widgets.dart';
 import '../shared/qr_code_view.dart';
@@ -373,7 +374,14 @@ class _AppointmentDetailSheetState
                     // İP-T: takvime ekle
                     if (item.event != null) ...<Widget>[
                       const SizedBox(height: 16),
-                      AddToCalendarButton(event: item.event!),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: <Widget>[
+                          AddToCalendarButton(event: item.event!),
+                          ShareEventLinkButton(event: item.event!),
+                        ],
+                      ),
                     ],
                     const SizedBox(height: 24),
                     // Oturumlu etkinlik: okutma düğmesi kulüp QR'ı açana

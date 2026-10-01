@@ -18,6 +18,7 @@ import '../../services/club_follow_service.dart';
 import '../shared/add_to_calendar_button.dart';
 import '../shared/club_follow_button.dart';
 import '../shared/common_widgets.dart';
+import '../shared/event_link_widgets.dart';
 import '../shared/event_widgets.dart';
 import 'post_registration_sheet.dart';
 import 'student_providers.dart';
@@ -915,7 +916,15 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
 
                           // İP-T: takvime ekle
                           const SizedBox(height: 14),
-                          AddToCalendarButton(event: event),
+                          // İP-EL: etkinliğin linkini paylaş.
+                          Wrap(
+                            spacing: 10,
+                            runSpacing: 10,
+                            children: <Widget>[
+                              AddToCalendarButton(event: event),
+                              ShareEventLinkButton(event: event),
+                            ],
+                          ),
 
                           // ── Açıklama ────────────────────────────────────────
                           const SizedBox(height: 26),

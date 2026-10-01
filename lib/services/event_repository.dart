@@ -1101,6 +1101,7 @@ class EventDraft {
     this.contactPhone = '',
     this.contactEmail = '',
     this.autoNotifications = kDefaultAutoNotifications,
+    this.visibility = 'public',
   });
 
   final String title;
@@ -1143,6 +1144,9 @@ class EventDraft {
   /// İP-B: otomatik bildirimler (functions/eventReminders.js REMINDER_KEYS).
   final Map<String, bool> autoNotifications;
 
+  /// İP-EL: `public` (keşfette görünür) ya da `link` (yalnızca linki olan görür).
+  final String visibility;
+
   EventDraft copyWith({String? imageUrl}) => EventDraft(
     title: title,
     description: description,
@@ -1173,7 +1177,8 @@ class EventDraft {
     contactMode: contactMode,
     contactPhone: contactPhone,
     contactEmail: contactEmail,
-      autoNotifications: autoNotifications,
+    autoNotifications: autoNotifications,
+    visibility: visibility,
   );
 
   Map<String, dynamic> toMap() => <String, dynamic>{
@@ -1216,6 +1221,7 @@ class EventDraft {
     'contactMode': contactMode,
     'contactPhone': contactMode == 'custom' ? contactPhone : '',
     'contactEmail': contactMode == 'custom' ? contactEmail : '',
+    'visibility': visibility == 'link' ? 'link' : 'public',
     'updatedAt': FieldValue.serverTimestamp(),
   };
 }

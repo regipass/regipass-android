@@ -55,6 +55,7 @@ class AppEvent {
     this.contactEmail = '',
     required this.hiddenFromClubList,
     required this.hiddenGlobally,
+    this.visibility = 'public',
     required this.currentSession,
     required this.sessionsCompleted,
     required this.createdAtMs,
@@ -149,6 +150,7 @@ class AppEvent {
       contactEmail: asString(data['contactEmail']),
       hiddenFromClubList: data['hiddenFromClubList'] == true,
       hiddenGlobally: data['hiddenGlobally'] == true,
+      visibility: data['visibility'] == 'link' ? 'link' : 'public',
       currentSession: asInt(data['currentSession']) ?? 0,
       sessionsCompleted: data['sessionsCompleted'] == true,
       createdAtMs: asInt(data['createdAtMs']) ?? 0,
@@ -333,6 +335,11 @@ class AppEvent {
   bool get quotaSetupPending => registrationClosed && registrationClosedReason == 'quota-setup';
   final bool hiddenFromClubList;
   final bool hiddenGlobally;
+
+  /// İP-EL: `link` ise etkinlik keşfette/listelerde görünmez; yalnızca
+  /// regipass.com/e/<kod> bağlantısını alan kişi açar.
+  final String visibility;
+  bool get isLinkOnly => visibility == 'link';
   final int currentSession;
   final bool sessionsCompleted;
   final int createdAtMs;

@@ -19,6 +19,7 @@ import '../../services/event_repository.dart';
 import '../../services/registration_service.dart';
 import '../../state/providers.dart';
 import '../shared/common_widgets.dart';
+import '../shared/event_link_widgets.dart';
 import '../shared/event_widgets.dart';
 import 'club_block_dialog.dart';
 import 'club_providers.dart';
@@ -1106,6 +1107,16 @@ class _Body extends ConsumerWidget {
           icon: Icons.info_outline_rounded,
           child: EventInfoTable(rows: eventInfoRows(context, event)),
         ),
+
+        // İP-EL: etkinlik linki (kopyala/paylaş/QR afişi/özel ad).
+        if (!event.cancelled) ...<Widget>[
+          const SizedBox(height: 16),
+          SectionCard(
+            title: context.t('eventLink.card.title'),
+            icon: Icons.link_rounded,
+            child: ClubEventLinkCard(event: event),
+          ),
+        ],
 
         // ── Kayıtlar ───────────────────────────────────────────────
         const SizedBox(height: 16),

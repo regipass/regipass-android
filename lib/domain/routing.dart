@@ -28,6 +28,11 @@ class Routes {
   /// Universal Link doğrudan bu rotaya gelir.
   static const String qrEntry = '/qr.html';
 
+  /// İP-EL: etkinlik linki (regipass.com/e/<kod>). Uygulama kuruluysa App
+  /// Link/Universal Link bu rotaya gelir; oturum yoksa da açılır.
+  static const String eventLinkPrefix = '/e/';
+  static const String eventLink = '/e/:code';
+
   /// Şifremi unuttum. Girişten önce açılır ama SMS doğrulaması sırasında
   /// kullanıcı Auth'a giriş yapmış olur — bu yüzden router'da hem oturumsuz
   /// hem oturumlu erişime izin verilir (bkz. lib/app/router.dart).

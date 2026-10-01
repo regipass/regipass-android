@@ -100,6 +100,8 @@ final FutureProvider<ExploreResult> exploreEventsProvider =
         final List<AppEvent> closed = <AppEvent>[];
 
         for (final AppEvent event in events) {
+          // İP-EL: yalnızca linkle paylaşılan etkinlik vitrinde hiç görünmez.
+          if (event.isLinkOnly) continue;
           (isDiscoverableEvent(event) ? open : closed).add(event);
         }
 

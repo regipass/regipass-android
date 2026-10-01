@@ -101,6 +101,9 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
   /// Etkinlikte gösterilecek iletişim: `club` (sistemdeki kulüp bilgileri),
   /// `custom` (bu etkinliğe özel), `hidden` (yalnızca ücretsiz etkinlikte).
   String _contactMode = 'club';
+
+  /// İP-EL: yalnızca linki olanlar görsün (keşfette görünmez).
+  bool _linkOnly = false;
   String _checkinMode = CheckinMode.checkinOnly;
   String _targetScope = TargetScope.public;
 
@@ -197,6 +200,7 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
     if (_contactMode == 'hidden' && _feeType == 'paid') _contactMode = 'club';
     _contactPhone.text = formatContactPhone(event.contactPhone);
     _contactEmail.text = event.contactEmail;
+    _linkOnly = event.isLinkOnly;
     _sessionCount.text = '${event.sessionCount}';
     _checkinMode = event.resolvedCheckinMode;
     _threshold.text = event.certificateThresholdPercent?.toString() ?? '';
@@ -796,6 +800,7 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
       contactPhone: contactPhone,
       contactEmail: contactEmail,
       autoNotifications: Map<String, bool>.of(_autoNotify),
+      visibility: _linkOnly ? 'link' : 'public',
     );
 
     String? createdEventId;
@@ -1175,6 +1180,27 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
                       ),
                     ),
                   _contactSection(club),
+                  Material(
+                    type: MaterialType.transparency,
+                    child: CheckboxListTile(
+                      key: const Key('linkOnly'),
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      value: _linkOnly,
+                      onChanged: _saving
+                          ? null
+                          : (bool? v) => setState(() => _linkOnly = v == true),
+                      title: Text(context.t('eventLink.create.linkOnly')),
+                      subtitle: Text(
+                        context.t('eventLink.create.linkOnlyHint'),
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          color: context.inkMuted,
+                        ),
+                      ),
+                    ),
+                  ),
                   _NeonAlert(
                     active: _invalidField == _Field.quota,
                     child: TextField(
