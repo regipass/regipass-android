@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+import '../app/demo_mode.dart';
 import 'firebase_refs.dart';
 import 'push_service.dart';
 
@@ -159,6 +160,8 @@ class AuthRepository {
     } catch (_) {
       // Google oturumu yoksa yok say.
     }
+    // İP-DM3: demoda hazır hesap bırakılır, sunucu yapılanları geri alır.
+    if (kDemoMode) await releaseDemoSlot();
     await fbAuth.signOut();
   }
 

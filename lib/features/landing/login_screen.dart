@@ -116,15 +116,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   /// Demo: sunucu hazır hesaba jeton verir, şifre yok (demo_mode.dart).
+  ///
+  /// İP-DM3: hesap sunucudaki havuzdan gelir (20 öğrenci / 5 kulüp, 30 dk);
+  /// ekran görüntüsü kipinde sabit örnek hesaplar (Arda Güler, Kuzeyşehir
+  /// Bilişim Kulübü).
   Future<void> _signInDemo(String role) => _run(() async {
+    final String? slotKey = DemoSlot.role == role ? DemoSlot.slotKey : null;
     final HttpsCallableResult<dynamic> res = await fbFunctions
         .httpsCallable(
           'demoSignIn',
-          options: HttpsCallableOptions(timeout: const Duration(seconds: 25)),
+          options: HttpsCallableOptions(timeout: const Duration(seconds: 60)),
         )
-        .call(<String, dynamic>{'role': role});
-    final String token =
-        '${(res.data as Map<dynamic, dynamic>)['token'] ?? ''}';
+        .call(<String, dynamic>{
+          'role': role,
+          if (kShotsMode) 'persona': 'ana',
+          if (!kShotsMode && slotKey != null) 'slotKey': slotKey,
+        });
+    final Map<dynamic, dynamic> data = res.data as Map<dynamic, dynamic>;
+    final String newSlot = '${data['slotKey'] ?? ''}';
+    if (newSlot.isNotEmpty) {
+      DemoSlot.role = role;
+      DemoSlot.slotKey = newSlot;
+    }
+    final String token = '${data['token'] ?? ''}';
     final UserCredential result = await fbAuth.signInWithCustomToken(token);
     if (result.user != null) await completePostAuth(ref, result.user!);
   });

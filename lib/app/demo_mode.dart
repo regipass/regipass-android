@@ -1,6 +1,10 @@
+import 'dart:convert' show jsonEncode;
+
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kReleaseMode;
+
+import 'package:http/http.dart' as http;
 
 import '../firebase_options.dart';
 
@@ -50,4 +54,40 @@ FirebaseOptions get appFirebaseOptions {
     'Demo sürümü şimdilik yalnızca iOS simülatöründe çalışır '
     '(regipass-demos projesinde Android uygulaması kayıtlı değil).',
   );
+}
+
+/// İP-DM3: demoda bu cihazın aldığı hazır hesap (sunucudaki havuz anahtarı).
+///
+/// Sunucu 20 öğrenci / 5 kulüpten boştakini 30 dakikalığına verir; aynı
+/// cihaz bu sürede yeniden girerse aynı hesap gelir. Çıkışta hesap bırakılır
+/// ve sunucu ziyaretçinin yaptıklarını geri alır ([releaseDemoSlot]).
+class DemoSlot {
+  DemoSlot._();
+
+  static String? role;
+  static String? slotKey;
+
+  static const String releaseUrl =
+      'https://europe-west1-regipass-demos.cloudfunctions.net/demoRelease';
+}
+
+/// Çıkış: hesabı sunucuya geri verir (yanıt beklenmez; ağ yoksa sunucu süre
+/// dolunca kendisi geri alır).
+Future<void> releaseDemoSlot() async {
+  final String? key = DemoSlot.slotKey;
+  final String role = DemoSlot.role ?? 'student';
+  DemoSlot.slotKey = null;
+  DemoSlot.role = null;
+  if (!kDemoMode || key == null || key.isEmpty) return;
+  try {
+    await http
+        .post(
+          Uri.parse(DemoSlot.releaseUrl),
+          headers: <String, String>{'Content-Type': 'text/plain'},
+          body: jsonEncode(<String, String>{'role': role, 'slotKey': key}),
+        )
+        .timeout(const Duration(seconds: 4));
+  } catch (_) {
+    // Yoksay: demoSweep süresi dolan hesabı zaten geri alır.
+  }
 }
