@@ -237,16 +237,16 @@ List<EventRegistration> certificateEligible(
 /// Oturumlu etkinlikte kapıyı kulüp açar ("oturumları bitir"): oturumlar
 /// sürerken yüklenen belge, yoklaması tamamlanmamış katılımcılara ulaşmıyordu.
 /// Tek oturumlu etkinlikte bitirilecek bir oturum yok; kapıyı takvim açar —
-/// etkinlik bittiği anda YA DA (daha erken gelirse) son başvuru tarihi
-/// geçtiği anda.
+/// etkinlik BİTTİĞİ anda. Son başvuru tarihi artık kapıyı açmaz: son başvurusu
+/// geçmiş ama henüz yapılmamış etkinlikte belge dağıtılamaz.
 ///
-/// Son başvuru tarihi, etkinlik/bitiş günü olmayan eski kayıtlar için de
-/// geriye uyumlu bir kapıdır. Bu belge dağıtım kuralı, Etkinliklerim
+/// Etkinlik/bitiş günü olmayan eski kayıtlarda [isEventFinished] zaten son
+/// başvuru tarihine geri döner. Bu belge dağıtım kuralı, Etkinliklerim
 /// listesinin [getClubEventStage] ile belirlenen görünüm aşamasından ayrıdır.
 bool canDistributeCertificates(AppEvent event, {DateTime? now}) =>
     event.isMultiSession
     ? event.sessionsCompleted
-    : (isEventFinished(event, now: now) || isPastEvent(event, now: now));
+    : isEventFinished(event, now: now);
 
 /// Kapı denetleyicisi (İP-O): cihazdaki bilet listesi + bekleyen okumalar.
 ///

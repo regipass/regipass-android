@@ -147,12 +147,13 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
         appBar: AppBar(
           backgroundColor: context.authColors.card,
           foregroundColor: context.authColors.text,
-          // AppBar durum çubuğunun stilini kendi başına bildiriyor; temadan
-          // gelen değer bırakılsaydı açık temada koyu simge çizilir ve
-          // simgeler bu koyu başlığın üstünde kaybolurdu. Sarmalayıcının
-          // (DarkScreenSystemBars) alt çubuk için verdiği karar burada üst
-          // çubuk için de tekrarlanıyor.
-          systemOverlayStyle: systemBarsStyle(brightness: Brightness.dark),
+          // AppBar durum çubuğunun stilini kendi başına bildiriyor. Başlık
+          // zemini artık temaya göre (açıkta beyaz, koyuda koyu); simgeler de
+          // seçili temaya göre seçilir — eskiden hep açık simge çiziliyordu ve
+          // açık temada beyaz zeminde saat/pil görünmüyordu.
+          systemOverlayStyle: systemBarsStyle(
+            brightness: Theme.of(context).brightness,
+          ),
           elevation: 0,
           scrolledUnderElevation: 0,
           automaticallyImplyLeading: false,

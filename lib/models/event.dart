@@ -696,7 +696,7 @@ class EventRegistration {
     final String full = '$studentFirstName $studentLastName'.trim();
     if (full.isNotEmpty) return full;
     if (studentEmail.isNotEmpty) return studentEmail.split('@').first;
-    return 'Öğrenci';
+    return 'Katılımcı';
   }
 }
 

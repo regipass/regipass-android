@@ -72,7 +72,7 @@ class _ClubEventsScreenState extends ConsumerState<ClubEventsScreen> {
   /// bekleyenlere bildirim; kaydı yoksa tamamen siler). Geçmiş ya da iptal
   /// edilmiş etkinlik yalnızca kulüp listesinden kaldırılır.
   Future<void> _delete(AppEvent event) async {
-    final bool cancellable = !isPastEvent(event) && !event.cancelled;
+    final bool cancellable = !isEventDayPast(event) && !event.cancelled;
     final TextEditingController reason = TextEditingController();
 
     final bool? confirmed = await showDialog<bool>(
@@ -257,12 +257,12 @@ class _ClubEventsScreenState extends ConsumerState<ClubEventsScreen> {
                             ),
                             footer: _CardActions(
                               // Geçmiş etkinlik düzenlenemez (web ile aynı).
-                              canEdit: !isPastEvent(event) && !event.cancelled,
+                              canEdit: !isEventDayPast(event) && !event.cancelled,
                               onEdit: () => context.push(
                                 '${Routes.clubCreateEvent}?eventId=${Uri.encodeComponent(event.id)}',
                               ),
                               onDelete: () => _delete(event),
-                              deleteLabel: isPastEvent(event) || event.cancelled
+                              deleteLabel: isEventDayPast(event) || event.cancelled
                                   ? context.t('clubEvents.delete.local')
                                   : context.t('registration.club.cancelEventAction'),
                             ),

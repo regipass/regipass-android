@@ -654,7 +654,7 @@ class _ShotsCameraScene extends StatelessWidget {
                             QrCodeView(data: kShotsQrData, size: 170),
                             SizedBox(height: 10),
                             Text(
-                              'Kapıda bu bileti kulüp görevlisine göster.',
+                              'Kapıda bu bileti organizatör görevlisine göster.',
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: 11,

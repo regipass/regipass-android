@@ -236,7 +236,7 @@ class AccountCleanupRepository {
         await _bestEffort(
           () => registrations.cancelEvent(
             eventId: event.id,
-            reason: 'Kulüp hesabı kapatıldı.',
+            reason: 'Organizatör hesabı kapatıldı.',
           ),
         );
         continue;

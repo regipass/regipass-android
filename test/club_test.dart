@@ -343,7 +343,7 @@ void main() {
       );
     });
 
-    test('tek oturumlu: son başvurusu geçince belge kartı açılır', () {
+    test('tek oturumlu: son başvurusu geçse de etkinlik bitmeden kapalı', () {
       final DateTime deadline = DateTime.now().subtract(
         const Duration(hours: 2),
       );
@@ -356,7 +356,7 @@ void main() {
       });
 
       expect(isPastEvent(e), isTrue);
-      expect(canDistributeCertificates(e), isTrue);
+      expect(canDistributeCertificates(e), isFalse);
     });
 
     test('oturumlu: kapıyı takvim değil, oturumların bitmesi açar', () {
@@ -901,5 +901,24 @@ void main() {
       'title': 'Belgesiz',
     });
     expect(none.hasCertificateDocuments, isFalse);
+  });
+
+  group('isEventDayPast (kulüp listesi: iptal / düzenle / listeden kaldır)', () {
+    test('son başvurusu geçmiş ama günü bugün olan etkinlik geçmiş sayılmaz', () {
+      final DateTime now = DateTime(2026, 10, 1, 15);
+      final AppEvent e = AppEvent.fromMap('e', <String, dynamic>{
+        'deadlineAtMs': DateTime(2026, 9, 30, 23, 59).millisecondsSinceEpoch,
+        'eventDateAtMs': DateTime(2026, 10, 1).millisecondsSinceEpoch,
+      });
+      expect(isPastEvent(e, now: now), isTrue);
+      expect(isEventDayPast(e, now: now), isFalse);
+    });
+
+    test('günü dün olan etkinlik geçmiştir', () {
+      final AppEvent e = AppEvent.fromMap('e', <String, dynamic>{
+        'eventDateAtMs': DateTime(2026, 9, 30).millisecondsSinceEpoch,
+      });
+      expect(isEventDayPast(e, now: DateTime(2026, 10, 1, 9)), isTrue);
+    });
   });
 }

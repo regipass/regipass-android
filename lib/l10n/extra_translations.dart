@@ -43,7 +43,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'cert.reason.certificate-revoked': 'Bu belge geri alındı.',
     'cert.reason.checkin-not-started': 'Gönderim kilitli: önce kapı girişini başlat, etkinlik bitince “Kapı Girişini Bitir”e bas.',
     'cert.reason.checkin-open': 'Gönderim kilitli: kapı girişi hâlâ açık. “Kapı Girişini Bitir”e bastığında açılır.',
-    'cert.reason.club-banned': 'Kulüp hesabın engelli olduğu için bu işlem yapılamıyor.',
+    'cert.reason.club-banned': 'Organizatör hesabın engelli olduğu için bu işlem yapılamıyor.',
     'cert.reason.code-collision': 'Belge kodu üretilemedi. Tekrar dene.',
     'cert.reason.config-not-saved': 'Önce belgeyi editörde ayarlayıp kaydet.',
     'cert.reason.empty-text': 'Serbest metin alanı boş olamaz.',
@@ -51,10 +51,10 @@ kExtraTranslations = <String, Map<String, String>>{
     'cert.reason.event-missing': 'Etkinlik bulunamadı.',
     'cert.reason.event-not-found': 'Etkinlik bulunamadı.',
     'cert.reason.generic': 'İşlem tamamlanamadı. Bağlantını kontrol edip tekrar dene.',
-    'cert.reason.missing-student-name': '“Öğrenci adı” alanı sayfada olmalı.',
+    'cert.reason.missing-student-name': '“Katılımcı adı” alanı sayfada olmalı.',
     'cert.reason.name-missing': 'profilde ad yok',
     'cert.reason.not-allowed': 'Bu belgeyi açma yetkin yok.',
-    'cert.reason.not-event-club': 'Bu etkinlik kulübüne ait değil.',
+    'cert.reason.not-event-club': 'Bu etkinlik sana ait değil.',
     'cert.reason.render-failed': 'belge üretilemedi',
     'cert.reason.sessions-not-finished': 'Gönderim kilitli: önce etkinlik ekranında “Oturumları Bitir”e bas.',
     'cert.reason.student-name-missing': 'profilde ad yok',
@@ -65,7 +65,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'cert.reason.template-unreadable': 'Bu PDF okunamadı. Dosyayı farklı bir programdan yeniden dışa aktarıp tekrar dene.',
     'cert.reason.template-unsupported': 'Bu dosya türü desteklenmiyor. PDF, PNG ya da JPG yükle.',
     'cert.reason.too-many-fields': 'En çok 20 alan eklenebilir.',
-    'cert.revoke.text': 'Belgeler öğrencilerin ekranından kalkar ve doğrulama sayfasında “İptal edildi” olarak görünür. İstersen sonra yeniden gönderebilirsin; yeni belgeler yeni kodla üretilir.',
+    'cert.revoke.text': 'Belgeler katılımcıların ekranından kalkar ve doğrulama sayfasında “İptal edildi” olarak görünür. İstersen sonra yeniden gönderebilirsin; yeni belgeler yeni kodla üretilir.',
     'cert.revoke.title': 'Etkinliğin bütün belgeleri iptal edilsin mi?',
     'cert.revoke.yes': 'Evet, hepsini geri al',
     'cert.stat.eligible': 'Hak kazanan',
@@ -91,7 +91,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'studentCertificates.menu.fullName': 'Doğrulama sayfasında tam adım görünsün',
     'studentCertificates.menu.linkedin': 'LinkedIn profiline ekle',
     'studentCertificates.menuLabel': 'Belge seçenekleri',
-    'studentCertificates.revoked': 'Kulüp tarafından iptal edildi',
+    'studentCertificates.revoked': 'Organizatör tarafından iptal edildi',
     // İP-W: cüzdan
     'wallet.addApple': 'Apple Cüzdan\'a ekle',
     'wallet.addGoogle': 'Google Cüzdan\'a ekle',
@@ -130,8 +130,8 @@ kExtraTranslations = <String, Map<String, String>>{
     'feedback.sending': 'Gönderiliyor...',
     'feedback.edit': 'Değerlendirmeyi düzenle',
     'feedback.editUntil': '{{date}} tarihine kadar düzenleyebilirsin.',
-    'feedback.thanks': 'Teşekkürler! Değerlendirmen kulübe isimsiz iletildi.',
-    'feedback.anonymousNote': 'Kulüp adını görmez; puanlar isimsiz paylaşılır.',
+    'feedback.thanks': 'Teşekkürler! Değerlendirmen organizatöre isimsiz iletildi.',
+    'feedback.anonymousNote': 'Organizatör adını görmez; puanlar isimsiz paylaşılır.',
     'feedback.cardRate': 'Değerlendir',
     'feedback.error.notCheckedIn': 'Yalnızca etkinliğe giriş yapanlar değerlendirme yapabilir.',
     'feedback.error.notFinished': 'Etkinlik bitince değerlendirebilirsin.',
@@ -139,7 +139,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'feedback.error.cancelled': 'İptal edilen etkinlik değerlendirilemez.',
     'feedback.error.badRating': '1 ile 5 arasında yıldız seç.',
     'feedback.error.banned': 'Hesabın askıya alındığı için değerlendirme yapamazsın.',
-    'feedback.error.notOwner': 'Bu etkinliğin değerlendirmelerini yalnızca düzenleyen kulüp görür.',
+    'feedback.error.notOwner': 'Bu etkinliğin değerlendirmelerini yalnızca düzenleyen organizatör görür.',
     'feedback.error.generic': 'Gönderilemedi. İnternetini kontrol edip tekrar dene.',
     'feedback.club.title': 'Değerlendirmeler',
     'feedback.club.empty': 'Henüz değerlendirme yok. Etkinlik bitince katılanlardan istenir.',
@@ -152,43 +152,43 @@ kExtraTranslations = <String, Map<String, String>>{
     'follow.follow': 'Takip et',
     'follow.following': 'Takip ediliyor',
     'follow.unfollow': 'Takibi bırak',
-    'follow.followHint': 'Kulüp yeni etkinlik yayınlayınca bildirim al',
+    'follow.followHint': 'Organizatör yeni etkinlik yayınlayınca bildirim al',
     'follow.unfollowHint': 'Takibi bırakmak için dokun',
-    'follow.toastFollowed': 'Kulübü takip ediyorsun. Yeni etkinliklerde haber vereceğiz.',
+    'follow.toastFollowed': 'Organizatörü takip ediyorsun. Yeni etkinliklerde haber vereceğiz.',
     'follow.toastUnfollowed': 'Takibi bıraktın.',
     'follow.filterAria': 'Etkinlik filtresi',
     'follow.filterAll': 'Tümü',
     'follow.filterFollowing': 'Takip ettiklerim',
-    'follow.empty.title': 'Takip ettiğin kulüplerin açık etkinliği yok',
-    'follow.empty.desc': 'Bir etkinlikte kulübün yanındaki "Takip et"e dokun.',
-    'follow.account.title': 'Takip ettiğim kulüpler',
-    'follow.account.help': 'Takip ettiğin kulüpler yeni etkinlik açınca bildirim alırsın. Kulüpler kimin takip ettiğini göremez.',
-    'follow.account.empty': 'Henüz kulüp takip etmiyorsun.',
-    'follow.account.unavailable': 'Bu kulüp şu an etkinlik yayınlamıyor.',
+    'follow.empty.title': 'Takip ettiğin organizatörlerin açık etkinliği yok',
+    'follow.empty.desc': 'Bir etkinlikte organizatörün yanındaki "Takip et"e dokun.',
+    'follow.account.title': 'Takip ettiğim organizatörler',
+    'follow.account.help': 'Takip ettiğin organizatörler yeni etkinlik açınca bildirim alırsın. Organizatörler kimin takip ettiğini göremez.',
+    'follow.account.empty': 'Henüz organizatör takip etmiyorsun.',
+    'follow.account.unavailable': 'Bu organizatör şu an etkinlik yayınlamıyor.',
     'follow.account.confirmUnfollow': '{{name}} takibi bırakılsın mı? Yeni etkinliklerinde bildirim almazsın.',
     'follow.account.unfollowed': '{{name}} takibini bıraktın.',
     'follow.club.followers': 'takipçi',
-    'follow.error.clubUnavailable': 'Bu kulüp şu an takip edilemiyor.',
-    'follow.error.tooMany': 'En fazla 300 kulüp takip edebilirsin. Önce birinin takibini bırak.',
-    'follow.error.banned': 'Hesabın askıya alındığı için kulüp takip edemezsin.',
-    'follow.error.studentOnly': 'Kulüpleri yalnızca öğrenci hesapları takip edebilir.',
+    'follow.error.clubUnavailable': 'Bu organizatör şu an takip edilemiyor.',
+    'follow.error.tooMany': 'En fazla 300 organizatör takip edebilirsin. Önce birinin takibini bırak.',
+    'follow.error.banned': 'Hesabın askıya alındığı için organizatör takip edemezsin.',
+    'follow.error.studentOnly': 'Organizatörleri yalnızca katılımcı hesapları takip edebilir.',
     'follow.error.signIn': 'Takip etmek için giriş yapmalısın.',
     'follow.error.generic': 'İşlem yapılamadı. İnternetini kontrol edip tekrar dene.',
     // İP-B: etkinlik bildirimleri
     'autoNotify.title': 'Otomatik bildirimler',
     'profileChange.pendingTitle': 'Değişikliğin yönetici onayında',
-    'profileChange.pendingHelp': 'Onaylanana kadar öğrenciler ve etkinliklerin eski bilgileri görür; kulübün çalışmaya devam eder.',
+    'profileChange.pendingHelp': 'Onaylanana kadar katılımcılar ve etkinliklerin eski bilgileri görür; hesabın çalışmaya devam eder.',
     'profileChange.rejectedTitle': 'Son değişikliğin onaylanmadı',
     'profileChange.rejectedNote': 'Gerekçe: {{note}}',
     'profileChange.withdraw': 'İsteği geri çek',
     'profileChange.withdrawConfirm': 'Onay bekleyen değişikliğin geri çekilsin mi?',
     'profileChange.sent': 'Değişikliğin yönetici onayına gönderildi. Onaylanınca etkinliklerine de yansır.',
     'profileChange.logoSent': 'Yeni logon yönetici onayına gönderildi. Onaylanana kadar mevcut logo görünür.',
-    'profileChange.field.clubName': 'Kulüp adı',
+    'profileChange.field.clubName': 'Organizatör adı',
     'profileChange.field.university': 'Üniversite',
     'profileChange.field.city': 'İl',
-    'profileChange.field.clubPurpose': 'Kulübün amacı',
-    'profileChange.field.clubContents': 'Kulübün içerikleri',
+    'profileChange.field.clubPurpose': 'Organizatörün amacı',
+    'profileChange.field.clubContents': 'Organizatörün içerikleri',
     'profileChange.field.clubFields': 'Alanlar',
     'profileChange.field.logoUrl': 'Logo',
     'autoNotify.needStart': 'Başlangıç saati gerekli',
@@ -197,7 +197,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'autoNotify.warnEnd': 'Bitiş saati girmezsen “Teşekkür” bildirimi gitmez.',
     'autoNotify.warnBoth': 'Başlangıç ve bitiş saati girmezsen “1 saat önce”, “Başladığında” ve “Teşekkür” bildirimleri gitmez.',
     'autoNotify.help':
-        'Kayıtlı öğrencilere Regipass kendiliğinden bildirim gönderir. Saat '
+        'Kayıtlı katılımcılara Regipass kendiliğinden bildirim gönderir. Saat '
         'girilmezse yalnızca "1 gün önce" gider.',
     'autoNotify.dayBefore': '1 gün önce (19:00) hatırlatma',
     'autoNotify.hourBefore': 'Başlamadan 1 saat önce',
@@ -254,21 +254,21 @@ kExtraTranslations = <String, Map<String, String>>{
     'eventNotify.errors.required': 'Başlık ve mesaj yaz.',
     'eventNotify.errors.unknown-tag':
         'Tanınmayan etiket var. Kullanılabilenler: {ad}, {etkinlik}, '
-        '{tarih}, {saat}, {yer}, {kulüp}.',
+        '{tarih}, {saat}, {yer}, {organizatör}.',
     'eventNotify.errors.fill': 'Şablondaki … yerini doldurmadın.',
     'eventNotify.audience.payment_pending': 'Ödemesi bekleyenler',
     'eventNotify.templateLabel': 'Hazır şablon',
     'eventNotify.templateNone': 'Boş mesaj',
     'eventNotify.tagsLabel': 'Akıllı etiket ekle',
-    'eventNotify.previewLabel': 'Önizleme (örnek öğrenci)',
+    'eventNotify.previewLabel': 'Önizleme (örnek katılımcı)',
     'eventNotify.quota': 'Bugün kalan: {{left}}/{{limit}}',
     'eventNotify.nextIn': 'sonraki gönderim {{minutes}} dk sonra',
-    'eventNotify.tag.ad': 'Öğrencinin adı',
+    'eventNotify.tag.ad': 'Katılımcının adı',
     'eventNotify.tag.etkinlik': 'Etkinlik adı',
     'eventNotify.tag.tarih': 'Tarih',
     'eventNotify.tag.saat': 'Saat',
     'eventNotify.tag.yer': 'Yer',
-    'eventNotify.tag.kulup': 'Kulübün adı',
+    'eventNotify.tag.kulup': 'Organizatörün adı',
     'eventNotify.errors.title-required': 'Başlık yaz.',
     'eventNotify.errors.message-required': 'Mesaj yaz.',
     'eventNotify.errors.too-soon':
@@ -281,10 +281,10 @@ kExtraTranslations = <String, Map<String, String>>{
     'eventNotify.errors.event-cancelled':
         'İptal edilen etkinliğe mesaj gönderilemez.',
     'eventNotify.errors.club-not-approved':
-        'Kulübün onaylanmadan mesaj gönderemezsin.',
-    'eventNotify.errors.club-banned': 'Kulüp hesabın askıda.',
+        'Hesabın onaylanmadan mesaj gönderemezsin.',
+    'eventNotify.errors.club-banned': 'Organizatör hesabın askıda.',
     'eventNotify.errors.not-event-club':
-        'Bu etkinlik senin kulübüne ait değil.',
+        'Bu etkinlik sana ait değil.',
     // İP-T: takvime ekle
     'calendar.add': 'Takvime ekle',
     'postRegistration.title': 'Kaydın tamam',
@@ -303,44 +303,44 @@ kExtraTranslations = <String, Map<String, String>>{
     'calendar.ics': 'Takvim dosyası (.ics)',
     'calendar.icsHint': 'Apple Takvim, Outlook ve diğerleri',
     // İP-KB: kulübün öğrenci engeli
-    'clubBlock.title': 'Kulüpten engelle',
-    'clubBlock.action': 'Kulüpten engelle',
+    'clubBlock.title': 'Etkinliklerimden engelle',
+    'clubBlock.action': 'Etkinliklerimden engelle',
     'clubBlock.body':
-        '{{name}} kulübünün etkinliklerinden engellenecek: yeni etkinliklere '
+        '{{name}} etkinliklerinden engellenecek: yeni etkinliklere '
         'kaydolamaz, bekleme listesine giremez.',
     'clubBlock.reasonLabel': 'Gerekçe',
     'clubBlock.reasonHelper':
-        'Zorunlu. Öğrenciye gösterilmez; kulübün ve Regipass yönetiminin '
+        'Zorunlu. Katılımcıya gösterilmez; organizatörün ve Regipass yönetiminin '
         'kaydında durur.',
     'clubBlock.reasonRequired': 'En az 3 karakterlik bir gerekçe yaz.',
     'clubBlock.removeFuture':
-        'Gelecek etkinliklerdeki kayıtlarını da sil (öğrenciye "kaydın '
+        'Gelecek etkinliklerdeki kayıtlarını da sil (katılımcıya "kaydın '
         'iptal edildi" bildirimi gider)',
     'clubBlock.done':
-        '{{name}} kulübünün etkinliklerinden engellendi. Silinen gelecek '
+        '{{name}} etkinliklerinden engellendi. Silinen gelecek '
         'kayıt: {{count}}.',
-    'clubBlock.listTitle': 'Engellenen öğrenciler',
+    'clubBlock.listTitle': 'Engellenen katılımcılar',
     'clubBlock.listHelp':
-        'Bu öğrenciler kulübünün etkinliklerine kaydolamaz.',
-    'clubBlock.empty': 'Engellediğin öğrenci yok.',
+        'Bu katılımcılar etkinliklerine kaydolamaz.',
+    'clubBlock.empty': 'Engellediğin katılımcı yok.',
     'clubBlock.unblock': 'Engeli kaldır',
     'clubBlock.unblockConfirm':
-        '{{name}} için engel kaldırılsın mı? Kulübünün etkinliklerine yeniden '
+        '{{name}} için engel kaldırılsın mı? Etkinliklerine yeniden '
         'kaydolabilir.',
     'clubBlock.unblocked': '{{name}} için engel kaldırıldı.',
-    'clubBlock.studentFallback': 'Öğrenci',
+    'clubBlock.studentFallback': 'Katılımcı',
     'clubBlock.error': 'İşlem tamamlanamadı. Tekrar dene.',
     'clubBlock.errors.reason-required':
         'En az 3 karakterlik bir gerekçe yazmalısın.',
     'clubBlock.errors.student-not-related':
-        'Yalnızca etkinliğine kaydolmuş öğrencileri engelleyebilirsin.',
+        'Yalnızca etkinliğine kaydolmuş katılımcıları engelleyebilirsin.',
     'clubBlock.errors.club-not-approved':
-        'Kulübün onaylanmadan öğrenci engelleyemezsin.',
-    'clubBlock.errors.club-banned': 'Kulüp hesabın askıda.',
-    'clubBlock.errors.not-a-club': 'Bu işlem yalnızca kulüp hesabıyla yapılır.',
-    'clubBlock.errors.invalid-student': 'Öğrenci bulunamadı.',
+        'Hesabın onaylanmadan katılımcı engelleyemezsin.',
+    'clubBlock.errors.club-banned': 'Organizatör hesabın askıda.',
+    'clubBlock.errors.not-a-club': 'Bu işlem yalnızca organizatör hesabıyla yapılır.',
+    'clubBlock.errors.invalid-student': 'Katılımcı bulunamadı.',
     'registration.errors.blocked-by-club':
-        'Bu kulübün etkinliklerine kaydolamıyorsun.',
+        'Bu organizatörün etkinliklerine kaydolamıyorsun.',
     // İP-M1: yönetim hesabı (rol etiketi + doğrulayıcı uygulama)
     'auth.error.userDisabled':
         'Bu hesap askıya alındı ya da silinmek üzere. Bir yanlışlık olduğunu '
@@ -359,10 +359,10 @@ kExtraTranslations = <String, Map<String, String>>{
         'Kod hatalı ya da süresi geçti. Uygulamadaki güncel kodu yaz.',
     'auth.totp.unsupported': 'Bu hesapta doğrulayıcı uygulama kayıtlı değil.',
     'admin.ban.clubImpact':
-        'Bu kulübün gelecekteki {{events}} etkinliği İPTAL edilecek ve {{people}} kayıtlı kişiye bildirim gidecek. Kulüp hesabı giriş yapamayacak.',
+        'Bu organizatörün gelecekteki {{events}} etkinliği İPTAL edilecek ve {{people}} kayıtlı kişiye bildirim gidecek. Organizatör hesabı giriş yapamayacak.',
     'admin.ban.reasonLabel': 'Gerekçe',
     'admin.ban.reasonHelper':
-        'Zorunlu. İşlem kaydına yazılır; öğrencilere gösterilmez.',
+        'Zorunlu. İşlem kaydına yazılır; katılımcılara gösterilmez.',
     'admin.ban.reasonRequired': 'Engellemek için bir gerekçe yaz.',
     // register.js içinde sabit metin olarak duruyordu
     'auth.error.roleAlreadyExists':
@@ -439,7 +439,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'forgotPassword.savedSignInRequired':
         'Şifren kaydedildi. Giriş ekranından yeni şifrenle giriş yapabilirsin.',
     'account.sharedPhoneNotice':
-        'Bu telefon aynı e-postaya bağlı öğrenci ve kulüp hesaplarında ortak kullanılır ve zaten doğrulanmıştır. Bu formdan değiştirilemez.',
+        'Bu telefon aynı e-postaya bağlı katılımcı ve organizatör hesaplarında ortak kullanılır ve zaten doğrulanmıştır. Bu formdan değiştirilemez.',
     'auth.error.networkFailed': 'Bağlantı kurulamadı. İnternetini kontrol et.',
     'explore.guestTitle': 'Misafir olarak geziyorsun',
     'explore.guestDesc':
@@ -490,8 +490,8 @@ kExtraTranslations = <String, Map<String, String>>{
     'admin.notify.noResults': 'Aramana uyan şehir veya üniversite yok.',
     'admin.notify.universityCount': '{{count}} üniversite',
     'admin.notify.audience': 'Kime gönderilsin?',
-    'admin.notify.audience.students': 'Öğrenciler',
-    'admin.notify.audience.clubs': 'Kulüpler',
+    'admin.notify.audience.students': 'Katılımcılar',
+    'admin.notify.audience.clubs': 'Organizatörler',
     'admin.notify.audience.all': 'Her ikisi',
     'admin.notify.titleLabel': 'Bildirim başlığı',
     'admin.notify.bodyLabel': 'Bildirim metni',
@@ -515,10 +515,10 @@ kExtraTranslations = <String, Map<String, String>>{
     'studentAccount.edit': 'Bilgileri Düzenle',
     // Kulüp hesabının üst çubuğu da aynı sözlükten okuyor; oradaki
     // "Hesabim"/"Duzenle" yazımları burada düzeltiliyor.
-    'clubAccount.title': 'Kulüp Hesabım',
+    'clubAccount.title': 'Organizatör Hesabım',
     'clubAccount.edit': 'Bilgileri Düzenle',
     'clubAccount.section.manager': 'Yetkili Bilgileri',
-    'clubAccount.section.club': 'Kulüp Bilgileri',
+    'clubAccount.section.club': 'Organizatör Bilgileri',
     'studentAppointments.title': 'Etkinliklerim',
     'studentAppointments.activeTitle': 'Yaklaşan',
     'studentAppointments.pastTitle': 'Geçmiş',
@@ -579,7 +579,7 @@ kExtraTranslations = <String, Map<String, String>>{
 
     // Etkinlik detay penceresi
     'eventModal.info': 'Etkinlik Bilgileri',
-    'eventModal.club': 'Kulüp',
+    'eventModal.club': 'Organizatör',
     'eventModal.eventDate': 'Etkinlik Tarihi',
     'eventModal.deadline': 'Son Kayıt',
     'eventModal.fee': 'Ücret',
@@ -589,9 +589,9 @@ kExtraTranslations = <String, Map<String, String>>{
     'eventModal.location': 'Konum',
     'eventModal.sessions': 'Oturum Sayısı',
     'eventModal.sessionsValue': '{{count}} oturum',
-    'eventModal.clubContact': 'Kulüp İletişim',
+    'eventModal.clubContact': 'Organizatör İletişim',
     'eventModal.feeContactNote':
-        'Bu etkinlik ücretlidir. Ücret ve ödeme için kulübün iletişim '
+        'Bu etkinlik ücretlidir. Ücret ve ödeme için organizatörün iletişim '
         'numarasıyla iletişime geçin.',
     'eventModal.audience': 'Hedef Kitle',
     'eventModal.description': 'Açıklama',
@@ -613,14 +613,14 @@ kExtraTranslations = <String, Map<String, String>>{
     'attendance.error.alreadyCheckedIn':
         'Bu etkinlik için girişin daha önce onaylandı.',
     'attendance.error.sessionNotStarted':
-        'Oturum henüz başlatılmadı. Kulüp oturumu başlattığında QR\'ı tekrar okut.',
+        'Oturum henüz başlatılmadı. Organizatör oturumu başlattığında QR\'ı tekrar okut.',
     'attendance.error.banned': 'Hesabın kısıtlandığı için giriş yapılamıyor.',
     'attendance.qrKeyError':
         'QR oluşturulamadı. İnternet bağlantısını kontrol edip tekrar dene.',
     'attendance.entryRotatingHint':
-        'Öğrenciler bu kodu kendi telefonlarıyla okutur. Kod {{seconds}} sn sonra yenilenecek.',
+        'Katılımcılar bu kodu kendi telefonlarıyla okutur. Kod {{seconds}} sn sonra yenilenecek.',
     'clubScan.ticketMismatch':
-        'Bilet kodu kayıtla eşleşmiyor (eski ya da taklit bilet). Öğrenci bileti uygulamadan yeniden açsın.',
+        'Bilet kodu kayıtla eşleşmiyor (eski ya da taklit bilet). Katılımcı bileti uygulamadan yeniden açsın.',
     'clubScan.ticketLegacy':
         'Eski uygulama bileti (kodsuz) — kimliği kontrol edin.',
     'common.loading': 'Yükleniyor...',
@@ -634,7 +634,7 @@ kExtraTranslations = <String, Map<String, String>>{
     // Kamera / QR (mobilde web'den farklı izin akışı var)
     'scan.permissionDenied': 'Kamera izni kapalı. Ayarlardan aç.',
     'scan.pointCamera': 'Kamerayı QR koda tut.',
-    'scan.ready': 'Sonraki öğrenci için hazır.',
+    'scan.ready': 'Sonraki katılımcı için hazır.',
     'scan.successTitle': 'Giriş Başarılı',
     'scan.failTitle': 'Giriş Başarısız',
     'scan.notRegipassQr': 'Bu QR Regipass giriş kodu değil.',
@@ -666,7 +666,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'scan.alreadyCheckedInSession':
         'Bu oturumda ({{current}}/{{total}}) zaten giriş yaptınız.',
     'scan.checkinSaveFailed': 'Giriş kaydedilemedi. Tekrar dene.',
-    'scan.permissionError': 'Bu giriş kaydedilemedi. Kulüp görevlisine bildir.',
+    'scan.permissionError': 'Bu giriş kaydedilemedi. Organizatör görevlisine bildir.',
     'scan.sessionSuccess':
         '{{current}}. oturumdasınız (katılım {{attended}}/{{total}}).',
     'scan.otherEventQr':
@@ -676,11 +676,11 @@ kExtraTranslations = <String, Map<String, String>>{
     'studentAppointments.modal.showTicket': 'Biletimi Göster',
     'studentAppointments.modal.scanQr': 'Oturum QR\'ını Okut',
     'studentAppointments.modal.scanReady':
-        '{{current}}. oturum açık. Kulübün ekranındaki QR\'ı okutarak giriş yap.',
+        '{{current}}. oturum açık. Organizatörün ekranındaki QR\'ı okutarak giriş yap.',
     'studentAppointments.modal.scanNotStarted':
-        'Kulüp henüz ilk oturumu başlatmadı. Oturum açıldığında bu düğme aktifleşir.',
+        'Organizatör henüz ilk oturumu başlatmadı. Oturum açıldığında bu düğme aktifleşir.',
     'studentAppointments.modal.scanAlreadyDone':
-        '{{current}}. oturumun girişi yapıldı. Kulüp yeni oturumu açtığında düğme yeniden aktifleşir.',
+        '{{current}}. oturumun girişi yapıldı. Organizatör yeni oturumu açtığında düğme yeniden aktifleşir.',
     'studentAppointments.modal.scanCompleted':
         'Etkinliğin tüm oturumları tamamlandı; okutulacak yeni QR yok.',
     'studentAppointments.modal.scanUnavailable':
@@ -726,11 +726,11 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubEvents.delete.confirmGlobal':
         'Bu etkinlik tüm kullanıcılardan kaldırılacak. Devam etmek istiyor musun?',
     'clubEvents.delete.confirmLocal':
-        'Geçmiş etkinlik yalnızca kendi listenden kaldırılacak; öğrencilerin kayıtları etkilenmez.',
+        'Geçmiş etkinlik yalnızca kendi listenden kaldırılacak; katılımcıların kayıtları etkilenmez.',
 
     'clubEvents.registrations.title': 'Kayıtlar',
     'clubEvents.qr.locationRequired':
-        'QR oluşturmak için etkinliği düzenleyip haritadan konum seç. Öğrencinin güncel konumu bu konumla karşılaştırılacak.',
+        'QR oluşturmak için etkinliği düzenleyip haritadan konum seç. Katılımcının güncel konumu bu konumla karşılaştırılacak.',
     'clubEvents.quota.title': 'Kontenjan',
     'clubEvents.quota.remaining': '{{count}} kişilik yer kaldı.',
     'clubEvents.quota.full': 'Kontenjan doldu.',
@@ -789,7 +789,7 @@ kExtraTranslations = <String, Map<String, String>>{
         'Oturumlar başlangıca alındı. QR girişleri şimdilik durdu.',
     'clubEvents.session.undoneToStartWithCheckin':
         'Oturumlar ve kapı girişi başlangıca alındı. Etkinlik, standartlara '
-        'uyan öğrencilerin keşfinde tekrar görünür.',
+        'uyan katılımcıların keşfinde tekrar görünür.',
     'clubEvents.session.finish': 'Oturumları Bitir',
     'clubEvents.session.reopen': 'Oturumları Tekrar Aç',
     'clubEvents.session.reopenTitle': 'Oturumları tekrar aç',
@@ -808,44 +808,44 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubEvents.session.finishConfirm':
         'Tüm oturumları bitirmek istiyor musun? QR girişleri kapanacak ve belge yükleyebileceksin.',
     'clubEvents.session.started':
-        '{{session}}. oturum başlatıldı. Öğrenciler bu oturum için QR okutabilir.',
+        '{{session}}. oturum başlatıldı. Katılımcılar bu oturum için QR okutabilir.',
     'clubEvents.session.finished':
         'Tüm oturumlar tamamlandı. Artık katılımcılara belge gönderebilirsin.',
     'clubEvents.session.qrTitle': '{{session}}. Oturum QR\'ı',
     'clubEvents.session.qrRotatingHint':
-        'Öğrenciler bu QR\'ı telefon kamerasıyla okutsun. Kod {{seconds}} sn sonra yenilenecek.',
+        'Katılımcılar bu QR\'ı telefon kamerasıyla okutsun. Kod {{seconds}} sn sonra yenilenecek.',
     'clubEvents.session.qrHint':
-        'Bu kodu ekrana yansıt; öğrenciler kendi telefonlarından okutsun.',
+        'Bu kodu ekrana yansıt; katılımcılar kendi telefonlarından okutsun.',
     'clubEvents.session.qrError': 'QR görseli yüklenemedi.',
     'clubEvents.entry.stateNotStarted': 'Kapı girişi başlatılmadı',
     'clubEvents.entry.stateRunning': 'Kapı girişi açık',
     'clubEvents.entry.stateFinished': 'Kapı girişi bitti',
-    'clubEvents.entry.tally': ' — {{attended}}/{{total}} öğrenci giriş yaptı',
+    'clubEvents.entry.tally': ' — {{attended}}/{{total}} katılımcı giriş yaptı',
     'clubEvents.entry.start': 'Kapı Girişini Başlat',
     'clubEvents.entry.finish': 'Kapı Girişini Bitir',
     'clubEvents.entry.restart': 'Kapı Girişini Yeniden Başlat',
     'clubEvents.entry.title': 'Kapı Girişi',
     'clubEvents.entry.subtitle':
-        'Öğrenciler bu QR\'ı kendi telefonlarıyla okutur.',
+        'Katılımcılar bu QR\'ı kendi telefonlarıyla okutur.',
     'clubEvents.entry.open': 'Kapı QR\'ını Aç',
     'clubEvents.entry.show': 'Kapıda Tek QR Giriş',
     'clubEvents.entry.close': 'Kapıyı Kapat',
     'clubEvents.entry.qrTitle': 'Kapı Girişi QR\'ı',
     'clubEvents.entry.qrHint':
-        'Öğrenciler bu QR\'ı kendi telefonlarıyla okutur.',
+        'Katılımcılar bu QR\'ı kendi telefonlarıyla okutur.',
     'clubEvents.session.allowWithoutCheckin':
         'Kapı girişi yapmayanlar da yoklamaya katılabilsin',
     'clubEvents.session.allowWithoutCheckinHint':
-        'Kapıda girişi kaçıran öğrenciler de oturum yoklamalarına katılabilir.',
+        'Kapıda girişi kaçıran katılımcılar da oturum yoklamalarına katılabilir.',
 
-    'clubEvents.scan.action': 'Öğrenci QR\'ı Okut',
+    'clubEvents.scan.action': 'Katılımcı QR\'ı Okut',
     'clubEvents.scan.subtitle':
-        'Öğrencinin telefonunda ürettiği giriş kodunu okut.',
+        'Katılımcının telefonunda ürettiği giriş kodunu okut.',
 
     'clubEvents.certificate.title': 'Belge',
     'clubEvents.certificate.action': 'Belge Yükle ve Dağıt',
     'clubEvents.certificate.subtitle':
-        'Belge, katılım şartını sağlayan öğrencilere gönderilir.',
+        'Belge, katılım şartını sağlayan katılımcılara gönderilir.',
     'clubEvents.certificate.beforeFinish':
         'Oturumlar bitmeden de gönderebilirsin; hak sahipleri o anki katılım '
         'sayılarına göre belirlenir.',
@@ -861,29 +861,29 @@ kExtraTranslations = <String, Map<String, String>>{
         'yüklenen belge, henüz giriş yapmamış katılımcılara ulaşmaz.',
     'clubEvents.certificate.uploadedTitle': 'Yüklenen Belgeler',
     'clubEvents.certificate.uploadedHint':
-        'Bu liste kulübün arşividir; öğrencinin belgelerinde en son dağıttığın '
+        'Bu liste organizatörün arşividir; katılımcının belgelerinde en son dağıttığın '
         'belge görünür.',
     'clubEvents.certificate.delete': 'Belgeyi sil',
     'clubEvents.certificate.deleteTitle': 'Belgeyi sil',
     'clubEvents.certificate.deleteConfirm':
-        'Bu belgeyi listeden kaldırmak istiyor musun? Öğrencilere daha önce '
+        'Bu belgeyi listeden kaldırmak istiyor musun? Katılımcılara daha önce '
         'gönderilmiş kopyalar bundan etkilenmez.',
     'clubEvents.certificate.deleted': 'Belge silindi.',
     'clubEvents.certificate.deleteError':
         'Belge silinemedi. Lütfen tekrar dene.',
     'clubEvents.certificate.storedOnly':
-        'Belge sisteme yüklendi. Hak kazanan öğrenci olmadığı için henüz '
+        'Belge sisteme yüklendi. Hak kazanan katılımcı olmadığı için henüz '
         'kimseye gönderilmedi; hak sahipleri belirlendiğinde kendiliğinden '
         'dağıtılır. Beklemek istemezsen belgenin üzerindeki gönder tuşuyla '
         'hemen dağıtabilirsin.',
     'clubEvents.certificate.uploading': 'Belge yükleniyor...',
     'clubEvents.certificate.autoSent':
-        'Etkinlik bittiği için belge {{count}} öğrenciye otomatik gönderildi.',
+        'Etkinlik bittiği için belge {{count}} katılımcıya otomatik gönderildi.',
     'clubEvents.certificate.partial':
-        'Belge {{count}} öğrenciye gönderildi, {{failed}} öğrenciye ulaşmadı. '
+        'Belge {{count}} katılımcıya gönderildi, {{failed}} katılımcıya ulaşmadı. '
         'Tekrar deneyebilirsin.',
     'clubEvents.certificate.redistribute': 'Bu belgeyi dağıt',
-    'clubEvents.certificate.distributedCount': '{{count}} öğrenciye gönderildi',
+    'clubEvents.certificate.distributedCount': '{{count}} katılımcıya gönderildi',
     'clubEvents.certificate.notDistributed': 'Henüz kimseye gönderilmedi',
     'clubEvents.certificate.sourceMissing':
         'Belge okunamadı. Silip yeniden yükle.',
@@ -908,7 +908,7 @@ kExtraTranslations = <String, Map<String, String>>{
         'Dosya okunamadı. Başka bir dosya dene.',
     'clubEvents.certificate.sending':
         'Belgeler gönderiliyor ({{done}}/{{total}})...',
-    'clubEvents.certificate.sent': 'Belge {{count}} öğrenciye gönderildi.',
+    'clubEvents.certificate.sent': 'Belge {{count}} katılımcıya gönderildi.',
     'clubEvents.certificate.error': 'Belge gönderilemedi. Lütfen tekrar dene.',
     'clubEvents.certificate.permissionError': 'Belge gönderme yetkin yok.',
     'clubEvents.certificate.authError':
@@ -926,16 +926,16 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubEvents.students.certificateEarned': 'Belge Hakkı',
     'clubEvents.students.downloadExcel': 'Excel İndir',
 
-    'clubEvents.excel.sheetName': 'Kayıtlı Öğrenciler',
+    'clubEvents.excel.sheetName': 'Kayıtlı Katılımcılar',
     'clubEvents.excel.reportTitle': 'Etkinlik Raporu',
     'clubEvents.excel.eventName': 'Etkinlik Adı',
-    'clubEvents.excel.club': 'Kulüp',
-    'clubEvents.excel.studentCount': 'Kayıtlı Öğrenci Sayısı',
+    'clubEvents.excel.club': 'Organizatör',
+    'clubEvents.excel.studentCount': 'Kayıtlı Katılımcı Sayısı',
     'clubEvents.excel.reportDate': 'Rapor Tarihi',
-    'clubEvents.excel.subject': '{{title}} - kayıtlı öğrenciler',
+    'clubEvents.excel.subject': '{{title}} - kayıtlı katılımcılar',
     'clubEvents.excel.preparing': 'Excel dosyası hazırlanıyor...',
     'clubEvents.excel.ready':
-        'Öğrenci listesi Excel dosyası olarak hazırlandı.',
+        'Katılımcı listesi Excel dosyası olarak hazırlandı.',
     'clubEvents.excel.error':
         'Excel dosyası oluşturulamadı. Lütfen tekrar dene.',
 
@@ -967,9 +967,9 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubCreateEvent.scope.universityAndDepartment':
         'Üniversiteye + Bölüme Özel',
     'clubCreateEvent.target.universityHint':
-        'Boş bırakırsan kulübünün üniversitesi seçilir.',
+        'Boş bırakırsan kendi üniversiten seçilir.',
     'clubCreateEvent.target.departmentHint':
-        'Boş bırakırsan kulübünün alanı seçilir.',
+        'Boş bırakırsan kendi alanın seçilir.',
     'clubCreateEvent.fee.paid': 'Ücretli',
     'clubCreateEvent.sessions.hint':
         '1 oturum: belgeler etkinlik bitince girişi onaylananlara '
@@ -979,7 +979,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubCreateEvent.image.pick': 'Cihazdan Seç',
     'notification.openTarget': 'Görüntüle',
     'clubCreateEvent.location.nameHint':
-        'Öğrenciler bu adı görür; konum kontrolü haritadaki noktaya göre yapılır.',
+        'Katılımcılar bu adı görür; konum kontrolü haritadaki noktaya göre yapılır.',
     'clubCreateEvent.location.clear': 'Konumu kaldır',
     'clubCreateEvent.location.search': 'Adres ara',
     'clubCreateEvent.location.pickOnMap': 'Haritadan Konum Seç',
@@ -1008,7 +1008,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'checkinMode.attendance_only': 'Sadece Yoklama',
     'checkinMode.checkin_only': 'Sadece Kapı Girişi',
     'checkinMode.checkin_attendanceDesc':
-        'Öğrenciler kapıda giriş yapar; oturum yoklamalarına yalnızca giriş yapanlar katılabilir.',
+        'Katılımcılar kapıda giriş yapar; oturum yoklamalarına yalnızca giriş yapanlar katılabilir.',
     'checkinMode.attendance_onlyDesc':
         'Kapı girişi yok; oturum yoklamaları doğrudan başlar.',
     'checkinMode.checkin_onlyDesc':
@@ -1042,11 +1042,11 @@ kExtraTranslations = <String, Map<String, String>>{
     // bir seçim eklemeyi denemiyordu.
     'form.multiSelect.addHint': 'Seç ve ekle (birden fazla olabilir)',
     'form.clubFields.hint':
-        'Kulübün birden fazla alanda çalışıyorsa hepsini ekleyebilirsin.',
+        'Birden fazla alanda çalışıyorsan hepsini ekleyebilirsin.',
     'dashboard.scope.departmentOnly': 'Bölüme Özel',
 
     'clubDocuments.subtitle':
-        'Belgelerin incelenince kulüp panelin açılır.',
+        'Belgelerin incelenince organizatör panelin açılır.',
     'clubDocuments.establishment': 'Kuruluş Belgesi',
     'clubDocuments.advisor': 'Danışman Onay Belgesi',
     'clubDocuments.studentCerts': 'Öğrenci Belgeleri',
@@ -1059,20 +1059,20 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubDocuments.feedback.permissionError': 'Belge yükleme yetkin yok.',
 
     'clubScan.otherEvent': 'Bu QR kod başka bir etkinliğe ait.',
-    'clubScan.notOwner': 'Bu etkinlik senin kulübüne ait değil.',
+    'clubScan.notOwner': 'Bu etkinlik sana ait değil.',
     'clubScan.pastEvent':
         'QR okutma yalnızca devam eden/yaklaşan etkinliklerde kullanılabilir.',
-    'clubScan.notRegistered': 'Bu öğrencinin bu etkinlikte kaydı yok.',
+    'clubScan.notRegistered': 'Bu katılımcının bu etkinlikte kaydı yok.',
     'clubScan.alreadyCheckedIn': '{{name}} zaten giriş yapmış.',
     'clubScan.sessionNotStarted': 'Önce oturumu başlat.',
     'clubScan.alreadyInSession':
         '{{name}} bu oturumda ({{current}}/{{total}}) zaten giriş yaptı.',
-    'clubScan.missingLocation': 'QR kodda konum yok. Öğrenci kodu yenilemeli.',
+    'clubScan.missingLocation': 'QR kodda konum yok. Katılımcı kodu yenilemeli.',
     'clubScan.tooFar':
-        'Öğrenci etkinlik konumunun dışında — {{distance}} uzakta (en fazla {{radius}} m).',
+        'Katılımcı etkinlik konumunun dışında — {{distance}} uzakta (en fazla {{radius}} m).',
     'clubScan.success': '{{name}} için giriş onaylandı.',
     'clubScan.noDoorCheckin':
-        'Bu etkinlikte kapı girişi yok; oturum QR\'ını göster, öğrenciler okutsun.',
+        'Bu etkinlikte kapı girişi yok; oturum QR\'ını göster, katılımcılar okutsun.',
     'clubScan.doorClosed':
         'Kapı kapalı. Önce etkinlik ekranından kapı girişini başlat.',
     'clubScan.sessionSuccess':
@@ -1090,13 +1090,13 @@ kExtraTranslations = <String, Map<String, String>>{
 
     'admin.action.needsDocuments': 'Belge Eksik',
     'admin.needsDocuments.hint':
-        'Kulüp belge yükleme ekranına geri gönderilir. Neyin eksik ya da '
-        'hatalı olduğunu yaz — kulüp bu metni görecek.',
+        'Organizatör belge yükleme ekranına geri gönderilir. Neyin eksik ya da '
+        'hatalı olduğunu yaz — organizatör bu metni görecek.',
     'admin.needsDocuments.placeholder':
         'Örn: Danışman onay belgesi okunmuyor, yeniden yükleyin.',
     'admin.needsDocuments.send': 'Gönder',
     'admin.feedback.documentsRequested':
-        'Kulüp belge yükleme aşamasına geri gönderildi.',
+        'Organizatör belge yükleme aşamasına geri gönderildi.',
     'clubDocuments.alreadyUploaded': 'Yüklü',
     'clubDocuments.replace': 'Değiştir',
     'media.openError': 'Dosya açılamadı.',
@@ -1110,42 +1110,42 @@ kExtraTranslations = <String, Map<String, String>>{
     // okunaklı olsun diye burada güncelleniyor.
     'admin.nav.pending': 'Onaylar',
     'admin.nav.stats': 'İstatistik',
-    'admin.nav.clubs': 'Kulüpler',
+    'admin.nav.clubs': 'Organizatörler',
     'admin.nav.ban': 'Engelle',
     'admin.action.approve': 'Onayla',
     'admin.action.block': 'Engelle',
     'admin.confirm.approve':
-        '{{club}} onaylansın mı? Kulüp panele erişebilir hâle gelecek.',
+        '{{club}} onaylansın mı? Organizatör panele erişebilir hâle gelecek.',
     'admin.confirm.block':
         '{{club}} engellensin mi? Yüklediği belgeler kalıcı olarak silinir.',
     'admin.documents': 'Belgeler ({{count}})',
 
-    'admin.stats.students': 'Öğrenci',
-    'admin.stats.clubs': 'Kulüp',
+    'admin.stats.students': 'Katılımcı',
+    'admin.stats.clubs': 'Organizatör',
     'admin.stats.male': 'Erkek',
     'admin.stats.female': 'Kız',
-    'admin.stats.byCity': 'Şehirlere Göre Öğrenci',
-    'admin.stats.byUniversity': 'Üniversitelere Göre Öğrenci',
+    'admin.stats.byCity': 'Şehirlere Göre Katılımcı',
+    'admin.stats.byUniversity': 'Üniversitelere Göre Katılımcı',
     'admin.stats.detail': 'Ayrıntılı Dağılım',
     'admin.stats.noData': 'Gösterilecek veri yok.',
     'admin.stats.cityCounts':
-        '{{students}} öğrenci · {{clubs}} kulüp · {{male}}E / {{female}}K',
+        '{{students}} katılımcı · {{clubs}} organizatör · {{male}}E / {{female}}K',
     'admin.stats.universityCounts':
-        '{{students}} öğr. · {{clubs}} kulüp · {{male}}E/{{female}}K',
+        '{{students}} öğr. · {{clubs}} organizatör · {{male}}E/{{female}}K',
 
     // Kulüp listesi (admin_clubs_screen.dart)
-    'admin.clubs.title': 'Kulüp Listesi',
-    'admin.clubs.searchPlaceholder': 'Kulüp, şehir veya üniversite ara...',
-    'admin.clubs.empty': 'Eşleşen kulüp bulunamadı.',
-    'admin.clubs.cityCount': '{{count}} kulüp',
-    'admin.clubs.unnamed': 'İsimsiz Kulüp',
+    'admin.clubs.title': 'Organizatör Listesi',
+    'admin.clubs.searchPlaceholder': 'Organizatör, şehir veya üniversite ara...',
+    'admin.clubs.empty': 'Eşleşen organizatör bulunamadı.',
+    'admin.clubs.cityCount': '{{count}} organizatör',
+    'admin.clubs.unnamed': 'İsimsiz Organizatör',
     'admin.clubs.summaryCounts':
-        '{{clubs}} kulüp · {{cities}} şehir · {{universities}} üniversite',
-    'admin.clubs.summary': 'Kulüp Özeti',
-    'admin.clubs.info': 'Kulüp Bilgileri',
+        '{{clubs}} organizatör · {{cities}} şehir · {{universities}} üniversite',
+    'admin.clubs.summary': 'Organizatör Özeti',
+    'admin.clubs.info': 'Organizatör Bilgileri',
     'admin.clubs.summaryText':
         '{{club}}, {{city}} şehrinde {{university}} bünyesinde açılmış bir '
-        'kulüp. Çalışma alanı: {{fields}}. Yönetici kaydındaki durumu: '
+        'organizatör. Çalışma alanı: {{fields}}. Yönetici kaydındaki durumu: '
         '{{status}}.',
     'admin.clubs.filter.all': 'Tümü',
     'admin.clubs.filter.approved': 'Onaylı',
@@ -1157,28 +1157,28 @@ kExtraTranslations = <String, Map<String, String>>{
     'admin.clubs.status.documents': 'Belge bekleniyor',
     'admin.clubs.status.banned': 'Engelli',
 
-    'admin.ban.searchPlaceholder': 'Öğrenci, üniversite, şehir ara...',
-    'admin.ban.empty': 'Eşleşen öğrenci bulunamadı.',
-    'admin.ban.studentCount': '{{count}} öğrenci',
+    'admin.ban.searchPlaceholder': 'Katılımcı, üniversite, şehir ara...',
+    'admin.ban.empty': 'Eşleşen katılımcı bulunamadı.',
+    'admin.ban.studentCount': '{{count}} katılımcı',
     'admin.ban.banButton': 'Engelle',
     'admin.ban.unbanButton': 'Engeli Kaldır',
     'admin.ban.confirmBan':
         '{{name}} engellensin mi? Oturumu kapatılır ve giriş yapamaz; gelecek '
         'etkinliklerdeki kayıtları silinip yerleri boşalır.',
     'admin.ban.confirmUnban': '{{name}} için engel kaldırılsın mı?',
-    'admin.ban.tab.students': 'Öğrenciler',
-    'admin.ban.tab.clubs': 'Kulüpler',
-    'admin.ban.searchPlaceholderClubs': 'Kulüp, üniversite, şehir ara...',
-    'admin.ban.emptyClubs': 'Eşleşen kulüp bulunamadı.',
-    'admin.ban.clubCount': '{{count}} kulüp',
+    'admin.ban.tab.students': 'Katılımcılar',
+    'admin.ban.tab.clubs': 'Organizatörler',
+    'admin.ban.searchPlaceholderClubs': 'Organizatör, üniversite, şehir ara...',
+    'admin.ban.emptyClubs': 'Eşleşen organizatör bulunamadı.',
+    'admin.ban.clubCount': '{{count}} organizatör',
     'admin.ban.filter.all': 'Tümü',
     'admin.ban.filter.active': 'Aktif',
     'admin.ban.filter.banned': 'Engelli',
     'admin.ban.bannedLabel': 'Engellendi',
     'admin.ban.confirmClubBan':
-        '{{name}} engellensin mi? Kulüp giriş yapamaz; belgeleri silinmez.',
+        '{{name}} engellensin mi? Organizatör giriş yapamaz; belgeleri silinmez.',
     'admin.ban.confirmClubUnban':
-        '{{name}} için engel kaldırılsın mı? Kulüp, belgeleri duruyorsa '
+        '{{name}} için engel kaldırılsın mı? Organizatör, belgeleri duruyorsa '
         'inceleme kuyruğuna, durmuyorsa belge yükleme adımına döner.',
     'admin.ban.banSuccess': '{{name}} engellendi.',
     'admin.ban.unbanSuccess': '{{name}} için engel kaldırıldı.',
@@ -1186,20 +1186,20 @@ kExtraTranslations = <String, Map<String, String>>{
     'admin.ban.unbanError': 'Engel kaldırılamadı. Tekrar dene.',
 
     // Kulübe yönetici notu (club_message_panel.dart)
-    'admin.clubs.ban': 'Kulübü Engelle',
+    'admin.clubs.ban': 'Organizatörü Engelle',
     'admin.clubs.unban': 'Engeli Kaldır',
-    'admin.message.title': 'Kulübe Mesaj Gönder',
+    'admin.message.title': 'Organizatöre Mesaj Gönder',
     'admin.message.hint':
         'Eksik belge ya da düzeltilmesi gereken bir durum varsa sebebini '
-        'yaz; kulüp bu mesajı onay bekleme ekranında görecek. Başvuru '
+        'yaz; organizatör bu mesajı onay bekleme ekranında görecek. Başvuru '
         'kuyrukta kalır.',
     'admin.message.placeholder':
         'Örn. Akademik danışman onayı okunmuyor, lütfen yeniden yükleyin.',
     'admin.message.send': 'Mesajı Gönder',
-    'admin.message.sent': 'Mesaj kulübe iletildi.',
+    'admin.message.sent': 'Mesaj organizatöre iletildi.',
     'admin.message.empty': 'Göndermeden önce bir mesaj yaz.',
     'admin.message.error': 'Mesaj gönderilemedi. Tekrar dene.',
-    'admin.message.none': 'Bu kulübe henüz mesaj gönderilmedi.',
+    'admin.message.none': 'Bu organizatöre henüz mesaj gönderilmedi.',
     'admin.message.logTitle': 'Gönderilen mesajlar',
     'clubPending.messages.title': 'Yöneticiden Mesaj',
     'clubPending.messages.hint':
@@ -1216,8 +1216,8 @@ kExtraTranslations = <String, Map<String, String>>{
     'offline.restored': 'İnternet bağlantısı geri geldi.',
 
     // Kulüp logosu (hesap ekranı + etkinlik penceresi rozeti)
-    'clubAccount.logo': 'Kulüp Logosu',
-    'clubAccount.feedback.logoUpdated': 'Kulüp logosu güncellendi.',
+    'clubAccount.logo': 'Organizatör Logosu',
+    'clubAccount.feedback.logoUpdated': 'Organizatör logosu güncellendi.',
     'clubCreateEvent.image.autoShort':
         'Görsel eklemezsen kapakta gri Regipass logosu görünür.',
 
@@ -1298,14 +1298,14 @@ kExtraTranslations = <String, Map<String, String>>{
 
     'screen.comingSoon': 'Bu bölüm hazırlanıyor.',
     'screen.comingSoonDesc':
-        'Kulüp ve yönetici ekranları bir sonraki aşamada tamamlanacak.',
+        'Organizatör ve yönetici ekranları bir sonraki aşamada tamamlanacak.',
     // Ücretli etkinlik onay logu — yalnızca ücretli etkinliklerde, etkinlik
     // detayında gösterilir (bkz. domain/paid_event_consent.dart).
     'paidEventConsent.log.title': 'Ücretli Etkinlik Onay Kaydı',
-    'paidEventConsent.log.club': 'Kulüp onayı — etkinlik oluşturma',
-    'paidEventConsent.log.students': 'Öğrenci kayıt onayları',
+    'paidEventConsent.log.club': 'Organizatör onayı — etkinlik oluşturma',
+    'paidEventConsent.log.students': 'Katılımcı kayıt onayları',
     'paidEventConsent.log.missing': 'Onay kaydı bulunmuyor.',
-    'paidEventConsent.log.studentsEmpty': 'Henüz onay veren öğrenci yok.',
+    'paidEventConsent.log.studentsEmpty': 'Henüz onay veren katılımcı yok.',
     'paidEventConsent.log.showText': 'Onaylanan metni göster',
     'paidEventConsent.log.hideText': 'Metni gizle',
     'paidEventConsent.log.legacyText':
@@ -1328,7 +1328,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'gate.soundOn': 'Sesi aç',
     'gate.soundOff': 'Sesi kapat',
     'gate.nth': '{{n}}.',
-    'gate.unknownStudent': 'Öğrenci',
+    'gate.unknownStudent': 'Katılımcı',
     'gate.notSentYet': 'gönderilmedi',
     'gate.packInfo': 'Cihazdaki liste: {{n}} bilet · {{time}}',
     'gate.net.online': 'Çevrimiçi',
@@ -1340,7 +1340,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'gate.result.invalid-ticket': 'GEÇERSİZ BİLET',
     'gate.result.not-registered': 'KAYITLI DEĞİL',
     'gate.result.other-event': 'BAŞKA ETKİNLİK',
-    'gate.result.not-owner': 'BAŞKA KULÜBÜN ETKİNLİĞİ',
+    'gate.result.not-owner': 'BAŞKA ORGANİZATÖRÜN ETKİNLİĞİ',
     'gate.result.no-door': 'KAPI BİLETİ YOK',
     'gate.result.past-event': 'ETKİNLİK GEÇMİŞ',
     'gate.result.not-ticket': 'REGIPASS BİLETİ DEĞİL',
@@ -1348,13 +1348,13 @@ kExtraTranslations = <String, Map<String, String>>{
     'gate.hint.in': 'Sıradakini okutabilirsin',
     'gate.hint.legacy': 'Eski uygulama bileti (kodsuz): kimliği kontrol et',
     'gate.hint.already': 'İlk giriş {{time}} · sayı değişmedi',
-    'gate.hint.invalid-ticket': 'Bilet kodu eşleşmiyor; öğrenci bileti yeniden açmalı.',
-    'gate.hint.not-registered': 'Bu öğrencinin etkinliğe kaydı yok',
+    'gate.hint.invalid-ticket': 'Bilet kodu eşleşmiyor; katılımcı bileti yeniden açmalı.',
+    'gate.hint.not-registered': 'Bu katılımcının etkinliğe kaydı yok',
     'gate.hint.other-event': 'Bu bilet başka bir etkinliğe ait',
-    'gate.hint.not-owner': 'Etkinlik bu kulübe ait değil',
-    'gate.hint.no-door': 'Sadece yoklama: oturum QR\'ını göster, öğrenciler okutsun',
+    'gate.hint.not-owner': 'Etkinlik bu organizatöre ait değil',
+    'gate.hint.no-door': 'Sadece yoklama: oturum QR\'ını göster, katılımcılar okutsun',
     'gate.hint.past-event': 'Etkinliğin günü geçti',
-    'gate.hint.not-ticket': 'Öğrenciden Regipass biletini açmasını iste',
+    'gate.hint.not-ticket': 'Katılımcıdan Regipass biletini açmasını iste',
     'gate.hint.unknown-event': 'Etkinlik bulunamadı. İnternet yoksa bu etkinliğin bilet listesi cihaza henüz inmemiş olabilir.',
     'gate.hint.conflict': 'Başka cihazda {{time}} girmişti — ilk okuma geçerli',
     'gate.hint.rejected': 'Sunucu kabul etmedi — bu girişi kontrol et',
@@ -1378,42 +1378,42 @@ kExtraTranslations = <String, Map<String, String>>{
     'registration.actions.waitlistPosition': 'Bekleme listesinde {{position}}. sıradasın',
     'registration.alerts.fullOfferWaitlist': 'Bu etkinliğin kontenjanı doldu. Bekleme listesine girmek ister misin? Yer açılırsa bildirim alırsın; ilk kaydolan yeri alır.',
     'registration.alerts.leaveWaitlistConfirm': 'Bekleme listesinden çıkmak istediğine emin misin?',
-    'registration.alerts.paymentPendingNote': 'Ödemeyi kulüple konuş. Kulüp onaylayınca kaydın kesinleşir; o zamana kadar kapıdan giriş yapılamaz.',
+    'registration.alerts.paymentPendingNote': 'Ödemeyi organizatörle konuş. Organizatör onaylayınca kaydın kesinleşir; o zamana kadar kapıdan giriş yapılamaz.',
     'registration.alerts.seatsAvailableNow': 'Bu arada yer açıldı. Hemen kaydolabilirsin.',
     'registration.alerts.waitlistJoined': 'Bekleme listesine eklendin: {{position}}. sıradasın. Yer açılınca bildirim alırsın; ilk kaydolan yeri alır.',
     'registration.club.addSeats': '+{{n}} yer aç',
     'registration.club.addSeatsConfirm': 'Kontenjan {{from}} → {{to}} olacak. Bekleme listesindekilere "yer açıldı" bildirimi gider; ilk kayıt olan alır.',
     'registration.club.cancelEventAction': 'Etkinliği İptal Et',
-    'registration.club.cancelEventBody': 'Kayıtlı öğrencilere ve bekleme listesindekilere bildirim gidecek; kayıtlar silinmez, etkinlik "İptal edildi" olarak görünür. Hiç kaydı yoksa etkinlik tamamen silinir.',
+    'registration.club.cancelEventBody': 'Kayıtlı katılımcılara ve bekleme listesindekilere bildirim gidecek; kayıtlar silinmez, etkinlik "İptal edildi" olarak görünür. Hiç kaydı yoksa etkinlik tamamen silinir.',
     'registration.club.cancelEventTitle': 'Etkinliği iptal et',
-    'registration.club.cancelledBanner': 'Bu etkinlik iptal edildi. Kayıtlı öğrencilere bildirim gönderildi.',
+    'registration.club.cancelledBanner': 'Bu etkinlik iptal edildi. Kayıtlı katılımcılara bildirim gönderildi.',
     'registration.club.cancelledBannerReason': 'Bu etkinlik iptal edildi. Gerekçe: {{reason}}',
     'registration.club.eventCancelled': 'Etkinlik iptal edildi. {{n}} kişiye bildirim gönderildi.',
     'registration.club.eventDeleted': 'Etkinliğin kaydı yoktu; etkinlik tamamen silindi.',
     'registration.club.markPaid': 'Ödendi olarak işaretle',
-    'registration.club.markedPaid': '{{name}}: ödeme onaylandı, öğrenciye bildirim gitti.',
+    'registration.club.markedPaid': '{{name}}: ödeme onaylandı, katılımcıya bildirim gitti.',
     'registration.club.paid': 'Ödendi',
     'registration.club.paymentTitle': 'Ödeme',
     'registration.club.quotaNow': 'Kontenjan {{n}} oldu.',
     'registration.club.quotaSetupDone': 'Kontenjan kuruldu, kayıtlar açıldı.',
     'registration.club.quotaSetupFailed': 'Kontenjan ayarlanamadı, etkinlik şu an kayda kapalı. Etkinliği düzenleyip yeniden kaydet.',
     'registration.club.quotaSetupStatus': 'Kontenjan Kuruluyor',
-    'registration.club.reasonLabel': 'Gerekçe (isteğe bağlı, öğrencilere gösterilir)',
+    'registration.club.reasonLabel': 'Gerekçe (isteğe bağlı, katılımcılara gösterilir)',
     'registration.club.removeAction': 'Kaydı sil',
-    'registration.club.removeBody': '{{name}} adlı öğrencinin kaydı silinecek. Öğrenciye bildirim gidecek ve yeri bekleme listesine açılacak.',
+    'registration.club.removeBody': '{{name}} adlı katılımcının kaydı silinecek. Katılımcıya bildirim gidecek ve yeri bekleme listesine açılacak.',
     'registration.club.removeReasonHint': 'Örn. Ödeme yapılmadı',
     'registration.club.removeTitle': 'Kaydı sil',
-    'registration.club.removed': '{{name}} adlı öğrencinin kaydı silindi.',
-    'registration.club.unmarkConfirm': '{{name}} için "Ödendi" işaretini geri almak istiyor musun? Öğrenci kapıda giriş yapamaz.',
+    'registration.club.removed': '{{name}} adlı katılımcının kaydı silindi.',
+    'registration.club.unmarkConfirm': '{{name}} için "Ödendi" işaretini geri almak istiyor musun? Katılımcı kapıda giriş yapamaz.',
     'registration.club.unmarkPaid': 'Geri al',
     'registration.club.unmarkedPaid': '{{name}}: ödeme işareti geri alındı.',
     'registration.club.waitlistCount': 'Bekleme listesinde {{count}} kişi var',
     'registration.club.waitlistEmpty': 'Kontenjan doldu. Bekleme listesi henüz boş.',
     'registration.errors.banned': 'Hesabın engellendiği için kayıt yapılamıyor.',
-    'registration.errors.below-registered': 'Kontenjan, kayıtlı öğrenci sayısının ({{registered}}) altına indirilemez. Daha yüksek bir kontenjan gir.',
+    'registration.errors.below-registered': 'Kontenjan, kayıtlı katılımcı sayısının ({{registered}}) altına indirilemez. Daha yüksek bir kontenjan gir.',
     'registration.errors.busy': 'Şu an yoğunluk var. Birkaç saniye sonra tekrar dene.',
-    'registration.errors.cancel-locked': 'Oturumlar başladığı için kaydını artık kendin iptal edemezsin. Gerekirse kulüple iletişime geç.',
-    'registration.errors.club-banned': 'Bu kulübün etkinliklerine şu anda kayıt alınmıyor.',
+    'registration.errors.cancel-locked': 'Oturumlar başladığı için kaydını artık kendin iptal edemezsin. Gerekirse organizatörle iletişime geç.',
+    'registration.errors.club-banned': 'Bu organizatörün etkinliklerine şu anda kayıt alınmıyor.',
     'registration.errors.deadline-passed': 'Son kayıt tarihi geçti.',
     'registration.errors.event-cancelled': 'Bu etkinlik iptal edildi.',
     'registration.errors.event-hidden': 'Bu etkinlik artık yayında değil.',
@@ -1424,28 +1424,28 @@ kExtraTranslations = <String, Map<String, String>>{
     'registration.errors.generic': 'İşlem tamamlanamadı. Tekrar dene.',
     'registration.errors.invalid-quota': 'Geçerli bir kontenjan gir.',
     'registration.errors.not-eligible': 'Bu etkinlik belirli üniversite ya da bölümlere açık; profilin bu şartı karşılamıyor.',
-    'registration.errors.not-event-club': 'Bu işlem yalnızca etkinliğin kulübü tarafından yapılabilir.',
+    'registration.errors.not-event-club': 'Bu işlem yalnızca etkinliğin organizatörü tarafından yapılabilir.',
     'registration.errors.not-registered': 'Bu etkinliğe kayıt bulunamadı.',
     'registration.errors.offline': 'Sunucuya ulaşılamadı. İnternet bağlantını kontrol edip tekrar dene.',
     'registration.errors.paid-consent-required': 'Ücretli etkinliğe kaydolmak için ödeme bilgilendirmesini onayla.',
-    'registration.errors.payment-pending': 'Ödemen henüz onaylanmadı; kulüp onaylayınca giriş yapabilirsin.',
+    'registration.errors.payment-pending': 'Ödemen henüz onaylanmadı; organizatör onaylayınca giriş yapabilirsin.',
     'registration.errors.phone-not-verified': 'Kaydolmak için önce telefon numaranı doğrula.',
-    'registration.errors.profile-incomplete': 'Kaydolmak için önce öğrenci profilini tamamla.',
-    'registration.errors.profile-missing': 'Kaydolmak için önce öğrenci profilini tamamla.',
+    'registration.errors.profile-incomplete': 'Kaydolmak için önce katılımcı profilini tamamla.',
+    'registration.errors.profile-missing': 'Kaydolmak için önce katılımcı profilini tamamla.',
     'registration.errors.quota-setup': 'Etkinliğin kontenjanı henüz hazır değil. Biraz sonra tekrar dene.',
     'registration.errors.registration-closed': 'Bu etkinliğin kayıtları kapandı.',
     'registration.errors.signIn': 'Oturumun kapanmış. Yeniden giriş yap.',
     'eventModal.contactTitle': 'İletişim Bilgileri',
     'eventModal.feeContactTitle': 'Ücret İçin İletişim Bilgileri',
-    'eventModal.feeContactNoteClub': 'Ücret: {{fee}}. Ödeme Regipass dışında doğrudan kulüple yapılır; öğrenciler ücret için aşağıdaki bilgilerle kulübe ulaşır. Ödemeyi aldığında öğrenci listesinden "Ödendi" olarak işaretle; kayıt o zaman kesinleşir.',
-    'eventModal.feeContactNoteWithFee': 'Ücret: {{fee}}. Ödeme Regipass dışında doğrudan kulüple yapılır; ücret için aşağıdaki bilgilerden kulüple iletişime geç. Kulüp ödemeyi aldığını işaretleyince kaydın kesinleşir.',
+    'eventModal.feeContactNoteClub': 'Ücret: {{fee}}. Ödeme Regipass dışında doğrudan organizatörle yapılır; katılımcılar ücret için aşağıdaki bilgilerle organizatöre ulaşır. Ödemeyi aldığında katılımcı listesinden "Ödendi" olarak işaretle; kayıt o zaman kesinleşir.',
+    'eventModal.feeContactNoteWithFee': 'Ücret: {{fee}}. Ödeme Regipass dışında doğrudan organizatörle yapılır; ücret için aşağıdaki bilgilerden organizatörle iletişime geç. Organizatör ödemeyi aldığını işaretleyince kaydın kesinleşir.',
     'clubCreateEvent.contact.label': 'İletişim bilgisi gösterilsin mi?',
     'clubCreateEvent.contact.labelPaid': 'Ücret için iletişim bilgisi',
-    'clubCreateEvent.contact.club': 'Kulübün sistem bilgileri',
+    'clubCreateEvent.contact.club': 'Hesabımdaki iletişim bilgileri',
     'clubCreateEvent.contact.custom': 'Yeni bilgi gir',
     'clubCreateEvent.contact.hidden': 'Gösterme',
     'clubCreateEvent.contact.clubPreview': 'Gösterilecek: {{contact}}',
-    'clubCreateEvent.contact.clubEmpty': 'Kulüp profilinde iletişim bilgisi yok. Yeni bilgi girebilirsin.',
+    'clubCreateEvent.contact.clubEmpty': 'Organizatör profilinde iletişim bilgisi yok. Yeni bilgi girebilirsin.',
     'clubCreateEvent.contact.hiddenHint': 'Etkinlik detayında iletişim bilgisi gösterilmez.',
     'clubCreateEvent.contact.phone': 'İletişim telefonu',
     'clubCreateEvent.contact.email': 'İletişim e-postası',
@@ -1453,29 +1453,29 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubCreateEvent.contact.errorEmpty': 'Yeni bilgi seçtin: en az bir telefon ya da e-posta gir.',
     'clubCreateEvent.contact.errorEmail': 'E-posta adresi geçerli görünmüyor.',
     'clubCreateEvent.contact.errorPhone': 'Telefon numarası 11 haneli olmalı (ör. 0555 123 45 67 ya da 0212 123 45 67).',
-    'registration.bulk.hint': 'Toplu işlem için öğrencileri seç.',
-    'registration.bulk.selected': '{{n}} öğrenci seçildi',
+    'registration.bulk.hint': 'Toplu işlem için katılımcıları seç.',
+    'registration.bulk.selected': '{{n}} katılımcı seçildi',
     'registration.bulk.selectAll': 'Tümünü seç',
     'registration.bulk.clear': 'Seçimi temizle',
     'registration.bulk.selectPending': 'Ödeme bekleyenleri seç ({{n}})',
     'registration.bulk.markPaid': 'Toplu ödeme onayı',
     'registration.bulk.markPaidN': '"Ödendi" yap ({{n}})',
-    'registration.bulk.markPaidConfirm': '{{n}} öğrencinin ödemesi onaylanacak ve her birine bildirim gidecek.',
-    'registration.bulk.markedPaid': '{{n}} öğrencinin ödemesi onaylandı.',
+    'registration.bulk.markPaidConfirm': '{{n}} katılımcının ödemesi onaylanacak ve her birine bildirim gidecek.',
+    'registration.bulk.markedPaid': '{{n}} katılımcının ödemesi onaylandı.',
     'registration.bulk.nonePending': 'Seçilenler arasında ödeme bekleyen yok.',
     'registration.bulk.removeN': 'Kaydı sil ({{n}})',
-    'registration.bulk.removeBody': 'Seçilen {{n}} öğrencinin kaydı silinecek. Her birine bildirim gidecek ve yerleri bekleme listesine açılacak.',
-    'registration.bulk.removed': '{{n}} öğrencinin kaydı silindi.',
-    'registration.errors.too-many-students': 'Tek seferde en fazla 200 öğrenci seçebilirsin.',
+    'registration.bulk.removeBody': 'Seçilen {{n}} katılımcının kaydı silinecek. Her birine bildirim gidecek ve yerleri bekleme listesine açılacak.',
+    'registration.bulk.removed': '{{n}} katılımcının kaydı silindi.',
+    'registration.errors.too-many-students': 'Tek seferde en fazla 200 katılımcı seçebilirsin.',
     'registration.labels.cancelled': 'İptal',
     'registration.labels.payment': 'Ödeme',
     'registration.labels.registeredAt': 'Kayıt Tarihi',
     'registration.status.cancelled': 'İptal Edildi',
-    'registration.status.cancelledNoReason': 'Kulüp etkinliği iptal etti.',
+    'registration.status.cancelledNoReason': 'Organizatör etkinliği iptal etti.',
     'registration.status.fullWaitlist': 'Kontenjan Doldu · Bekleme Listesi',
-    'registration.status.paymentConfirmed': 'Ödendi (kulüp onayladı)',
+    'registration.status.paymentConfirmed': 'Ödendi (organizatör onayladı)',
     'registration.status.paymentPending': 'Ödeme Bekleniyor',
-    'registration.status.paymentPendingLong': 'Bekleniyor — kulüp ödemeyi onaylayınca kaydın kesinleşir',
+    'registration.status.paymentPendingLong': 'Bekleniyor — organizatör ödemeyi onaylayınca kaydın kesinleşir',
     'registration.status.registeredPaymentPending': 'Kayıtlı · Ödeme Bekleniyor',
     'registration.status.waitlisted': 'Bekleme Listesindesin',
     'registration.ticket.paymentPendingHint': 'Ödemen onaylanınca bilet geçerli olur.',
@@ -1513,7 +1513,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'cert.reason.certificate-revoked': 'This certificate was revoked.',
     'cert.reason.checkin-not-started': 'Sending is locked: start door check-in first, then press “Finish Check-in” when the event ends.',
     'cert.reason.checkin-open': 'Sending is locked: door check-in is still open. It unlocks when you press “Finish Check-in”.',
-    'cert.reason.club-banned': 'Your club account is blocked, so this action is not available.',
+    'cert.reason.club-banned': 'Your organizer account is blocked, so this action is not available.',
     'cert.reason.code-collision': 'Could not create a certificate code. Try again.',
     'cert.reason.config-not-saved': 'Set up and save the certificate in the editor first.',
     'cert.reason.empty-text': 'A free text field cannot be empty.',
@@ -1521,10 +1521,10 @@ kExtraTranslations = <String, Map<String, String>>{
     'cert.reason.event-missing': 'Event not found.',
     'cert.reason.event-not-found': 'Event not found.',
     'cert.reason.generic': 'Could not complete. Check your connection and try again.',
-    'cert.reason.missing-student-name': 'The “Student name” field must be on the page.',
+    'cert.reason.missing-student-name': 'The “Participant name” field must be on the page.',
     'cert.reason.name-missing': 'no name in profile',
     'cert.reason.not-allowed': 'You cannot open this certificate.',
-    'cert.reason.not-event-club': 'This event does not belong to your club.',
+    'cert.reason.not-event-club': 'This event does not belong to your team.',
     'cert.reason.render-failed': 'could not be generated',
     'cert.reason.sessions-not-finished': 'Send is locked: press “Finish sessions” on the event screen first.',
     'cert.reason.student-name-missing': 'no name in profile',
@@ -1535,7 +1535,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'cert.reason.template-unreadable': 'This PDF could not be read. Export it again from another program and retry.',
     'cert.reason.template-unsupported': 'This file type is not supported. Upload a PDF, PNG or JPG.',
     'cert.reason.too-many-fields': 'At most 20 fields can be added.',
-    'cert.revoke.text': 'They disappear from students\' screens and the verification page shows them as “Revoked”. You can send again later; new certificates get new codes.',
+    'cert.revoke.text': 'They disappear from participants\' screens and the verification page shows them as “Revoked”. You can send again later; new certificates get new codes.',
     'cert.revoke.title': 'Revoke every certificate of this event?',
     'cert.revoke.yes': 'Yes, revoke all',
     'cert.stat.eligible': 'Qualified',
@@ -1561,7 +1561,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'studentCertificates.menu.fullName': 'Show my full name on the verification page',
     'studentCertificates.menu.linkedin': 'Add to LinkedIn profile',
     'studentCertificates.menuLabel': 'Certificate options',
-    'studentCertificates.revoked': 'Revoked by the club',
+    'studentCertificates.revoked': 'Revoked by the organizer',
     // İP-W: cüzdan
     'wallet.addApple': 'Add to Apple Wallet',
     'wallet.addGoogle': 'Add to Google Wallet',
@@ -1600,8 +1600,8 @@ kExtraTranslations = <String, Map<String, String>>{
     'feedback.sending': 'Sending...',
     'feedback.edit': 'Edit rating',
     'feedback.editUntil': 'You can edit it until {{date}}.',
-    'feedback.thanks': 'Thanks! Your rating was sent to the club anonymously.',
-    'feedback.anonymousNote': 'The club doesn\'t see your name; ratings are anonymous.',
+    'feedback.thanks': 'Thanks! Your rating was sent to the organizer anonymously.',
+    'feedback.anonymousNote': 'The organizer doesn\'t see your name; ratings are anonymous.',
     'feedback.cardRate': 'Rate',
     'feedback.error.notCheckedIn': 'Only attendees who checked in can rate this event.',
     'feedback.error.notFinished': 'You can rate the event once it\'s over.',
@@ -1609,7 +1609,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'feedback.error.cancelled': 'Cancelled events can\'t be rated.',
     'feedback.error.badRating': 'Pick 1 to 5 stars.',
     'feedback.error.banned': 'Your account is suspended, so you can\'t rate events.',
-    'feedback.error.notOwner': 'Only the organizing club can see this event\'s ratings.',
+    'feedback.error.notOwner': 'Only the organizing organizer can see this event\'s ratings.',
     'feedback.error.generic': 'Couldn\'t send. Check your connection and try again.',
     'feedback.club.title': 'Ratings',
     'feedback.club.empty': 'No feedback yet. Attendees are asked after the event.',
@@ -1622,39 +1622,39 @@ kExtraTranslations = <String, Map<String, String>>{
     'follow.follow': 'Follow',
     'follow.following': 'Following',
     'follow.unfollow': 'Unfollow',
-    'follow.followHint': 'Get notified when the club posts a new event',
+    'follow.followHint': 'Get notified when the organizer posts a new event',
     'follow.unfollowHint': 'Tap to unfollow',
-    'follow.toastFollowed': 'You\'re following this club. We\'ll tell you about new events.',
-    'follow.toastUnfollowed': 'You unfollowed the club.',
+    'follow.toastFollowed': 'You\'re following this organizer. We\'ll tell you about new events.',
+    'follow.toastUnfollowed': 'You unfollowed the organizer.',
     'follow.filterAria': 'Event filter',
     'follow.filterAll': 'All',
     'follow.filterFollowing': 'Following',
-    'follow.empty.title': 'No open events from clubs you follow',
-    'follow.empty.desc': 'Tap "Follow" next to a club on any event.',
-    'follow.account.title': 'Clubs I follow',
-    'follow.account.help': 'You get notified when clubs you follow post events. Clubs can\'t see who follows them.',
-    'follow.account.empty': 'You\'re not following any clubs yet.',
-    'follow.account.unavailable': 'This club isn\'t posting events right now.',
+    'follow.empty.title': 'No open events from organizers you follow',
+    'follow.empty.desc': 'Tap "Follow" next to an organizer on any event.',
+    'follow.account.title': 'Organizers I follow',
+    'follow.account.help': 'You get notified when organizers you follow post events. Organizers can\'t see who follows them.',
+    'follow.account.empty': 'You\'re not following any organizers yet.',
+    'follow.account.unavailable': 'This organizer isn\'t posting events right now.',
     'follow.account.confirmUnfollow': 'Unfollow {{name}}? You won\'t be notified about its new events.',
     'follow.account.unfollowed': 'You unfollowed {{name}}.',
     'follow.club.followers': 'followers',
-    'follow.error.clubUnavailable': 'This club can\'t be followed right now.',
-    'follow.error.tooMany': 'You can follow up to 300 clubs. Unfollow one first.',
-    'follow.error.banned': 'Your account is suspended, so you can\'t follow clubs.',
-    'follow.error.studentOnly': 'Only student accounts can follow clubs.',
-    'follow.error.signIn': 'Sign in to follow clubs.',
+    'follow.error.clubUnavailable': 'This organizer can\'t be followed right now.',
+    'follow.error.tooMany': 'You can follow up to 300 organizers. Unfollow one first.',
+    'follow.error.banned': 'Your account is suspended, so you can\'t follow organizers.',
+    'follow.error.studentOnly': 'Only participant accounts can follow organizers.',
+    'follow.error.signIn': 'Sign in to follow organizers.',
     'follow.error.generic': 'Something went wrong. Check your connection and try again.',
     // İP-B: event notifications
     'autoNotify.title': 'Automatic notifications',
     'profileChange.pendingTitle': 'Your changes are waiting for approval',
-    'profileChange.pendingHelp': 'Until approved, students and your events show the current details; your club keeps working.',
+    'profileChange.pendingHelp': 'Until approved, participants and your events show the current details; your account keeps working.',
     'profileChange.rejectedTitle': 'Your last change was not approved',
     'profileChange.rejectedNote': 'Reason: {{note}}',
     'profileChange.withdraw': 'Withdraw request',
     'profileChange.withdrawConfirm': 'Withdraw the pending change?',
     'profileChange.sent': 'Your changes were sent for approval. Once approved they apply to your events too.',
     'profileChange.logoSent': 'Your new logo was sent for approval. The current logo stays until then.',
-    'profileChange.field.clubName': 'Club name',
+    'profileChange.field.clubName': 'Organizer name',
     'profileChange.field.university': 'University',
     'profileChange.field.city': 'City',
     'profileChange.field.clubPurpose': 'Purpose',
@@ -1667,7 +1667,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'autoNotify.warnEnd': 'Without an end time, the “Thank you” notification is not sent.',
     'autoNotify.warnBoth': 'Without start and end times, the “1 hour before”, “At start” and “Thank you” notifications are not sent.',
     'autoNotify.help':
-        'Regipass notifies registered students automatically. Without a start '
+        'Regipass notifies registered participants automatically. Without a start '
         'time only the "1 day before" reminder is sent.',
     'autoNotify.dayBefore': 'Reminder 1 day before (19:00)',
     'autoNotify.hourBefore': '1 hour before it starts',
@@ -1724,21 +1724,21 @@ kExtraTranslations = <String, Map<String, String>>{
     'eventNotify.errors.required': 'Enter a title and a message.',
     'eventNotify.errors.unknown-tag':
         'Unknown tag. Available: {ad}, {etkinlik}, {tarih}, {saat}, {yer}, '
-        '{kulüp}.',
+        '{organizatör}.',
     'eventNotify.errors.fill': 'Fill in the … placeholder in the template.',
     'eventNotify.audience.payment_pending': 'Payment pending',
     'eventNotify.templateLabel': 'Template',
     'eventNotify.templateNone': 'Blank message',
     'eventNotify.tagsLabel': 'Insert smart tag',
-    'eventNotify.previewLabel': 'Preview (sample student)',
+    'eventNotify.previewLabel': 'Preview (sample participant)',
     'eventNotify.quota': 'Left today: {{left}}/{{limit}}',
     'eventNotify.nextIn': 'next send in {{minutes}} min',
-    'eventNotify.tag.ad': 'Student first name',
+    'eventNotify.tag.ad': 'Participant first name',
     'eventNotify.tag.etkinlik': 'Event name',
     'eventNotify.tag.tarih': 'Date',
     'eventNotify.tag.saat': 'Time',
     'eventNotify.tag.yer': 'Place',
-    'eventNotify.tag.kulup': 'Club name',
+    'eventNotify.tag.kulup': 'Organizer name',
     'eventNotify.errors.title-required': 'Enter a title.',
     'eventNotify.errors.message-required': 'Enter a message.',
     'eventNotify.errors.too-soon':
@@ -1751,9 +1751,9 @@ kExtraTranslations = <String, Map<String, String>>{
     'eventNotify.errors.event-cancelled':
         'You cannot message a cancelled event.',
     'eventNotify.errors.club-not-approved':
-        'Your club must be approved to send messages.',
-    'eventNotify.errors.club-banned': 'Your club account is suspended.',
-    'eventNotify.errors.not-event-club': 'This event is not your club\'s.',
+        'Your organizer must be approved to send messages.',
+    'eventNotify.errors.club-banned': 'Your organizer account is suspended.',
+    'eventNotify.errors.not-event-club': 'This event is not yours.',
     // İP-T: add to calendar
     'calendar.add': 'Add to calendar',
     'postRegistration.title': 'You are registered',
@@ -1772,43 +1772,43 @@ kExtraTranslations = <String, Map<String, String>>{
     'calendar.ics': 'Calendar file (.ics)',
     'calendar.icsHint': 'Apple Calendar, Outlook and others',
     // İP-KB: club's student block
-    'clubBlock.title': 'Block from club',
-    'clubBlock.action': 'Block from club',
+    'clubBlock.title': 'Block from organizer',
+    'clubBlock.action': 'Block from organizer',
     'clubBlock.body':
-        '{{name}} will be blocked from your club\'s events: they cannot '
+        '{{name}} will be blocked from your events: they cannot '
         'register for new events or join waitlists.',
     'clubBlock.reasonLabel': 'Reason',
     'clubBlock.reasonHelper':
-        'Required. Not shown to the student; kept for your club and '
+        'Required. Not shown to the participant; kept for your team and '
         'Regipass staff.',
     'clubBlock.reasonRequired': 'Enter a reason of at least 3 characters.',
     'clubBlock.removeFuture':
         'Also remove their registrations for upcoming events (they get a '
         '"registration cancelled" notice)',
     'clubBlock.done':
-        '{{name}} is blocked from your club\'s events. Upcoming registrations '
+        '{{name}} is blocked from your events. Upcoming registrations '
         'removed: {{count}}.',
-    'clubBlock.listTitle': 'Blocked students',
+    'clubBlock.listTitle': 'Blocked participants',
     'clubBlock.listHelp':
-        'These students can\'t register for your club\'s events.',
+        'These participants can\'t register for your team\'s events.',
     'clubBlock.empty': 'You have not blocked anyone.',
     'clubBlock.unblock': 'Unblock',
     'clubBlock.unblockConfirm':
         'Unblock {{name}}? They will be able to register for your events again.',
     'clubBlock.unblocked': '{{name}} was unblocked.',
-    'clubBlock.studentFallback': 'Student',
+    'clubBlock.studentFallback': 'Participant',
     'clubBlock.error': 'Could not complete. Try again.',
     'clubBlock.errors.reason-required':
         'Enter a reason of at least 3 characters.',
     'clubBlock.errors.student-not-related':
-        'You can only block students who registered for your events.',
+        'You can only block participants who registered for your events.',
     'clubBlock.errors.club-not-approved':
-        'Your club must be approved to block students.',
-    'clubBlock.errors.club-banned': 'Your club account is suspended.',
-    'clubBlock.errors.not-a-club': 'Only club accounts can do this.',
+        'Your organizer must be approved to block participants.',
+    'clubBlock.errors.club-banned': 'Your organizer account is suspended.',
+    'clubBlock.errors.not-a-club': 'Only organizer accounts can do this.',
     'clubBlock.errors.invalid-student': 'Student not found.',
     'registration.errors.blocked-by-club':
-        'You can\'t register for this club\'s events.',
+        'You can\'t register for this organizer\'s events.',
     // İP-M1: staff account (role claim + authenticator app)
     'auth.error.userDisabled':
         'This account has been suspended or is scheduled for deletion. If you '
@@ -1826,12 +1826,12 @@ kExtraTranslations = <String, Map<String, String>>{
         'The code is wrong or expired. Enter the current code from the app.',
     'auth.totp.unsupported': 'No authenticator app is enrolled on this account.',
     'admin.ban.clubImpact':
-        '{{events}} upcoming events of this club will be CANCELLED; '
+        '{{events}} upcoming events of this organizer will be CANCELLED; '
         '{{people}} registered people will be notified. The club account will '
         'not be able to sign in.',
     'admin.ban.reasonLabel': 'Reason',
     'admin.ban.reasonHelper':
-        'Required. Saved to the audit log; not shown to students.',
+        'Required. Saved to the audit log; not shown to participants.',
     'admin.ban.reasonRequired': 'Enter a reason to block.',
     'auth.error.roleAlreadyExists':
         'This account type already exists. Please sign in.',
@@ -1896,7 +1896,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'forgotPassword.savedSignInRequired':
         'Your password was saved. Return to sign in with your new password.',
     'account.sharedPhoneNotice':
-        'This phone is shared by the student and club accounts linked to the same email and is already verified. It cannot be changed here.',
+        'This phone is shared by the participant and organizer accounts linked to the same email and is already verified. It cannot be changed here.',
     'auth.error.networkFailed': 'No connection. Check your internet.',
     'explore.guestTitle': "You're browsing as a guest",
     'explore.guestDesc':
@@ -1939,8 +1939,8 @@ kExtraTranslations = <String, Map<String, String>>{
     'admin.notify.noResults': 'No city or university matches your search.',
     'admin.notify.universityCount': '{{count}} universities',
     'admin.notify.audience': 'Who should receive it?',
-    'admin.notify.audience.students': 'Students',
-    'admin.notify.audience.clubs': 'Clubs',
+    'admin.notify.audience.students': 'Participants',
+    'admin.notify.audience.clubs': 'Organizers',
     'admin.notify.audience.all': 'Both',
     'admin.notify.titleLabel': 'Notification title',
     'admin.notify.bodyLabel': 'Notification text',
@@ -1962,7 +1962,7 @@ kExtraTranslations = <String, Map<String, String>>{
         'You do not have permission to send announcements.',
 
     'clubAccount.section.manager': 'Representative Details',
-    'clubAccount.section.club': 'Club Details',
+    'clubAccount.section.club': 'Organizer Details',
 
     'studentAppointments.title': 'My Events',
     'studentAppointments.activeTitle': 'Upcoming',
@@ -1990,7 +1990,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'form.phoneAvailable': 'This number is available.',
 
     'eventModal.info': 'Event Details',
-    'eventModal.club': 'Club',
+    'eventModal.club': 'Organizer',
     'eventModal.eventDate': 'Event Date',
     'eventModal.deadline': 'Deadline',
     'eventModal.fee': 'Fee',
@@ -2000,9 +2000,9 @@ kExtraTranslations = <String, Map<String, String>>{
     'eventModal.location': 'Location',
     'eventModal.sessions': 'Sessions',
     'eventModal.sessionsValue': '{{count}} sessions',
-    'eventModal.clubContact': 'Club Contact',
+    'eventModal.clubContact': 'Organizer Contact',
     'eventModal.feeContactNote':
-        'This event has a fee. Contact the club by phone for the fee and '
+        'This event has a fee. Contact the organizer by phone for the fee and '
         'payment details.',
     'eventModal.audience': 'Target Audience',
     'eventModal.description': 'Description',
@@ -2023,14 +2023,14 @@ kExtraTranslations = <String, Map<String, String>>{
     'attendance.error.alreadyCheckedIn':
         'Your entry for this event was already confirmed.',
     'attendance.error.sessionNotStarted':
-        'The session has not started yet. Scan the QR again once the club starts it.',
+        'The session has not started yet. Scan the QR again once the organizer starts it.',
     'attendance.error.banned': 'Your account is restricted, so you cannot check in.',
     'attendance.qrKeyError':
         'Could not create the QR. Check your internet connection and try again.',
     'attendance.entryRotatingHint':
-        'Students scan this code with their own phones. It refreshes in {{seconds}} s.',
+        'Participants scan this code with their own phones. It refreshes in {{seconds}} s.',
     'clubScan.ticketMismatch':
-        'The ticket code does not match the registration (old or forged ticket). Ask the student to reopen the ticket in the app.',
+        'The ticket code does not match the registration (old or forged ticket). Ask the participant to reopen the ticket in the app.',
     'clubScan.ticketLegacy':
         'Old app ticket (no code) — check their ID.',
     'common.loading': 'Loading...',
@@ -2041,7 +2041,7 @@ kExtraTranslations = <String, Map<String, String>>{
 
     'scan.permissionDenied': 'Camera access is off. Turn it on in Settings.',
     'scan.pointCamera': 'Point the camera at the QR code.',
-    'scan.ready': 'Ready for the next student.',
+    'scan.ready': 'Ready for the next participant.',
     'scan.successTitle': 'Check-in Successful',
     'scan.failTitle': 'Check-in Failed',
     'scan.notRegipassQr': 'This is not a Regipass check-in code.',
@@ -2072,7 +2072,7 @@ kExtraTranslations = <String, Map<String, String>>{
         'You already checked in for this session ({{current}}/{{total}}).',
     'scan.checkinSaveFailed': 'The check-in could not be saved. Try again.',
     'scan.permissionError':
-        'This check-in could not be saved. Tell the club staff.',
+        'This check-in could not be saved. Tell the organizer staff.',
     'scan.sessionSuccess':
         'You are in session {{current}} (attendance {{attended}}/{{total}}).',
     'scan.otherEventQr':
@@ -2081,11 +2081,11 @@ kExtraTranslations = <String, Map<String, String>>{
     'studentAppointments.modal.showTicket': 'Show My Ticket',
     'studentAppointments.modal.scanQr': 'Scan Session QR',
     'studentAppointments.modal.scanReady':
-        'Session {{current}} is open. Scan the QR on the club\'s screen to check in.',
+        'Session {{current}} is open. Scan the QR on the organizer\'s screen to check in.',
     'studentAppointments.modal.scanNotStarted':
-        'The club has not started the first session yet. This button turns on when a session opens.',
+        'The organizer has not started the first session yet. This button turns on when a session opens.',
     'studentAppointments.modal.scanAlreadyDone':
-        'You are checked in for session {{current}}. The button turns on again when the club opens the next session.',
+        'You are checked in for session {{current}}. The button turns on again when the organizer opens the next session.',
     'studentAppointments.modal.scanCompleted':
         'All sessions for this event are completed; there is no new QR to scan.',
     'studentAppointments.modal.scanUnavailable':
@@ -2149,11 +2149,11 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubEvents.delete.confirmGlobal':
         'This event will be removed for everyone. Do you want to continue?',
     'clubEvents.delete.confirmLocal':
-        'The past event will only be removed from your own list; student records are unaffected.',
+        'The past event will only be removed from your own list; participant records are unaffected.',
 
     'clubEvents.registrations.title': 'Registrations',
     'clubEvents.qr.locationRequired':
-        'Edit the event and select its location on the map before creating a QR code. Students will be checked against this location.',
+        'Edit the event and select its location on the map before creating a QR code. Participants will be checked against this location.',
     'clubEvents.quota.title': 'Capacity',
     'clubEvents.quota.remaining': '{{count}} spots left.',
     'clubEvents.quota.full': 'Capacity is full.',
@@ -2231,49 +2231,49 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubEvents.session.finishConfirm':
         'Finish all sessions? QR check-ins will close and you can upload certificates.',
     'clubEvents.session.started':
-        'Session {{session}} started. Students can scan the QR for it.',
+        'Session {{session}} started. Participants can scan the QR for it.',
     'clubEvents.session.finished':
         'All sessions completed. You can now send certificates to participants.',
     'clubEvents.session.qrTitle': 'Session {{session}} QR',
     'clubEvents.session.qrRotatingHint':
-        'Students scan this QR with their phone camera. The code refreshes in {{seconds}} s.',
+        'Participants scan this QR with their phone camera. The code refreshes in {{seconds}} s.',
     'clubEvents.session.qrHint':
-        'Project this code; students scan it from their own phones.',
+        'Project this code; participants scan it from their own phones.',
     'clubEvents.session.qrError': 'The QR image could not be loaded.',
     'clubEvents.entry.stateNotStarted': 'Check-in not started',
     'clubEvents.entry.stateRunning': 'Check-in open',
     'clubEvents.entry.stateFinished': 'Check-in finished',
-    'clubEvents.entry.tally': ' — {{attended}}/{{total}} students checked in',
+    'clubEvents.entry.tally': ' — {{attended}}/{{total}} participants checked in',
     'clubEvents.entry.start': 'Start Check-in',
     'clubEvents.entry.finish': 'Finish Check-in',
     'clubEvents.entry.restart': 'Restart Check-in',
     'clubEvents.entry.title': 'Door Entry',
     'clubEvents.entry.subtitle':
-        'Students scan this QR with their own phones.',
+        'Participants scan this QR with their own phones.',
     'clubEvents.entry.open': 'Open Door QR',
     'clubEvents.entry.show': 'Show Entry QR',
     'clubEvents.entry.close': 'Close Door',
     'clubEvents.entry.qrTitle': 'Door Check-in QR',
     'clubEvents.entry.qrHint':
-        'Students scan this QR with their own phones.',
+        'Participants scan this QR with their own phones.',
     'clubEvents.session.allowWithoutCheckin':
-        'Let students without check-in join attendance',
+        'Let participants without check-in join attendance',
     'clubEvents.session.allowWithoutCheckinHint':
-        'Students who missed door entry can scan the session QR directly.',
+        'Participants who missed door entry can scan the session QR directly.',
 
-    'clubEvents.scan.action': 'Scan Student QR',
+    'clubEvents.scan.action': 'Scan Participant QR',
     'clubEvents.scan.subtitle':
-        'Scan the check-in code generated on the student\'s phone.',
+        'Scan the check-in code generated on the participant\'s phone.',
 
     'clubEvents.certificate.title': 'Certificate',
     'clubEvents.certificate.action': 'Upload and Distribute',
     'clubEvents.certificate.subtitle':
-        'The certificate is sent to students who meet the attendance requirement.',
+        'The certificate is sent to participants who meet the attendance requirement.',
     'clubEvents.certificate.beforeFinish':
         'You can send before the sessions end; recipients are decided from the '
         'attendance counts at that moment.',
     'clubEvents.certificate.storedOnly':
-        'The document was uploaded. No student is eligible yet, so it has not '
+        'The document was uploaded. No participant is eligible yet, so it has not '
         'been sent to anyone; it is distributed automatically once recipients '
         'are known. To send it right away, use the send button on the '
         'document.',
@@ -2282,10 +2282,10 @@ kExtraTranslations = <String, Map<String, String>>{
         'The event has ended, so the document was sent automatically to '
         '{{count}} students.',
     'clubEvents.certificate.partial':
-        'Sent to {{count}} students; {{failed}} did not receive it. You can '
+        'Sent to {{count}} participants; {{failed}} did not receive it. You can '
         'try again.',
     'clubEvents.certificate.redistribute': 'Distribute this document',
-    'clubEvents.certificate.distributedCount': 'Sent to {{count}} students',
+    'clubEvents.certificate.distributedCount': 'Sent to {{count}} participants',
     'clubEvents.certificate.notDistributed': 'Not sent to anyone yet',
     'clubEvents.certificate.sourceMissing':
         'The document could not be read. Delete it and upload again.',
@@ -2311,7 +2311,7 @@ kExtraTranslations = <String, Map<String, String>>{
         'The file could not be read. Try another file.',
     'clubEvents.certificate.sending':
         'Sending certificates ({{done}}/{{total}})...',
-    'clubEvents.certificate.sent': 'Certificate sent to {{count}} students.',
+    'clubEvents.certificate.sent': 'Certificate sent to {{count}} participants.',
     'clubEvents.certificate.error':
         'The document could not be sent. Please try again.',
     'clubEvents.certificate.permissionError':
@@ -2337,12 +2337,12 @@ kExtraTranslations = <String, Map<String, String>>{
         'who have not checked in yet.',
     'clubEvents.certificate.uploadedTitle': 'Uploaded Documents',
     'clubEvents.certificate.uploadedHint':
-        'This list is the club\'s own archive; students see the document you '
+        'This list is the organizer\'s own archive; participants see the document you '
         'distributed most recently.',
     'clubEvents.certificate.delete': 'Delete document',
     'clubEvents.certificate.deleteTitle': 'Delete document',
     'clubEvents.certificate.deleteConfirm':
-        'Remove this document from the list? Copies already sent to students '
+        'Remove this document from the list? Copies already sent to participants '
         'are not affected.',
     'clubEvents.certificate.deleted': 'Document deleted.',
     'clubEvents.certificate.deleteError':
@@ -2355,15 +2355,15 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubEvents.students.certificateEarned': 'Certificate',
     'clubEvents.students.downloadExcel': 'Excel',
 
-    'clubEvents.excel.sheetName': 'Registered Students',
+    'clubEvents.excel.sheetName': 'Registered Participants',
     'clubEvents.excel.reportTitle': 'Event Report',
     'clubEvents.excel.eventName': 'Event Name',
-    'clubEvents.excel.club': 'Club',
-    'clubEvents.excel.studentCount': 'Registered Students',
+    'clubEvents.excel.club': 'Organizer',
+    'clubEvents.excel.studentCount': 'Registered Participants',
     'clubEvents.excel.reportDate': 'Report Date',
-    'clubEvents.excel.subject': '{{title}} - registered students',
+    'clubEvents.excel.subject': '{{title}} - registered participants',
     'clubEvents.excel.preparing': 'Preparing the Excel file...',
-    'clubEvents.excel.ready': 'The student list is ready as an Excel file.',
+    'clubEvents.excel.ready': 'The participant list is ready as an Excel file.',
     'clubEvents.excel.error':
         'The Excel file could not be created. Please try again.',
 
@@ -2392,12 +2392,12 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubCreateEvent.scope.universityAndDepartment':
         'University + Department Only',
     'clubCreateEvent.target.universityHint':
-        'Leave empty to target your club\'s university.',
+        'Leave empty to target your own university.',
     'clubCreateEvent.target.departmentHint':
-        'Leave empty to target your club\'s field.',
+        'Leave empty to target your own field.',
     'clubCreateEvent.fee.paid': 'Paid',
     'clubCreateEvent.sessions.hint':
-        '1 session: documents go out automatically to checked-in students '
+        '1 session: documents go out automatically to checked-in participants '
         'once the event ends.\n'
         '2 or more: session tracking opens and you set the attendance '
         'percentage required for a certificate.',
@@ -2406,7 +2406,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'checkinMode.attendance_only': 'Attendance Only',
     'checkinMode.checkin_only': 'Check-in Only',
     'checkinMode.checkin_attendanceDesc':
-        'Students check in at the door; only those who checked in can join session attendance.',
+        'Participants check in at the door; only those who checked in can join session attendance.',
     'checkinMode.attendance_onlyDesc':
         'No door check-in; session attendance starts directly.',
     'checkinMode.checkin_onlyDesc':
@@ -2416,7 +2416,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubCreateEvent.image.pick': 'Choose From Device',
     'notification.openTarget': 'View',
     'clubCreateEvent.location.nameHint':
-        'Students see this name; location checks use the map pin.',
+        'Participants see this name; location checks use the map pin.',
     'clubCreateEvent.location.clear': 'Remove location',
     'clubCreateEvent.location.search': 'Search address',
     'clubCreateEvent.location.pickOnMap': 'Pick Location On Map',
@@ -2451,11 +2451,11 @@ kExtraTranslations = <String, Map<String, String>>{
 
     'form.multiSelect.addHint': 'Pick and add (more than one allowed)',
     'form.clubFields.hint':
-        'If your club works in more than one field, add all of them.',
+        'If you work in more than one field, add all of them.',
     'dashboard.scope.departmentOnly': 'Department Only',
 
     'clubDocuments.subtitle':
-        'Your club panel opens once your documents are reviewed.',
+        'Your organizer panel opens once your documents are reviewed.',
     'clubDocuments.establishment': 'Establishment Document',
     'clubDocuments.advisor': 'Advisor Approval',
     'clubDocuments.studentCerts': 'Student Certificates',
@@ -2469,20 +2469,20 @@ kExtraTranslations = <String, Map<String, String>>{
         'You do not have permission to upload documents.',
 
     'clubScan.otherEvent': 'This QR belongs to a different event.',
-    'clubScan.notOwner': 'This event does not belong to your club.',
+    'clubScan.notOwner': 'This event does not belong to your team.',
     'clubScan.pastEvent': 'QR check-in only works for ongoing/upcoming events.',
-    'clubScan.notRegistered': 'This student is not signed up for this event.',
+    'clubScan.notRegistered': 'This participant is not signed up for this event.',
     'clubScan.alreadyCheckedIn': '{{name}} has already checked in.',
     'clubScan.sessionNotStarted': 'Start the session first.',
     'clubScan.alreadyInSession':
         '{{name}} already checked in for this session ({{current}}/{{total}}).',
     'clubScan.missingLocation':
-        'The QR code has no location. The student should refresh it.',
+        'The QR code has no location. The participant should refresh it.',
     'clubScan.tooFar':
-        'The student is outside the event location — {{distance}} away (max {{radius}} m).',
+        'The participant is outside the event location — {{distance}} away (max {{radius}} m).',
     'clubScan.success': 'Check-in confirmed for {{name}}.',
     'clubScan.noDoorCheckin':
-        'This event has no door check-in — show the session QR instead and let students scan it.',
+        'This event has no door check-in — show the session QR instead and let participants scan it.',
     'clubScan.doorClosed':
         'Entry is closed. Start check-in from the event screen first.',
     'clubScan.sessionSuccess':
@@ -2500,13 +2500,13 @@ kExtraTranslations = <String, Map<String, String>>{
 
     'admin.action.needsDocuments': 'Documents Missing',
     'admin.needsDocuments.hint':
-        'The club is sent back to the document upload screen. Describe what '
+        'The organizer is sent back to the document upload screen. Describe what '
         'is missing or wrong — the club will see this text.',
     'admin.needsDocuments.placeholder':
         'e.g. The advisor approval is unreadable, please re-upload.',
     'admin.needsDocuments.send': 'Send',
     'admin.feedback.documentsRequested':
-        'The club was sent back to the document upload stage.',
+        'The organizer was sent back to the document upload stage.',
     'clubDocuments.alreadyUploaded': 'Uploaded',
     'clubDocuments.replace': 'Replace',
     'media.openError': 'The file could not be opened.',
@@ -2517,39 +2517,39 @@ kExtraTranslations = <String, Map<String, String>>{
 
     'admin.nav.pending': 'Approvals',
     'admin.nav.stats': 'Statistics',
-    'admin.nav.clubs': 'Clubs',
+    'admin.nav.clubs': 'Organizers',
     'admin.nav.ban': 'Block',
     'admin.action.approve': 'Approve',
     'admin.action.block': 'Block',
     'admin.confirm.approve':
-        'Approve {{club}}? The club will gain access to its panel.',
+        'Approve {{club}}? The organizer will gain access to its panel.',
     'admin.confirm.block':
         'Block {{club}}? The documents it uploaded will be deleted permanently.',
     'admin.documents': 'Documents ({{count}})',
 
-    'admin.stats.students': 'Students',
-    'admin.stats.clubs': 'Clubs',
+    'admin.stats.students': 'Participants',
+    'admin.stats.clubs': 'Organizers',
     'admin.stats.male': 'Male',
     'admin.stats.female': 'Female',
-    'admin.stats.byCity': 'Students By City',
-    'admin.stats.byUniversity': 'Students By University',
+    'admin.stats.byCity': 'Participants By City',
+    'admin.stats.byUniversity': 'Participants By University',
     'admin.stats.detail': 'Detailed Breakdown',
     'admin.stats.noData': 'No data to show.',
     'admin.stats.cityCounts':
-        '{{students}} students · {{clubs}} clubs · {{male}}M / {{female}}F',
+        '{{students}} participants · {{clubs}} organizers · {{male}}M / {{female}}F',
     'admin.stats.universityCounts':
-        '{{students}} std. · {{clubs}} clubs · {{male}}M/{{female}}F',
+        '{{students}} std. · {{clubs}} organizers · {{male}}M/{{female}}F',
 
     // Club directory (admin_clubs_screen.dart)
-    'admin.clubs.title': 'Club Directory',
-    'admin.clubs.searchPlaceholder': 'Search club, city or university...',
-    'admin.clubs.empty': 'No matching club found.',
-    'admin.clubs.cityCount': '{{count}} clubs',
+    'admin.clubs.title': 'Organizer Directory',
+    'admin.clubs.searchPlaceholder': 'Search organizer, city or university...',
+    'admin.clubs.empty': 'No matching organizer found.',
+    'admin.clubs.cityCount': '{{count}} organizers',
     'admin.clubs.unnamed': 'Unnamed Club',
     'admin.clubs.summaryCounts':
-        '{{clubs}} clubs · {{cities}} cities · {{universities}} universities',
-    'admin.clubs.summary': 'Club Summary',
-    'admin.clubs.info': 'Club Details',
+        '{{clubs}} organizers · {{cities}} cities · {{universities}} universities',
+    'admin.clubs.summary': 'Organizer Summary',
+    'admin.clubs.info': 'Organizer Details',
     'admin.clubs.summaryText':
         '{{club}} was founded at {{university}} in {{city}}. Field of work: '
         '{{fields}}. Status on record: {{status}}.',
@@ -2563,29 +2563,29 @@ kExtraTranslations = <String, Map<String, String>>{
     'admin.clubs.status.documents': 'Awaiting documents',
     'admin.clubs.status.banned': 'Blocked',
 
-    'admin.ban.searchPlaceholder': 'Search student, university, city...',
-    'admin.ban.empty': 'No matching student found.',
-    'admin.ban.studentCount': '{{count}} students',
+    'admin.ban.searchPlaceholder': 'Search participant, university, city...',
+    'admin.ban.empty': 'No matching participant found.',
+    'admin.ban.studentCount': '{{count}} participants',
     'admin.ban.banButton': 'Block',
     'admin.ban.unbanButton': 'Unblock',
     'admin.ban.confirmBan':
         'Block {{name}}? They will be signed out and cannot log in; their '
         'upcoming registrations are removed and the seats freed.',
     'admin.ban.confirmUnban': 'Remove the block for {{name}}?',
-    'admin.ban.tab.students': 'Students',
-    'admin.ban.tab.clubs': 'Clubs',
-    'admin.ban.searchPlaceholderClubs': 'Search club, university, city...',
-    'admin.ban.emptyClubs': 'No matching club found.',
-    'admin.ban.clubCount': '{{count}} clubs',
+    'admin.ban.tab.students': 'Participants',
+    'admin.ban.tab.clubs': 'Organizers',
+    'admin.ban.searchPlaceholderClubs': 'Search organizer, university, city...',
+    'admin.ban.emptyClubs': 'No matching organizer found.',
+    'admin.ban.clubCount': '{{count}} organizers',
     'admin.ban.filter.all': 'All',
     'admin.ban.filter.active': 'Active',
     'admin.ban.filter.banned': 'Blocked',
     'admin.ban.bannedLabel': 'Blocked',
     'admin.ban.confirmClubBan':
-        'Block {{name}}? The club loses access to its panel; its documents '
+        'Block {{name}}? The organizer loses access to its panel; its documents '
         'are kept.',
     'admin.ban.confirmClubUnban':
-        'Remove the block for {{name}}? The club returns to the review queue '
+        'Remove the block for {{name}}? The organizer returns to the review queue '
         'if its documents are still there, otherwise to the upload step.',
     'admin.ban.banSuccess': '{{name}} has been blocked.',
     'admin.ban.unbanSuccess': 'The block on {{name}} has been lifted.',
@@ -2595,7 +2595,7 @@ kExtraTranslations = <String, Map<String, String>>{
     // Admin note to a club (club_message_panel.dart)
     'admin.clubs.ban': 'Block Club',
     'admin.clubs.unban': 'Unblock',
-    'admin.message.title': 'Send Message to Club',
+    'admin.message.title': 'Send Message to Organizer',
     'admin.message.hint':
         'If a document is missing or something needs fixing, write the '
         'reason here; the club sees it on its approval screen and the '
@@ -2603,10 +2603,10 @@ kExtraTranslations = <String, Map<String, String>>{
     'admin.message.placeholder':
         'e.g. The advisor approval is unreadable, please upload it again.',
     'admin.message.send': 'Send Message',
-    'admin.message.sent': 'Message delivered to the club.',
+    'admin.message.sent': 'Message delivered to the organizer.',
     'admin.message.empty': 'Write a message before sending.',
     'admin.message.error': 'The message could not be sent. Try again.',
-    'admin.message.none': 'No message has been sent to this club yet.',
+    'admin.message.none': 'No message has been sent to this organizer yet.',
     'admin.message.logTitle': 'Sent messages',
     'clubPending.messages.title': 'Message From The Admin',
     'clubPending.messages.hint':
@@ -2623,8 +2623,8 @@ kExtraTranslations = <String, Map<String, String>>{
     'offline.restored': 'Internet connection restored.',
 
     // Club logo (account screen + event window badge)
-    'clubAccount.logo': 'Club Logo',
-    'clubAccount.feedback.logoUpdated': 'Club logo updated.',
+    'clubAccount.logo': 'Organizer Logo',
+    'clubAccount.feedback.logoUpdated': 'Organizer logo updated.',
     'clubCreateEvent.image.autoShort':
         'With no image, the cover shows a gray Regipass logo.',
 
@@ -2709,12 +2709,12 @@ kExtraTranslations = <String, Map<String, String>>{
 
     'screen.comingSoon': 'This section is under construction.',
     'screen.comingSoonDesc':
-        'Club and admin screens will be completed in the next stage.',
+        'Organizer and admin screens will be completed in the next stage.',
     'paidEventConsent.log.title': 'Paid Event Consent Record',
-    'paidEventConsent.log.club': 'Club consent — event creation',
-    'paidEventConsent.log.students': 'Student registration consents',
+    'paidEventConsent.log.club': 'Organizer consent — event creation',
+    'paidEventConsent.log.students': 'Participant registration consents',
     'paidEventConsent.log.missing': 'No consent record found.',
-    'paidEventConsent.log.studentsEmpty': 'No student has consented yet.',
+    'paidEventConsent.log.studentsEmpty': 'No participant has consented yet.',
     'paidEventConsent.log.showText': 'Show the accepted text',
     'paidEventConsent.log.hideText': 'Hide the text',
     'paidEventConsent.log.legacyText':
@@ -2737,7 +2737,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'gate.soundOn': 'Turn sound on',
     'gate.soundOff': 'Turn sound off',
     'gate.nth': '#{{n}}',
-    'gate.unknownStudent': 'Student',
+    'gate.unknownStudent': 'Participant',
     'gate.notSentYet': 'not sent yet',
     'gate.packInfo': 'List on device: {{n}} tickets · {{time}}',
     'gate.net.online': 'Online',
@@ -2749,7 +2749,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'gate.result.invalid-ticket': 'INVALID TICKET',
     'gate.result.not-registered': 'NOT REGISTERED',
     'gate.result.other-event': 'OTHER EVENT',
-    'gate.result.not-owner': 'ANOTHER CLUB\'S EVENT',
+    'gate.result.not-owner': 'ANOTHER ORGANIZER\'S EVENT',
     'gate.result.no-door': 'NO DOOR TICKET',
     'gate.result.past-event': 'EVENT IS OVER',
     'gate.result.not-ticket': 'NOT A REGIPASS TICKET',
@@ -2757,13 +2757,13 @@ kExtraTranslations = <String, Map<String, String>>{
     'gate.hint.in': 'Scan the next one',
     'gate.hint.legacy': 'Old app ticket (no code) — check their ID',
     'gate.hint.already': 'First entry {{time}} · count unchanged',
-    'gate.hint.invalid-ticket': 'Ticket code doesn\'t match; the student should reopen the ticket.',
-    'gate.hint.not-registered': 'This student is not registered',
+    'gate.hint.invalid-ticket': 'Ticket code doesn\'t match; the participant should reopen the ticket.',
+    'gate.hint.not-registered': 'This participant is not registered',
     'gate.hint.other-event': 'This ticket belongs to another event',
-    'gate.hint.not-owner': 'This event is not your club\'s',
-    'gate.hint.no-door': 'Attendance only: show the session QR, students scan it',
+    'gate.hint.not-owner': 'This event is not yours',
+    'gate.hint.no-door': 'Attendance only: show the session QR, participants scan it',
     'gate.hint.past-event': 'The event day has passed',
-    'gate.hint.not-ticket': 'Ask the student to open their Regipass ticket',
+    'gate.hint.not-ticket': 'Ask the participant to open their Regipass ticket',
     'gate.hint.unknown-event': 'Event not found. If offline, this event\'s ticket list may not have been downloaded to this device yet',
     'gate.hint.conflict': 'Another device checked them in at {{time}} — first scan wins',
     'gate.hint.rejected': 'Server rejected — check this entry',
@@ -2787,42 +2787,42 @@ kExtraTranslations = <String, Map<String, String>>{
     'registration.actions.waitlistPosition': 'You are #{{position}} on the waitlist',
     'registration.alerts.fullOfferWaitlist': 'This event is fully booked. Would you like to join the waitlist? You will be notified if a spot opens; the first to register gets it.',
     'registration.alerts.leaveWaitlistConfirm': 'Are you sure you want to leave the waitlist?',
-    'registration.alerts.paymentPendingNote': 'Arrange payment with the club. Your registration is confirmed once they approve it; until then you can\'t enter.',
+    'registration.alerts.paymentPendingNote': 'Arrange payment with the organizer. Your registration is confirmed once they approve it; until then you can\'t enter.',
     'registration.alerts.seatsAvailableNow': 'A spot just opened up. You can register now.',
     'registration.alerts.waitlistJoined': 'You joined the waitlist: you are #{{position}}. You will be notified when a spot opens; the first to register gets it.',
     'registration.club.addSeats': '+{{n}} spots',
     'registration.club.addSeatsConfirm': 'Capacity will go from {{from}} to {{to}}. People on the waitlist get a "spot opened" notification; the first to register gets it.',
     'registration.club.cancelEventAction': 'Cancel Event',
-    'registration.club.cancelEventBody': 'Registered students and the waitlist will be notified; registrations are kept and the event shows as "Cancelled". If it has no registrations it is deleted.',
+    'registration.club.cancelEventBody': 'Registered participants and the waitlist will be notified; registrations are kept and the event shows as "Cancelled". If it has no registrations it is deleted.',
     'registration.club.cancelEventTitle': 'Cancel event',
-    'registration.club.cancelledBanner': 'This event was cancelled. Registered students were notified.',
+    'registration.club.cancelledBanner': 'This event was cancelled. Registered participants were notified.',
     'registration.club.cancelledBannerReason': 'This event was cancelled. Reason: {{reason}}',
     'registration.club.eventCancelled': 'Event cancelled. {{n}} people notified.',
     'registration.club.eventDeleted': 'The event had no registrations and was deleted.',
     'registration.club.markPaid': 'Mark as paid',
-    'registration.club.markedPaid': '{{name}}: payment confirmed, the student was notified.',
+    'registration.club.markedPaid': '{{name}}: payment confirmed, the participant was notified.',
     'registration.club.paid': 'Paid',
     'registration.club.paymentTitle': 'Payment',
     'registration.club.quotaNow': 'Capacity is now {{n}}.',
     'registration.club.quotaSetupDone': 'Capacity set up; registration is open.',
     'registration.club.quotaSetupFailed': 'The capacity could not be set up; registration is closed. Edit and save the event to try again.',
     'registration.club.quotaSetupStatus': 'Setting Up Capacity',
-    'registration.club.reasonLabel': 'Reason (optional, shown to students)',
+    'registration.club.reasonLabel': 'Reason (optional, shown to participants)',
     'registration.club.removeAction': 'Remove registration',
-    'registration.club.removeBody': '{{name}}\'s registration will be removed. The student will be notified and the spot opens to the waitlist.',
+    'registration.club.removeBody': '{{name}}\'s registration will be removed. The participant will be notified and the spot opens to the waitlist.',
     'registration.club.removeReasonHint': 'e.g. Payment not made',
     'registration.club.removeTitle': 'Remove registration',
     'registration.club.removed': '{{name}}\'s registration was removed.',
-    'registration.club.unmarkConfirm': 'Undo the "Paid" mark for {{name}}? The student will not be able to enter.',
+    'registration.club.unmarkConfirm': 'Undo the "Paid" mark for {{name}}? The participant will not be able to enter.',
     'registration.club.unmarkPaid': 'Undo',
     'registration.club.unmarkedPaid': '{{name}}: payment mark removed.',
     'registration.club.waitlistCount': '{{count}} people on the waitlist',
     'registration.club.waitlistEmpty': 'Fully booked. The waitlist is empty for now.',
     'registration.errors.banned': 'Your account is blocked, so you cannot register.',
-    'registration.errors.below-registered': 'Capacity can\'t be lower than the number of registered students ({{registered}}). Enter a higher capacity.',
+    'registration.errors.below-registered': 'Capacity can\'t be lower than the number of registered participants ({{registered}}). Enter a higher capacity.',
     'registration.errors.busy': 'It\'s very busy right now. Try again in a few seconds.',
-    'registration.errors.cancel-locked': 'Sessions have started, so you can no longer cancel your registration yourself. Contact the club if needed.',
-    'registration.errors.club-banned': 'This club\'s events are not accepting registrations right now.',
+    'registration.errors.cancel-locked': 'Sessions have started, so you can no longer cancel your registration yourself. Contact the organizer if needed.',
+    'registration.errors.club-banned': 'This organizer\'s events are not accepting registrations right now.',
     'registration.errors.deadline-passed': 'The registration deadline has passed.',
     'registration.errors.event-cancelled': 'This event was cancelled.',
     'registration.errors.event-hidden': 'This event is no longer published.',
@@ -2833,28 +2833,28 @@ kExtraTranslations = <String, Map<String, String>>{
     'registration.errors.generic': 'The action could not be completed. Please try again.',
     'registration.errors.invalid-quota': 'Enter a valid capacity.',
     'registration.errors.not-eligible': 'This event is open to specific universities or departments; your profile doesn\'t meet the requirement.',
-    'registration.errors.not-event-club': 'Only the event\'s club can do this.',
+    'registration.errors.not-event-club': 'Only the event\'s organizer can do this.',
     'registration.errors.not-registered': 'No registration found for this event.',
     'registration.errors.offline': 'Could not reach the server. Check your connection and try again.',
     'registration.errors.paid-consent-required': 'Accept the payment notice to register for a paid event.',
-    'registration.errors.payment-pending': 'Your payment is not confirmed yet; you can enter once the club confirms it.',
+    'registration.errors.payment-pending': 'Your payment is not confirmed yet; you can enter once the organizer confirms it.',
     'registration.errors.phone-not-verified': 'Verify your phone number before registering.',
-    'registration.errors.profile-incomplete': 'Complete your student profile to register.',
-    'registration.errors.profile-missing': 'Complete your student profile to register.',
+    'registration.errors.profile-incomplete': 'Complete your participant profile to register.',
+    'registration.errors.profile-missing': 'Complete your participant profile to register.',
     'registration.errors.quota-setup': 'The event\'s capacity is not ready yet. Try again shortly.',
     'registration.errors.registration-closed': 'Registration for this event is closed.',
     'registration.errors.signIn': 'Your session seems to have ended. Please sign in again.',
     'eventModal.contactTitle': 'Contact Information',
     'eventModal.feeContactTitle': 'Contact for Payment',
-    'eventModal.feeContactNoteClub': 'Fee: {{fee}}. Payment is made directly with the club, outside Regipass; students use the details below to reach the club. When you receive a payment, mark it "Paid" in the student list; the registration is confirmed then.',
-    'eventModal.feeContactNoteWithFee': 'Fee: {{fee}}. Payment is made directly with the club, outside Regipass; contact the club using the details below. Your registration is confirmed once the club marks your payment as received.',
+    'eventModal.feeContactNoteClub': 'Fee: {{fee}}. Payment is made directly with the organizer, outside Regipass; participants use the details below to reach the organizer. When you receive a payment, mark it "Paid" in the participant list; the registration is confirmed then.',
+    'eventModal.feeContactNoteWithFee': 'Fee: {{fee}}. Payment is made directly with the organizer, outside Regipass; contact the organizer using the details below. Your registration is confirmed once the organizer marks your payment as received.',
     'clubCreateEvent.contact.label': 'Show contact information?',
     'clubCreateEvent.contact.labelPaid': 'Contact information for payment',
-    'clubCreateEvent.contact.club': 'Club\'s saved details',
+    'clubCreateEvent.contact.club': 'Organizer\'s saved details',
     'clubCreateEvent.contact.custom': 'Enter new details',
     'clubCreateEvent.contact.hidden': 'Don\'t show',
     'clubCreateEvent.contact.clubPreview': 'Will show: {{contact}}',
-    'clubCreateEvent.contact.clubEmpty': 'No contact info on your club profile. You can enter new details.',
+    'clubCreateEvent.contact.clubEmpty': 'No contact info on your profile. You can enter new details.',
     'clubCreateEvent.contact.hiddenHint': 'No contact information will be shown on the event.',
     'clubCreateEvent.contact.phone': 'Contact phone',
     'clubCreateEvent.contact.email': 'Contact email',
@@ -2862,29 +2862,29 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubCreateEvent.contact.errorEmpty': 'You chose new details: enter at least a phone or an email.',
     'clubCreateEvent.contact.errorEmail': 'The email address doesn\'t look valid.',
     'clubCreateEvent.contact.errorPhone': 'The phone number must have 11 digits (e.g. 0555 123 45 67 or 0212 123 45 67).',
-    'registration.bulk.hint': 'Select students for bulk actions.',
-    'registration.bulk.selected': '{{n}} students selected',
+    'registration.bulk.hint': 'Select participants for bulk actions.',
+    'registration.bulk.selected': '{{n}} participants selected',
     'registration.bulk.selectAll': 'Select all',
     'registration.bulk.clear': 'Clear selection',
     'registration.bulk.selectPending': 'Select payment pending ({{n}})',
     'registration.bulk.markPaid': 'Bulk payment approval',
     'registration.bulk.markPaidN': 'Mark paid ({{n}})',
-    'registration.bulk.markPaidConfirm': 'Payment will be confirmed for {{n}} students and each will be notified.',
-    'registration.bulk.markedPaid': 'Payment confirmed for {{n}} students.',
-    'registration.bulk.nonePending': 'None of the selected students has a pending payment.',
+    'registration.bulk.markPaidConfirm': 'Payment will be confirmed for {{n}} participants and each will be notified.',
+    'registration.bulk.markedPaid': 'Payment confirmed for {{n}} participants.',
+    'registration.bulk.nonePending': 'None of the selected participants has a pending payment.',
     'registration.bulk.removeN': 'Remove ({{n}})',
-    'registration.bulk.removeBody': 'The registrations of {{n}} selected students will be removed. Each will be notified and their spots will open to the waitlist.',
+    'registration.bulk.removeBody': 'The registrations of {{n}} selected participants will be removed. Each will be notified and their spots will open to the waitlist.',
     'registration.bulk.removed': 'Removed {{n}} registrations.',
-    'registration.errors.too-many-students': 'You can select at most 200 students at once.',
+    'registration.errors.too-many-students': 'You can select at most 200 participants at once.',
     'registration.labels.cancelled': 'Cancelled',
     'registration.labels.payment': 'Payment',
     'registration.labels.registeredAt': 'Registered',
     'registration.status.cancelled': 'Cancelled',
-    'registration.status.cancelledNoReason': 'The club cancelled the event.',
+    'registration.status.cancelledNoReason': 'The organizer cancelled the event.',
     'registration.status.fullWaitlist': 'Fully Booked · Waitlist',
-    'registration.status.paymentConfirmed': 'Paid (confirmed by the club)',
+    'registration.status.paymentConfirmed': 'Paid (confirmed by the organizer)',
     'registration.status.paymentPending': 'Payment Pending',
-    'registration.status.paymentPendingLong': 'Pending — confirmed once the club marks your payment',
+    'registration.status.paymentPendingLong': 'Pending — confirmed once the organizer marks your payment',
     'registration.status.registeredPaymentPending': 'Registered · Payment Pending',
     'registration.status.waitlisted': 'On the Waitlist',
     'registration.ticket.paymentPendingHint': 'Your ticket becomes valid once your payment is confirmed.',

@@ -429,8 +429,8 @@ void main() {
     await tester.pumpAndSettle();
 
     // Süzgeç şeridi ve iki sekme yerinde.
-    expect(find.text('Öğrenciler'), findsOneWidget);
-    expect(find.text('Kulüpler'), findsOneWidget);
+    expect(find.text('Katılımcılar'), findsOneWidget);
+    expect(find.text('Organizatörler'), findsOneWidget);
     expect(find.text('Aktif'), findsOneWidget);
     expect(find.text('Engelli'), findsWidgets);
 
@@ -441,7 +441,7 @@ void main() {
     expect(find.text('Engeli Kaldır'), findsOneWidget);
 
     // Kulüp sekmesine geçince liste kulüplerden gelir.
-    await tester.tap(find.text('Kulüpler'));
+    await tester.tap(find.text('Organizatörler'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Ankara · Ankara Üniversitesi'));
     await tester.pumpAndSettle();
@@ -522,7 +522,7 @@ void main() {
 
     expect(find.text('Onaylar'), findsOneWidget);
     expect(find.text('İstatistik'), findsOneWidget);
-    expect(find.text('Kulüpler'), findsOneWidget);
+    expect(find.text('Organizatörler'), findsOneWidget);
     expect(find.text('Engelle'), findsOneWidget);
     expect(find.text('Bildirimler'), findsOneWidget);
     expect(tester.takeException(), isNull);

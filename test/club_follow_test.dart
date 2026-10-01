@@ -161,7 +161,7 @@ void main() {
       ),
     );
     await tester.pump();
-    expect(find.textContaining('Henüz kulüp takip etmiyorsun'), findsOneWidget);
+    expect(find.textContaining('Henüz organizatör takip etmiyorsun'), findsOneWidget);
   });
 
   testWidgets('kulüp panelinde yalnızca takipçi sayısı', (

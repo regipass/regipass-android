@@ -106,8 +106,8 @@ void main() {
 
     expect(find.widgetWithText(TextField, 'Bildirim başlığı'), findsOneWidget);
     expect(find.widgetWithText(TextField, 'Bildirim metni'), findsOneWidget);
-    expect(find.text('Öğrenciler'), findsOneWidget);
-    expect(find.text('Kulüpler'), findsOneWidget);
+    expect(find.text('Katılımcılar'), findsOneWidget);
+    expect(find.text('Organizatörler'), findsOneWidget);
     expect(find.text('Her ikisi'), findsOneWidget);
   });
 
@@ -148,7 +148,7 @@ void main() {
 
     await tester.tap(find.text('Genel Duyuru'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Kulüpler'));
+    await tester.tap(find.text('Organizatörler'));
     await tester.enterText(
       find.widgetWithText(TextField, 'Bildirim başlığı'),
       'Kayıt haftası',
@@ -164,7 +164,7 @@ void main() {
     expect(find.text('Genel duyuru gönderilsin mi?'), findsOneWidget);
     expect(find.text('Kayıt haftası'), findsOneWidget);
     expect(find.text('Tanıtım günleri başlıyor.'), findsOneWidget);
-    expect(find.text('Kulüpler'), findsOneWidget);
+    expect(find.text('Organizatörler'), findsOneWidget);
   });
 
   group('genel duyuru üç hedef kitlenin her biri için gönderilir', () {

@@ -97,6 +97,19 @@ bool _isDayBeforeToday(int timestampMs, DateTime now) {
   return day.isBefore(today);
 }
 
+/// Etkinliğin GÜNÜ geçti mi? Web'deki `event-utils.js#isPastEvent` ve
+/// sunucudaki `registrations.js#isPastEvent` ile aynı kural: etkinlik günü
+/// (yoksa son başvuru günü) bugünden önceyse geçmiştir.
+///
+/// [isPastEvent] son başvuru ANINA bakar (keşfet/kayıt kapanışı); kulübün
+/// etkinlik listesi (iptal / düzenle / listeden kaldır) bunu kullanmamalı:
+/// son başvurusu geçmiş ama günü gelmemiş etkinlik hâlâ iptal edilebilir.
+bool isEventDayPast(AppEvent event, {DateTime? now}) {
+  final int eventDay = event.eventDateAtMs ?? 0;
+  final int reference = eventDay > 0 ? eventDay : event.deadlineAtMs;
+  return _isDayBeforeToday(reference, now ?? DateTime.now());
+}
+
 /// Etkinliğin günü geldi mi? Eski kayıtlarda etkinlik günü yoksa son başvuru
 /// günü geri dönüş değeridir; webdeki geriye uyumlulukla aynıdır.
 bool _hasClubEventDayArrived(AppEvent event, DateTime now) {

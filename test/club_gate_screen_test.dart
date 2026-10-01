@@ -118,7 +118,7 @@ void main() {
     // 4 sn sonra kart şeride küçülür.
     await tester.pump(const Duration(seconds: 5));
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.textContaining('Öğrenciden Regipass biletini'), findsNothing);
+    expect(find.textContaining('Katılımcıdan Regipass biletini'), findsNothing);
 
     // Sabitle: kart yeni okutmalarla değişmez.
     await scan(_ticket('s3'));

@@ -18,7 +18,7 @@ const List<MessageTag> kMessageTags = <MessageTag>[
   MessageTag('{tarih}', 'tarih', 'eventNotify.tag.tarih'),
   MessageTag('{saat}', 'saat', 'eventNotify.tag.saat'),
   MessageTag('{yer}', 'yer', 'eventNotify.tag.yer'),
-  MessageTag('{kulüp}', 'kulup', 'eventNotify.tag.kulup'),
+  MessageTag('{organizatör}', 'kulup', 'eventNotify.tag.kulup'),
 ];
 
 const String kFillMark = '…';
@@ -92,7 +92,7 @@ const List<MessageTemplate> kMessageTemplates = <MessageTemplate>[
     title: 'Teşekkürler {ad}!',
     message:
         '{etkinlik} etkinliğine katıldığın için teşekkürler. Bir sonraki '
-        'etkinlikte görüşmek üzere! — {kulüp}',
+        'etkinlikte görüşmek üzere! — {organizatör}',
   ),
   MessageTemplate(
     id: 'certificate',
@@ -142,6 +142,7 @@ const List<String> _keys = <String>[
 ];
 const Map<String, String> _aliases = <String, String>{
   'kulüp': 'kulup',
+  'organizatör': 'kulup',
   'isim': 'ad',
 };
 final RegExp _tagRe = RegExp(r'\{([^{}\s]{1,20})\}');
