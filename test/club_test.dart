@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -725,6 +727,75 @@ void main() {
     expect(find.text('Atölye'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'iPhone\'da tarih iOS tekerleğiyle, Android\'de takvimle seçilir',
+    (WidgetTester tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      await initializeDateFormatting('tr_TR');
+      await initializeDateFormatting('tr');
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(400, 3600);
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sessionProvider.overrideWithValue(
+              const Session(
+                isLoading: false,
+                user: null,
+                appUser: null,
+                studentProfile: null,
+                clubProfile: null,
+                activeRole: null,
+              ),
+            ),
+          ],
+          child: LanguageScope(
+            language: 'tr',
+            child: MaterialApp(
+              theme: buildRegipassTheme(),
+              home: const ClubCreateEventScreen(),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Seçiniz').first);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('dateWheelMonth')), findsOneWidget);
+      expect(find.byType(DatePickerDialog), findsNothing);
+      // Ay adları Türkçe.
+      const List<String> aylar = <String>[
+        'Ocak',
+        'Şubat',
+        'Mart',
+        'Nisan',
+        'Mayıs',
+        'Haziran',
+        'Temmuz',
+        'Ağustos',
+        'Eylül',
+        'Ekim',
+        'Kasım',
+        'Aralık',
+      ];
+      expect(find.text(aylar[DateTime.now().month - 1]), findsWidgets);
+      await tester.tap(find.byKey(const Key('cupertinoDateDone')));
+      await tester.pumpAndSettle();
+      // Bugünün tarihi seçildi: alanlardan biri artık "Seçiniz" değil.
+      expect(find.text('Seçiniz'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      await tester.tap(find.text('Seçiniz').first);
+      await tester.pumpAndSettle();
+      expect(find.byType(DatePickerDialog), findsOneWidget);
+      debugDefaultTargetPlatformOverride = null;
+    },
+  );
 
   testWidgets('görsel alanı boşken form fotoğraf göstermez', (
     WidgetTester tester,

@@ -15,6 +15,7 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -79,10 +80,18 @@ Future<void> _loadFonts() async {
   }
 
   await family('Roboto', <String>[
-    for (final String w in <String>['Regular', 'Medium', 'Bold', 'Light', 'Black'])
+    for (final String w in <String>[
+      'Regular',
+      'Medium',
+      'Bold',
+      'Light',
+      'Black',
+    ])
       '$material/Roboto-$w.ttf',
   ]);
-  await family('MaterialIcons', <String>['$material/MaterialIcons-Regular.otf']);
+  await family('MaterialIcons', <String>[
+    '$material/MaterialIcons-Regular.otf',
+  ]);
 
   // Uygulamaya gömülü fontlar (varsa).
   final Directory fonts = Directory('assets/fonts');
@@ -103,8 +112,9 @@ Future<void> _loadFonts() async {
 // ── Demo veri ──────────────────────────────────────────────────────────
 
 String _pic(String name) {
-  final List<int> bytes =
-      File('test/design/fixtures/$name.jpg').readAsBytesSync();
+  final List<int> bytes = File(
+    'test/design/fixtures/$name.jpg',
+  ).readAsBytesSync();
   return 'data:image/jpeg;base64,${base64Encode(bytes)}';
 }
 
@@ -697,7 +707,9 @@ void main() {
       ),
       overrides: student(),
       interact: (WidgetTester tester) async {
-        await tester.tap(find.text('Yapay Zekâ ile Web Geliştirme Atölyesi').first);
+        await tester.tap(
+          find.text('Yapay Zekâ ile Web Geliştirme Atölyesi').first,
+        );
       },
     );
   });
@@ -804,6 +816,24 @@ void main() {
         }
         FocusManager.instance.primaryFocus?.unfocus();
         await tester.pumpAndSettle();
+      },
+    );
+  });
+
+  testWidgets('club create event — iOS tarih tekerleği', (
+    WidgetTester tester,
+  ) async {
+    await _shoot(
+      tester,
+      name: '22c-club-create-event-ios-date',
+      home: _clubShell(Routes.clubCreateEvent, const ClubCreateEventScreen()),
+      overrides: club(),
+      height: 3200,
+      interact: (WidgetTester tester) async {
+        debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+        await tester.tap(find.text('Seçiniz').first);
+        await tester.pumpAndSettle();
+        debugDefaultTargetPlatformOverride = null;
       },
     );
   });

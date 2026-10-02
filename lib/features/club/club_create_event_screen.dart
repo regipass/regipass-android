@@ -3,6 +3,7 @@ import 'dart:io' show Platform;
 
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -482,13 +483,100 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
         ? initial
         : today;
 
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: initial ?? today,
-      firstDate: first,
-      lastDate: DateTime(now.year + 3),
-    );
+    final DateTime last = DateTime(now.year + 3);
+    // iPhone'da yerli tekerlek, Android'de Material takvim; sınırlar aynı.
+    final DateTime? picked = defaultTargetPlatform == TargetPlatform.iOS
+        ? await _askDateCupertino(initial ?? today, first, last)
+        : await showDatePicker(
+            context: context,
+            initialDate: initial ?? today,
+            firstDate: first,
+            lastDate: last,
+          );
     if (picked != null) onPicked(picked);
+  }
+
+  /// iOS'un yerli tarih tekerleğini alt sayfada gösterir (gün · ay · yıl).
+  Future<DateTime?> _askDateCupertino(
+    DateTime initial,
+    DateTime first,
+    DateTime last,
+  ) {
+    DateTime selected = initial;
+    // Uygulamanın yazı tipi (tekerlek ve düğmeler formla aynı dursun).
+    final String? font = Theme.of(context).textTheme.bodyMedium?.fontFamily;
+    return showCupertinoModalPopup<DateTime>(
+      context: context,
+      builder: (BuildContext sheetContext) => Container(
+        decoration: BoxDecoration(
+          color: context.surface,
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(BrandShape.cardRadius),
+          ),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: <Widget>[
+                  CupertinoButton(
+                    onPressed: () => Navigator.of(sheetContext).pop(),
+                    child: Text(
+                      context.t('common.cancel'),
+                      style: TextStyle(fontFamily: font),
+                    ),
+                  ),
+                  CupertinoButton(
+                    key: const Key('cupertinoDateDone'),
+                    onPressed: () => Navigator.of(sheetContext).pop(
+                      DateTime(selected.year, selected.month, selected.day),
+                    ),
+                    child: Text(
+                      context.t('common.done'),
+                      style: TextStyle(
+                        fontFamily: font,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              Divider(height: 1, color: context.hairline),
+              SizedBox(
+                height: 216,
+                child: CupertinoTheme(
+                  data: CupertinoThemeData(
+                    brightness: context.isDarkMode
+                        ? Brightness.dark
+                        : Brightness.light,
+                    textTheme: CupertinoTextThemeData(
+                      dateTimePickerTextStyle: TextStyle(
+                        color: context.ink,
+                        fontSize: 21,
+                      ),
+                    ),
+                  ),
+                  // Ay adları uygulamanın dilinde yazılsın diye yerli
+                  // CupertinoDatePicker yerine üç tekerlek (gün · ay · yıl).
+                  child: _DateWheels(
+                    initial: initial,
+                    first: first,
+                    last: last,
+                    turkish: context.lang != 'en',
+                    textColor: context.ink,
+                    fontFamily: font,
+                    onChanged: (DateTime value) => selected = value,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   /// Saat sorar.
@@ -2496,6 +2584,184 @@ class _ImagePickerRow extends StatelessWidget {
               ),
             ),
           ),
+        ),
+      ],
+    );
+  }
+}
+
+/// iOS tarzı tarih tekerlekleri: gün · ay · yıl. [first]–[last] dışına
+/// çıkılırsa en yakın sınıra, ayın olmayan gününde ayın son gününe çekilir.
+class _DateWheels extends StatefulWidget {
+  const _DateWheels({
+    required this.initial,
+    required this.first,
+    required this.last,
+    required this.turkish,
+    required this.textColor,
+    required this.onChanged,
+    this.fontFamily,
+  });
+
+  final DateTime initial;
+  final DateTime first;
+  final DateTime last;
+  final bool turkish;
+  final Color textColor;
+  final String? fontFamily;
+  final ValueChanged<DateTime> onChanged;
+
+  @override
+  State<_DateWheels> createState() => _DateWheelsState();
+}
+
+class _DateWheelsState extends State<_DateWheels> {
+  static const List<String> _tr = <String>[
+    'Ocak',
+    'Şubat',
+    'Mart',
+    'Nisan',
+    'Mayıs',
+    'Haziran',
+    'Temmuz',
+    'Ağustos',
+    'Eylül',
+    'Ekim',
+    'Kasım',
+    'Aralık',
+  ];
+  static const List<String> _en = <String>[
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ];
+
+  late DateTime _value = _clamp(widget.initial);
+  late final FixedExtentScrollController _day = FixedExtentScrollController(
+    initialItem: _value.day - 1,
+  );
+  late final FixedExtentScrollController _month = FixedExtentScrollController(
+    initialItem: _value.month - 1,
+  );
+  late final FixedExtentScrollController _year = FixedExtentScrollController(
+    initialItem: _value.year - widget.first.year,
+  );
+
+  DateTime _clamp(DateTime d) {
+    final DateTime day = DateTime(d.year, d.month, d.day);
+    final DateTime lo = DateTime(
+      widget.first.year,
+      widget.first.month,
+      widget.first.day,
+    );
+    final DateTime hi = DateTime(
+      widget.last.year,
+      widget.last.month,
+      widget.last.day,
+    );
+    if (day.isBefore(lo)) return lo;
+    if (day.isAfter(hi)) return hi;
+    return day;
+  }
+
+  void _set({int? day, int? month, int? year}) {
+    final int y = year ?? _value.year;
+    final int m = month ?? _value.month;
+    final int lastDay = DateUtils.getDaysInMonth(y, m);
+    final int d = (day ?? _value.day).clamp(1, lastDay);
+    final DateTime next = _clamp(DateTime(y, m, d));
+    setState(() => _value = next);
+    widget.onChanged(next);
+    // Sınıra ya da ayın son gününe çekildiyse tekerlekler de oraya döner.
+    void sync(FixedExtentScrollController c, int item) {
+      if (c.hasClients && c.selectedItem != item) {
+        c.animateToItem(
+          item,
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+        );
+      }
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      sync(_day, next.day - 1);
+      sync(_month, next.month - 1);
+      sync(_year, next.year - widget.first.year);
+    });
+  }
+
+  @override
+  void dispose() {
+    _day.dispose();
+    _month.dispose();
+    _year.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final TextStyle style = TextStyle(
+      color: widget.textColor,
+      fontSize: 21,
+      fontFamily: widget.fontFamily,
+    );
+    final List<String> months = widget.turkish ? _tr : _en;
+    final int years = widget.last.year - widget.first.year + 1;
+
+    Widget wheel({
+      required Key key,
+      required FixedExtentScrollController controller,
+      required int count,
+      required String Function(int) label,
+      required ValueChanged<int> onSelected,
+      int flex = 2,
+    }) => Expanded(
+      flex: flex,
+      child: CupertinoPicker(
+        key: key,
+        scrollController: controller,
+        itemExtent: 36,
+        onSelectedItemChanged: onSelected,
+        children: <Widget>[
+          for (int i = 0; i < count; i++)
+            Center(child: Text(label(i), style: style)),
+        ],
+      ),
+    );
+
+    return Row(
+      children: <Widget>[
+        wheel(
+          key: const Key('dateWheelDay'),
+          controller: _day,
+          count: 31,
+          label: (int i) => '${i + 1}',
+          onSelected: (int i) => _set(day: i + 1),
+        ),
+        wheel(
+          key: const Key('dateWheelMonth'),
+          controller: _month,
+          count: 12,
+          label: (int i) => months[i],
+          onSelected: (int i) => _set(month: i + 1),
+          flex: 3,
+        ),
+        wheel(
+          key: const Key('dateWheelYear'),
+          controller: _year,
+          count: years,
+          label: (int i) => '${widget.first.year + i}',
+          onSelected: (int i) => _set(year: widget.first.year + i),
         ),
       ],
     );
