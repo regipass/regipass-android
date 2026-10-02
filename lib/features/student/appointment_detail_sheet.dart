@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../domain/ticket_code.dart';
 import '../../app/theme.dart';
 import '../../domain/checkin_qr.dart';
 import '../../domain/event_feedback.dart';
@@ -458,6 +459,30 @@ class _AppointmentDetailSheetState
                             // İP-O / O3: bilet cihazda çizilir; internet yokken de açılır.
                             child: QrCodeView(data: _qrData!, size: 260),
                           ),
+                          // Kamera okumazsa görevli bu kodu elle girer.
+                          if (_qrTicketCode.isNotEmpty) ...<Widget>[
+                            const SizedBox(height: 12),
+                            Text(
+                              context.t('ticket.codeLabel'),
+                              style: TextStyle(
+                                color: BrandColors.white.withValues(alpha: 0.7),
+                                fontSize: 12,
+                              ),
+                            ),
+                            SelectableText(
+                              formatTicketCode(_qrTicketCode),
+                              key: const Key('ticketCodeText'),
+                              style: const TextStyle(
+                                color: BrandColors.white,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 3,
+                                fontFeatures: <FontFeature>[
+                                  FontFeature.tabularFigures(),
+                                ],
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 18),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 32),

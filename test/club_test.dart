@@ -491,7 +491,7 @@ void main() {
     expect(actionsHitTestable(), isTrue);
     expect(find.byKey(clubQrCreateActionKey), findsOneWidget);
     expect(find.text('QR Okut'), findsOneWidget);
-    expect(find.text('QR Oluştur'), findsOneWidget);
+    expect(find.text('Oturum QR\'ı'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -667,6 +667,62 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('OK'), findsOneWidget);
 
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('oturum sayısı girilince oturum adı kutuları açılır', (
+    WidgetTester tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(400, 3600);
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sessionProvider.overrideWithValue(
+            const Session(
+              isLoading: false,
+              user: null,
+              appUser: null,
+              studentProfile: null,
+              clubProfile: null,
+              activeRole: null,
+            ),
+          ),
+        ],
+        child: LanguageScope(
+          language: 'tr',
+          child: MaterialApp(
+            theme: buildRegipassTheme(),
+            home: const ClubCreateEventScreen(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Varsayılan "Sadece Check-in" oturumsuz: kutu yok.
+    expect(find.byKey(const Key('session-name-1')), findsNothing);
+    await tester.tap(find.byType(DropdownButtonFormField<String>).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Sadece Yoklama').last);
+    await tester.pumpAndSettle();
+    final Finder count = find.widgetWithText(TextField, 'Oturum Sayısı');
+    await tester.enterText(count, '3');
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Oturum adları ve saatleri (isteğe bağlı)'),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('session-start-1')), findsOneWidget);
+    expect(find.byKey(const Key('session-name-3')), findsOneWidget);
+    expect(find.byKey(const Key('session-name-4')), findsNothing);
+    await tester.enterText(find.byKey(const Key('session-name-2')), 'Atölye');
+    await tester.enterText(count, '2');
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('session-name-3')), findsNothing);
+    expect(find.text('Atölye'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -903,22 +959,34 @@ void main() {
     expect(none.hasCertificateDocuments, isFalse);
   });
 
-  group('isEventDayPast (kulüp listesi: iptal / düzenle / listeden kaldır)', () {
-    test('son başvurusu geçmiş ama günü bugün olan etkinlik geçmiş sayılmaz', () {
-      final DateTime now = DateTime(2026, 10, 1, 15);
-      final AppEvent e = AppEvent.fromMap('e', <String, dynamic>{
-        'deadlineAtMs': DateTime(2026, 9, 30, 23, 59).millisecondsSinceEpoch,
-        'eventDateAtMs': DateTime(2026, 10, 1).millisecondsSinceEpoch,
-      });
-      expect(isPastEvent(e, now: now), isTrue);
-      expect(isEventDayPast(e, now: now), isFalse);
-    });
+  group(
+    'isEventDayPast (kulüp listesi: iptal / düzenle / listeden kaldır)',
+    () {
+      test(
+        'son başvurusu geçmiş ama günü bugün olan etkinlik geçmiş sayılmaz',
+        () {
+          final DateTime now = DateTime(2026, 10, 1, 15);
+          final AppEvent e = AppEvent.fromMap('e', <String, dynamic>{
+            'deadlineAtMs': DateTime(
+              2026,
+              9,
+              30,
+              23,
+              59,
+            ).millisecondsSinceEpoch,
+            'eventDateAtMs': DateTime(2026, 10, 1).millisecondsSinceEpoch,
+          });
+          expect(isPastEvent(e, now: now), isTrue);
+          expect(isEventDayPast(e, now: now), isFalse);
+        },
+      );
 
-    test('günü dün olan etkinlik geçmiştir', () {
-      final AppEvent e = AppEvent.fromMap('e', <String, dynamic>{
-        'eventDateAtMs': DateTime(2026, 9, 30).millisecondsSinceEpoch,
+      test('günü dün olan etkinlik geçmiştir', () {
+        final AppEvent e = AppEvent.fromMap('e', <String, dynamic>{
+          'eventDateAtMs': DateTime(2026, 9, 30).millisecondsSinceEpoch,
+        });
+        expect(isEventDayPast(e, now: DateTime(2026, 10, 1, 9)), isTrue);
       });
-      expect(isEventDayPast(e, now: DateTime(2026, 10, 1, 9)), isTrue);
-    });
-  });
+    },
+  );
 }

@@ -4,6 +4,7 @@ library;
 
 import 'dart:io';
 
+import 'package:add_2_calendar/add_2_calendar.dart' as a2c;
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -51,6 +52,48 @@ Future<void> shareEventIcs(AppEvent event, Rect? origin) async {
   );
 }
 
+/// İP-UX: cihazın kendi takvim ekranını açar (iPhone: Apple Takvim,
+/// Android: takvim uygulaması). Açılamazsa Google Takvim'e düşer.
+Future<void> addToDeviceCalendar(AppEvent event) async {
+  final CalendarTimes? times = calendarTimes(calendarInputOf(event));
+  if (times == null) return;
+  final bool allDay = times.start <= 0;
+  DateTime start;
+  DateTime end;
+  if (!allDay) {
+    start = DateTime.fromMillisecondsSinceEpoch(times.start);
+    end = DateTime.fromMillisecondsSinceEpoch(
+      times.end > times.start ? times.end : times.start + 2 * 3600 * 1000,
+    );
+  } else {
+    final int day = event.eventDateAtMs ?? 0;
+    start = DateTime.fromMillisecondsSinceEpoch(day);
+    start = DateTime(start.year, start.month, start.day);
+    end = start.add(const Duration(days: 1));
+  }
+  final String desc = <String>[
+    if (event.clubName.trim().isNotEmpty) event.clubName.trim(),
+    if (event.description.trim().isNotEmpty) event.description.trim(),
+  ].join('\n\n');
+  bool ok = false;
+  try {
+    ok = await a2c.Add2Calendar.addEvent2Cal(
+      a2c.Event(
+        title: event.title,
+        description: desc,
+        location: event.locationName,
+        startDate: start,
+        endDate: end,
+        allDay: allDay,
+        timeZone: 'Europe/Istanbul',
+      ),
+    );
+  } catch (_) {
+    ok = false;
+  }
+  if (!ok) await openGoogleCalendar(event);
+}
+
 bool canAddToCalendar(AppEvent event) =>
     !event.cancelled && calendarTimes(calendarInputOf(event)) != null;
 
@@ -69,11 +112,14 @@ class AddToCalendarButton extends StatelessWidget {
     if (event.cancelled || calendarTimes(calendarInputOf(event)) == null) {
       return const SizedBox.shrink();
     }
+    // Tek dokunuş: cihazın takvim ekranı açılır. Uzun basınca diğer
+    // seçenekler (Google Takvim, .ics dosyası) çıkar.
     return OutlinedButton.icon(
       key: const Key('addToCalendar'),
       icon: const Icon(Icons.event_available_outlined),
       label: Text(context.t('calendar.add')),
-      onPressed: () {
+      onPressed: () => addToDeviceCalendar(event),
+      onLongPress: () {
         final RenderBox? box = context.findRenderObject() as RenderBox?;
         final Rect? origin = box == null
             ? null

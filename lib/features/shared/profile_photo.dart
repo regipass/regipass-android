@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../app/theme.dart';
@@ -18,7 +19,9 @@ const int kMaxProfilePhotoBytes = 3 * 1024 * 1024;
 /// manifest'teki CAMERA izni yeterlidir. iOS'ta Info.plist'e eklenen
 /// NSPhotoLibraryUsageDescription ve NSCameraUsageDescription açıklamaları
 /// olmadan uygulama seçici açıldığı anda çöker — ikisi de tanımlı.
-Future<XFile?> pickProfilePhoto(BuildContext context) async {
+/// Fotoğraf seçer ve kırpma ekranını açar. [circle]: profil fotoğrafı için
+/// yuvarlak, organizatör logosu için kare çerçeve. Kırpma iptal edilirse null.
+Future<XFile?> pickProfilePhoto(BuildContext context, {bool circle = true}) async {
   final ImageSource? source = await showModalBottomSheet<ImageSource>(
     context: context,
     backgroundColor: context.surface,
@@ -63,11 +66,49 @@ Future<XFile?> pickProfilePhoto(BuildContext context) async {
 
   if (source == null) return null;
 
-  return ImagePicker().pickImage(
+  final XFile? picked = await ImagePicker().pickImage(
     source: source,
-    maxWidth: 1024,
-    imageQuality: 85,
+    maxWidth: 2048,
+    imageQuality: 90,
   );
+  if (picked == null || !context.mounted) return null;
+  final bool en = context.lang == 'en';
+  final String title = circle
+      ? (en ? 'Crop photo' : 'Fotoğrafı kırp')
+      : (en ? 'Crop logo' : 'Logoyu kırp');
+  final CroppedFile? cropped = await ImageCropper().cropImage(
+    sourcePath: picked.path,
+    aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+    maxWidth: 1024,
+    maxHeight: 1024,
+    compressFormat: ImageCompressFormat.jpg,
+    compressQuality: 88,
+    uiSettings: <PlatformUiSettings>[
+      AndroidUiSettings(
+        toolbarTitle: title,
+        toolbarColor: BrandColors.red,
+        toolbarWidgetColor: Colors.white,
+        activeControlsWidgetColor: BrandColors.red,
+        lockAspectRatio: true,
+        hideBottomControls: false,
+        cropStyle: circle ? CropStyle.circle : CropStyle.rectangle,
+        aspectRatioPresets: <CropAspectRatioPresetData>[
+          CropAspectRatioPreset.square,
+        ],
+      ),
+      IOSUiSettings(
+        title: title,
+        doneButtonTitle: en ? 'Done' : 'Bitti',
+        cancelButtonTitle: en ? 'Cancel' : 'Vazgeç',
+        aspectRatioLockEnabled: true,
+        resetAspectRatioEnabled: false,
+        aspectRatioPickerButtonHidden: true,
+        cropStyle: circle ? CropStyle.circle : CropStyle.rectangle,
+      ),
+    ],
+  );
+  if (cropped == null) return null;
+  return XFile(cropped.path, mimeType: 'image/jpeg', name: 'photo.jpg');
 }
 
 /// Seçilen dosyayı Storage'a yükler ve indirme adresini döndürür.

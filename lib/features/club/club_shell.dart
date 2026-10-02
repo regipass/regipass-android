@@ -150,18 +150,24 @@ class _ClubShellState extends ConsumerState<ClubShell> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: <Widget>[
-                      _QrAction(
-                        key: clubQrScanActionKey,
-                        icon: Icons.qr_code_scanner,
-                        label: context.t('dashboard.drawer.qrCheckin'),
-                        onTap: () => _goQr(Routes.clubQrCheckin),
+                      // Dar ekranda ("Oturum QR'ı" gibi uzun etiketler)
+                      // taşmasın: iki düğme de sığdığı kadar küçülür.
+                      Flexible(
+                        child: _QrAction(
+                          key: clubQrScanActionKey,
+                          icon: Icons.qr_code_scanner,
+                          label: context.t('dashboard.drawer.qrCheckin'),
+                          onTap: () => _goQr(Routes.clubQrCheckin),
+                        ),
                       ),
                       const SizedBox(width: 12),
-                      _QrAction(
-                        key: clubQrCreateActionKey,
-                        icon: Icons.qr_code_2,
-                        label: context.t('dashboard.drawer.qrGenerate'),
-                        onTap: () => _goQr(Routes.clubSessionQr),
+                      Flexible(
+                        child: _QrAction(
+                          key: clubQrCreateActionKey,
+                          icon: Icons.qr_code_2,
+                          label: context.t('dashboard.drawer.qrGenerate'),
+                          onTap: () => _goQr(Routes.clubSessionQr),
+                        ),
                       ),
                     ],
                   ),
@@ -496,18 +502,24 @@ class _QrAction extends StatelessWidget {
                     children: <Widget>[
                       Icon(icon, size: 19, color: context.brandInk),
                       const SizedBox(width: 8),
-                      Text(
-                        label,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: context.ink,
-                          shadows: <Shadow>[
-                            Shadow(
-                              color: BrandColors.white.withValues(alpha: 0.72),
-                              blurRadius: 7,
-                            ),
-                          ],
+                      Flexible(
+                        child: Text(
+                          label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: context.ink,
+                            shadows: <Shadow>[
+                              Shadow(
+                                color: BrandColors.white.withValues(
+                                  alpha: 0.72,
+                                ),
+                                blurRadius: 7,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],

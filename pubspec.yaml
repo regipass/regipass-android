@@ -48,6 +48,8 @@ dependencies:
   permission_handler: ^12.0.3 # kamera iznini Android/iOS'ta açıkça isteme
   file_picker: ^10.3.4         # kulüp belgeleri (PDF/JPEG/PNG)
   shared_preferences: ^2.5.3   # role-session.js (localStorage/sessionStorage)
+  image_cropper: ^12.2.1       # profil fotoğrafı / organizatör logosu kırpma
+  add_2_calendar: ^3.1.1       # "Takvime ekle": cihazın kendi takvim ekranı
 
   # ── Yardımcılar ─────────────────────────────────────────────────────
   crypto: ^3.0.6               # phone_hints anahtarı için SHA-256

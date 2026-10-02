@@ -100,7 +100,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Kaydın tamam'), findsOneWidget);
     expect(find.byKey(const Key('postRegGoogle')), findsOneWidget);
-    expect(find.byKey(const Key('postRegIcs')), findsOneWidget);
+    expect(find.byKey(const Key('postRegCalendar')), findsOneWidget);
     expect(find.byKey(const Key('postRegTicket')), findsOneWidget);
     expect(await postRegistrationSkipped(), isFalse);
 

@@ -39,7 +39,13 @@ enum GateResult {
   paymentPending('payment-pending'),
 
   /// İP-K: etkinlik iptal edildi, biletler geçersiz.
-  eventCancelled('event-cancelled');
+  eventCancelled('event-cancelled'),
+
+  /// Elle girilen bilet kodu bu etkinlikte yok.
+  codeNotFound('code-not-found'),
+
+  /// Yalnızca harf büyüklüğü farklı iki kod var: tam yazım gerek.
+  codeAmbiguous('code-ambiguous');
 
   const GateResult(this.code);
 

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -20,6 +21,18 @@ import 'state/providers.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  // Telefonda yalnızca dik; tablette (iPad, büyük Android) yatay da serbest.
+  // iPhone ayrıca Info.plist'te dik sınırlı.
+  final ui.FlutterView? view =
+      WidgetsBinding.instance.platformDispatcher.views.firstOrNull;
+  if (view != null &&
+      view.physicalSize.shortestSide / view.devicePixelRatio < 600) {
+    unawaited(
+      SystemChrome.setPreferredOrientations(<DeviceOrientation>[
+        DeviceOrientation.portraitUp,
+      ]),
+    );
+  }
 
   // Sistem çubuklarını beklemeden uygula. Önceden bu Future'ın, Firebase'in,
   // tarih verisinin ve SharedPreferences'ın tamamı bitmeden runApp çağrılmıyor;

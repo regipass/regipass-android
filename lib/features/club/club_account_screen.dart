@@ -131,7 +131,7 @@ class _ClubAccountScreenState extends ConsumerState<ClubAccountScreen> {
   /// yanındaki rozettir ve o rozet etkinlik dokümanındaki kopyadan gelir
   /// (bkz. `EventRepository.syncClubLogo`).
   Future<void> _changeLogo(ClubProfile profile) async {
-    final XFile? file = await pickProfilePhoto(context);
+    final XFile? file = await pickProfilePhoto(context, circle: false);
     if (file == null || !mounted) return;
 
     if (await file.length() > kMaxProfilePhotoBytes) {

@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../domain/ticket_code.dart';
 import '../../app/demo_mode.dart';
 import '../../app/theme.dart';
 import '../../domain/door_gate.dart';
@@ -246,6 +247,34 @@ class _ClubQrCheckinScreenState extends ConsumerState<ClubQrCheckinScreen>
     }
   }
 
+  final AttemptLimiter _manualLimiter = AttemptLimiter();
+
+  /// Kamera okumuyorsa: bilet kodu elle girilir (yalnızca kapı girişi).
+  Future<void> _openManualEntry() async {
+    final DoorGate? gate = _gate;
+    if (gate == null) return;
+    final String? code = await showDialog<String>(
+      context: context,
+      builder: (BuildContext dialogContext) => _ManualCodeDialog(
+        limiter: _manualLimiter,
+        hasEvent: _activeEventId.isNotEmpty,
+      ),
+    );
+    if (code == null || !mounted) return;
+    final GateOutcome outcome = await gate.processTicketCode(
+      code,
+      eventId: _activeEventId,
+    );
+    if (!mounted) return;
+    if (outcome.result == GateResult.codeNotFound ||
+        outcome.result == GateResult.codeAmbiguous) {
+      _manualLimiter.fail();
+    } else {
+      _manualLimiter.success();
+    }
+    _show(outcome);
+  }
+
   void _show(GateOutcome outcome) {
     final int inCount = _recent
         .where((_GateItem g) => g.outcome.result == GateResult.checkedIn)
@@ -446,6 +475,23 @@ class _ClubQrCheckinScreenState extends ConsumerState<ClubQrCheckinScreen>
                   borderRadius: BorderRadius.circular(20),
                 ),
               ),
+            ),
+          ),
+
+          // Kamera okumuyorsa: kodu elle gir.
+          Align(
+            alignment: const Alignment(0, 0.22),
+            child: FilledButton.tonalIcon(
+              key: const Key('gate.manualCode'),
+              onPressed: _openManualEntry,
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(0, 40),
+                backgroundColor: BrandColors.black.withValues(alpha: 0.55),
+                foregroundColor: BrandColors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+              ),
+              icon: const Icon(Icons.keyboard_alt_outlined, size: 18),
+              label: Text(context.t('gate.manual.open')),
             ),
           ),
 
@@ -1178,6 +1224,97 @@ class _RecentSheet extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// "Bilet kodunu elle gir" penceresi; geçerli uzunlukta kodu döndürür.
+class _ManualCodeDialog extends StatefulWidget {
+  const _ManualCodeDialog({required this.limiter, required this.hasEvent});
+
+  final AttemptLimiter limiter;
+  final bool hasEvent;
+
+  @override
+  State<_ManualCodeDialog> createState() => _ManualCodeDialogState();
+}
+
+class _ManualCodeDialogState extends State<_ManualCodeDialog> {
+  final TextEditingController _code = TextEditingController();
+  String? _error;
+
+  @override
+  void dispose() {
+    _code.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final int locked = widget.limiter.lockedForMs;
+    if (locked > 0) {
+      setState(
+        () => _error = context.t('gate.manual.locked', <String, Object?>{
+          'n': (locked / 1000).ceil(),
+        }),
+      );
+      return;
+    }
+    if (!widget.hasEvent) {
+      setState(() => _error = context.t('gate.manual.needEvent'));
+      return;
+    }
+    final String code = normalizeTicketCodeInput(_code.text);
+    if (code.length < kManualCodeMin) {
+      setState(() => _error = context.t('gate.manual.short'));
+      return;
+    }
+    Navigator.of(context).pop(code);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(context.t('gate.manual.title')),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(context.t('gate.manual.body')),
+          const SizedBox(height: 12),
+          TextField(
+            key: const Key('gate.manualCodeField'),
+            controller: _code,
+            autofocus: true,
+            autocorrect: false,
+            enableSuggestions: false,
+            maxLength: 14,
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => _submit(),
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 2,
+            ),
+            decoration: InputDecoration(
+              counterText: '',
+              hintText: context.t('gate.manual.placeholder'),
+              errorText: _error,
+              errorMaxLines: 3,
+            ),
+          ),
+        ],
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(context.t('common.cancel')),
+        ),
+        FilledButton(
+          key: const Key('gate.manualCodeSubmit'),
+          onPressed: _submit,
+          child: Text(context.t('gate.manual.submit')),
+        ),
+      ],
     );
   }
 }

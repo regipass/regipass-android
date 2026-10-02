@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../domain/session_names.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 
 import '../core/app_log.dart';
@@ -115,7 +117,10 @@ class EventRepository {
       .snapshots()
       .map(
         (QSnap snap) => snap.docs
-            .map((QueryDocumentSnapshot<Map<String, dynamic>> d) => asString(d.data()['eventId']))
+            .map(
+              (QueryDocumentSnapshot<Map<String, dynamic>> d) =>
+                  asString(d.data()['eventId']),
+            )
             .where((String id) => id.isNotEmpty)
             .toSet(),
       );
@@ -326,7 +331,9 @@ class EventRepository {
           'entryStartedAtMs': DateTime.now().millisecondsSinceEpoch,
         // İP-2: "Check-in'i Bitir" anı (web club-events.js ile aynı). Yeniden
         // açılınca silinir; sertifika Gönder düğmesi bitirilene kadar kilitli.
-        'entryFinishedAtMs': open ? null : DateTime.now().millisecondsSinceEpoch,
+        'entryFinishedAtMs': open
+            ? null
+            : DateTime.now().millisecondsSinceEpoch,
         'entryOpenUpdatedAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
         if (open && !live.registrationClosed) ...<String, dynamic>{
@@ -980,7 +987,6 @@ class EventRepository {
     });
   }
 
-
   /// Kulüp logosunu kulübün TÜM etkinliklerine işler.
   ///
   /// Logo etkinlik dokümanına kayıt anında kopyalanıyor (öğrenci kulüp
@@ -1091,6 +1097,8 @@ class EventDraft {
     required this.eventStartAtMs,
     required this.eventEndAtMs,
     required this.sessionCount,
+    this.sessionNames = const <String>[],
+    this.sessionTimes = const <SessionTime>[],
     required this.checkinMode,
     required this.certificateThresholdPercent,
     required this.locationName,
@@ -1128,6 +1136,8 @@ class EventDraft {
   final int? eventStartAtMs;
   final int? eventEndAtMs;
   final int sessionCount;
+  final List<String> sessionNames;
+  final List<SessionTime> sessionTimes;
   final String checkinMode;
   final int? certificateThresholdPercent;
   final String locationName;
@@ -1168,6 +1178,8 @@ class EventDraft {
     eventStartAtMs: eventStartAtMs,
     eventEndAtMs: eventEndAtMs,
     sessionCount: sessionCount,
+    sessionNames: sessionNames,
+    sessionTimes: sessionTimes,
     checkinMode: checkinMode,
     certificateThresholdPercent: certificateThresholdPercent,
     locationName: locationName,
@@ -1211,6 +1223,10 @@ class EventDraft {
     'eventEndAtMs': eventEndAtMs,
     'autoNotifications': autoNotifications,
     'sessionCount': sessionCount,
+    'sessionNames': sessionNames,
+    'sessionTimes': sessionTimes
+        .map((SessionTime t) => t.toMap())
+        .toList(growable: false),
     'checkinMode': checkinMode,
     'certificateThresholdPercent': certificateThresholdPercent,
     'locationName': locationName,

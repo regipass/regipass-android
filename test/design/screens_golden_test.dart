@@ -774,6 +774,40 @@ void main() {
     );
   });
 
+  testWidgets('club create event — oturum adları', (WidgetTester tester) async {
+    await _shoot(
+      tester,
+      name: '22b-club-create-event-session-names',
+      home: _clubShell(Routes.clubCreateEvent, const ClubCreateEventScreen()),
+      overrides: club(),
+      height: 3400,
+      interact: (WidgetTester tester) async {
+        await tester.tap(find.byType(DropdownButtonFormField<String>).first);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Sadece Yoklama').last);
+        await tester.pumpAndSettle();
+        await tester.enterText(
+          find.widgetWithText(TextField, 'Oturum Sayısı'),
+          '4',
+        );
+        await tester.pumpAndSettle();
+        const List<String> names = <String>[
+          'Açılış ve tanışma',
+          'Makine Öğrenmesine Giriş',
+          'Uygulamalı atölye',
+        ];
+        for (int i = 0; i < names.length; i++) {
+          await tester.enterText(
+            find.byKey(Key('session-name-${i + 1}')),
+            names[i],
+          );
+        }
+        FocusManager.instance.primaryFocus?.unfocus();
+        await tester.pumpAndSettle();
+      },
+    );
+  });
+
   testWidgets('admin dashboard', (WidgetTester tester) async {
     await _shoot(
       tester,

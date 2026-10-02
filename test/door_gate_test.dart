@@ -4,6 +4,7 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:regipass/domain/ticket_code.dart';
 import 'package:regipass/domain/checkin_qr.dart';
 import 'package:regipass/domain/door_gate.dart';
 import 'package:regipass/services/door_gate.dart';
@@ -103,6 +104,55 @@ class FakeServer {
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues(<String, Object>{}));
+
+  test('elle bilet kodu: giriş yazar, ikinci kez "zaten girdi", olmayan kod '
+      '"bulunamadı"; internetsiz de çalışır', () async {
+    final FakeServer server = FakeServer();
+    final DoorGate g = await server.gate();
+    await g.preparePack('e1');
+    server.online = false;
+    final GateOutcome first = await g.processTicketCode(
+      ' code_s1 ',
+      eventId: 'e1',
+    );
+    expect(first.result, GateResult.checkedIn);
+    expect(first.registration?.id, 'e1_s1');
+    expect(g.stats('e1').checkedIn, 1);
+    expect(
+      (await g.processTicketCode('CODE_s1', eventId: 'e1')).result,
+      GateResult.already,
+    );
+    expect(
+      (await g.processTicketCode('YOKBOYLEKOD', eventId: 'e1')).result,
+      GateResult.codeNotFound,
+    );
+    expect(
+      (await g.processTicketCode('CODE_s2', eventId: '')).result,
+      GateResult.unknownEvent,
+    );
+  });
+
+  test('bilet kodu biçimi, eşleşme ve deneme sınırı', () {
+    expect(formatTicketCode('K7p2QX9a1B'), 'K7p2Q X9a1B');
+    final List<GateRegistration> twins = <GateRegistration>[
+      GateRegistration.fromMap('a', reg('a', code: 'abcdefghij')),
+      GateRegistration.fromMap('b', reg('b', code: 'ABCDEFGHIJ')),
+    ];
+    expect(
+      matchTicketCode(twins, 'AbCdEfGhIj').status,
+      TicketCodeMatch.ambiguous,
+    );
+    expect(matchTicketCode(twins, 'ABCDEFGHIJ').registration?.id, 'b');
+    expect(matchTicketCode(twins, 'abc').status, TicketCodeMatch.tooShort);
+    DateTime now = t0;
+    final AttemptLimiter lim = AttemptLimiter(now: () => now);
+    for (int i = 0; i < 5; i++) {
+      lim.fail();
+    }
+    expect(lim.lockedForMs, 30000);
+    now = t0.add(const Duration(seconds: 31));
+    expect(lim.lockedForMs, 0);
+  });
 
   test('saf karar tablosu', () {
     final GateEvent ev = GateEvent.fromMap('e1', FakeServer().event);
@@ -392,44 +442,71 @@ void main() {
   );
 
   // ── İP-K: ödeme ve iptal ──────────────────────────────────────────────
-  test('İP-K: ödemesi onaylanmamış bilet ayrı sonuç; eski kayıt ve paid geçer', () {
-    final Map<String, dynamic> paidEvent = <String, dynamic>{
-      ...FakeServer().event,
-      'feeType': 'paid',
-    };
-    final GateEvent ev = GateEvent.fromMap('e1', paidEvent);
-    final Map<String, dynamic> p = <String, dynamic>{
-      'type': 'event-checkin',
-      'eventId': 'e1',
-      'studentId': 's1',
-      'registrationId': 'e1_s1',
-      'c': 'CODE_s1',
-    };
-    GateResult r(Map<String, dynamic> regData, {GateEvent? event, String code = 'CODE_s1'}) =>
-        evaluateGateTicket(
-          payload: <String, dynamic>{...p, 'c': code},
-          event: event ?? ev,
-          registration: GateRegistration.fromMap('e1_s1', regData),
-          clubId: 'clubA',
-          now: t0,
-        ).result;
+  test(
+    'İP-K: ödemesi onaylanmamış bilet ayrı sonuç; eski kayıt ve paid geçer',
+    () {
+      final Map<String, dynamic> paidEvent = <String, dynamic>{
+        ...FakeServer().event,
+        'feeType': 'paid',
+      };
+      final GateEvent ev = GateEvent.fromMap('e1', paidEvent);
+      final Map<String, dynamic> p = <String, dynamic>{
+        'type': 'event-checkin',
+        'eventId': 'e1',
+        'studentId': 's1',
+        'registrationId': 'e1_s1',
+        'c': 'CODE_s1',
+      };
+      GateResult r(
+        Map<String, dynamic> regData, {
+        GateEvent? event,
+        String code = 'CODE_s1',
+      }) => evaluateGateTicket(
+        payload: <String, dynamic>{...p, 'c': code},
+        event: event ?? ev,
+        registration: GateRegistration.fromMap('e1_s1', regData),
+        clubId: 'clubA',
+        now: t0,
+      ).result;
 
-    expect(r(<String, dynamic>{...reg('s1'), 'paymentStatus': 'pending'}), GateResult.paymentPending);
-    expect(toneForResult(GateResult.paymentPending), GateTone.pay);
-    expect(r(reg('s1')), GateResult.checkedIn);
-    expect(r(<String, dynamic>{...reg('s1'), 'paymentStatus': 'paid'}), GateResult.checkedIn);
-    // Sahte bilet önce yakalanır.
-    expect(r(<String, dynamic>{...reg('s1'), 'paymentStatus': 'pending'}, code: 'X'), GateResult.invalidTicket);
-    // Ücretsiz etkinlikte işaretin anlamı yok.
-    expect(
-      r(<String, dynamic>{...reg('s1'), 'paymentStatus': 'pending'}, event: GateEvent.fromMap('e1', FakeServer().event)),
-      GateResult.checkedIn,
-    );
-    expect(
-      r(reg('s1'), event: GateEvent.fromMap('e1', <String, dynamic>{...paidEvent, 'cancelled': true})),
-      GateResult.eventCancelled,
-    );
-  });
+      expect(
+        r(<String, dynamic>{...reg('s1'), 'paymentStatus': 'pending'}),
+        GateResult.paymentPending,
+      );
+      expect(toneForResult(GateResult.paymentPending), GateTone.pay);
+      expect(r(reg('s1')), GateResult.checkedIn);
+      expect(
+        r(<String, dynamic>{...reg('s1'), 'paymentStatus': 'paid'}),
+        GateResult.checkedIn,
+      );
+      // Sahte bilet önce yakalanır.
+      expect(
+        r(<String, dynamic>{
+          ...reg('s1'),
+          'paymentStatus': 'pending',
+        }, code: 'X'),
+        GateResult.invalidTicket,
+      );
+      // Ücretsiz etkinlikte işaretin anlamı yok.
+      expect(
+        r(<String, dynamic>{
+          ...reg('s1'),
+          'paymentStatus': 'pending',
+        }, event: GateEvent.fromMap('e1', FakeServer().event)),
+        GateResult.checkedIn,
+      );
+      expect(
+        r(
+          reg('s1'),
+          event: GateEvent.fromMap('e1', <String, dynamic>{
+            ...paidEvent,
+            'cancelled': true,
+          }),
+        ),
+        GateResult.eventCancelled,
+      );
+    },
+  );
 
   test('İP-K: kapıda "Ödendi" işaretlenir ve giriş alınır', () async {
     final FakeServer server = FakeServer();

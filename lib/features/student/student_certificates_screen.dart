@@ -181,55 +181,116 @@ class _NewCertificateRowState extends ConsumerState<_NewCertificateRow> {
         : '$club • ${issuedAt > 0 ? formatDeadline(issuedAt, locale: context.lang) : '-'}';
     return Card(
       margin: EdgeInsets.zero,
-      child: ListTile(
-        key: ValueKey<String>('new-cert-$_code'),
-        onTap: revoked ? null : _download,
-        leading: Icon(Icons.workspace_premium_outlined,
-            color: revoked ? context.inkMuted : BrandColors.red),
-        title: Text('${_printed['eventTitle'] ?? context.t('studentCertificates.fallbackTitle')}',
-            style: TextStyle(color: revoked ? context.inkMuted : null)),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(meta, style: TextStyle(color: revoked ? BrandColors.danger : null)),
-            Text(_code,
-                style: TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 11.5,
-                  color: context.inkMuted,
-                  letterSpacing: 0.5,
-                )),
-          ],
-        ),
-        trailing: revoked
-            ? null
-            : _busy
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                : PopupMenuButton<String>(
-                    tooltip: context.t('studentCertificates.menuLabel'),
-                    onSelected: (String value) {
-                      switch (value) {
-                        case 'download':
-                          _download();
-                        case 'linkedin':
-                          _linkedIn();
-                        case 'copy':
-                          _copy();
-                        case 'fullname':
-                          _toggleFullName();
-                      }
-                    },
-                    itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                      PopupMenuItem<String>(value: 'download', child: Text(context.t('studentCertificates.menu.download'))),
-                      PopupMenuItem<String>(value: 'linkedin', child: Text(context.t('studentCertificates.menu.linkedin'))),
-                      PopupMenuItem<String>(value: 'copy', child: Text(context.t('studentCertificates.menu.copyLink'))),
-                      CheckedPopupMenuItem<String>(
-                        value: 'fullname',
-                        checked: _c['fullNameConsent'] == true,
-                        child: Text(context.t('studentCertificates.menu.fullName')),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          ListTile(
+            key: ValueKey<String>('new-cert-$_code'),
+            onTap: revoked ? null : _download,
+            leading: Icon(Icons.workspace_premium_outlined,
+                color: revoked ? context.inkMuted : BrandColors.red),
+            title: Text('${_printed['eventTitle'] ?? context.t('studentCertificates.fallbackTitle')}',
+                style: TextStyle(color: revoked ? context.inkMuted : null)),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(meta, style: TextStyle(color: revoked ? BrandColors.danger : null)),
+                Text(_code,
+                    style: TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 11.5,
+                      color: context.inkMuted,
+                      letterSpacing: 0.5,
+                    )),
+              ],
+            ),
+            trailing: revoked
+                ? null
+                : _busy
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                    : PopupMenuButton<String>(
+                        tooltip: context.t('studentCertificates.menuLabel'),
+                        onSelected: (String value) {
+                          switch (value) {
+                            case 'copy':
+                              _copy();
+                            case 'fullname':
+                              _toggleFullName();
+                          }
+                        },
+                        itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                          PopupMenuItem<String>(value: 'copy', child: Text(context.t('studentCertificates.menu.copyLink'))),
+                          CheckedPopupMenuItem<String>(
+                            value: 'fullname',
+                            checked: _c['fullNameConsent'] == true,
+                            child: Text(context.t('studentCertificates.menu.fullName')),
+                          ),
+                        ],
                       ),
-                    ],
+          ),
+          // İP-UX: LinkedIn ve indirme menüde saklı değil, her belgede görünür.
+          if (!revoked)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: Row(
+                children: <Widget>[
+                  Expanded(
+                    child: FilledButton.icon(
+                      key: ValueKey<String>('cert-linkedin-$_code'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF0A66C2),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      onPressed: _busy ? null : _linkedIn,
+                      icon: const _LinkedInGlyph(),
+                      label: Text(
+                        context.lang == 'en' ? 'Add to LinkedIn' : "LinkedIn'e ekle",
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
                   ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      key: ValueKey<String>('cert-download-$_code'),
+                      style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12)),
+                      onPressed: _busy ? null : _download,
+                      icon: const Icon(Icons.download_outlined, size: 20),
+                      label: Text(context.t('studentCertificates.menu.download')),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// LinkedIn "in" işareti (ek paket/varlık gerektirmeden).
+class _LinkedInGlyph extends StatelessWidget {
+  const _LinkedInGlyph();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 20,
+      height: 20,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: const Text(
+        'in',
+        style: TextStyle(
+          color: Color(0xFF0A66C2),
+          fontWeight: FontWeight.w900,
+          fontSize: 13,
+          height: 1,
+        ),
       ),
     );
   }

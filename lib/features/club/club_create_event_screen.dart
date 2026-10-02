@@ -32,6 +32,7 @@ import '../shared/event_widgets.dart';
 import '../shared/multi_select_chips.dart';
 import 'club_shell.dart';
 import 'location_picker_screen.dart';
+import '../../domain/session_names.dart';
 
 /// Doğrulamada işaretlenebilecek alanlar.
 enum _Field {
@@ -86,6 +87,12 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
   final TextEditingController _imageUrl = TextEditingController();
   final TextEditingController _sessionCount = TextEditingController(text: '1');
   final TextEditingController _threshold = TextEditingController();
+  // İsteğe bağlı oturum adları; sayı azalıp artınca yazılanlar kaybolmasın
+  // diye kutular silinmez, yalnızca ilk [sessionCount] tanesi gösterilir.
+  final List<TextEditingController> _sessionNames = <TextEditingController>[];
+  // İsteğe bağlı oturum saatleri: [i] = (başlangıç, bitiş).
+  final List<TimeOfDay?> _sessionStarts = <TimeOfDay?>[];
+  final List<TimeOfDay?> _sessionEnds = <TimeOfDay?>[];
   final TextEditingController _locationName = TextEditingController();
   final TextEditingController _locationRadius = TextEditingController(
     text: '50',
@@ -155,6 +162,137 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
     setState(() => _invalidField = field);
   }
 
+  void _ensureSessionNameFields(int count) {
+    final int target = count.clamp(0, kSessionNamesLimit);
+    while (_sessionNames.length < target) {
+      _sessionNames.add(TextEditingController());
+    }
+    while (_sessionStarts.length < target) {
+      _sessionStarts.add(null);
+      _sessionEnds.add(null);
+    }
+  }
+
+  List<Widget> _sessionNameInputs(BuildContext context) {
+    final int count = (int.tryParse(_sessionCount.text.trim()) ?? 0).clamp(
+      0,
+      kSessionNamesLimit,
+    );
+    if (count < 2) return const <Widget>[];
+    _ensureSessionNameFields(count);
+    return <Widget>[
+      const SizedBox(height: 14),
+      Text(
+        context.t('form.sessionNames'),
+        style: Theme.of(context).textTheme.labelLarge,
+      ),
+      for (int i = 0; i < count; i++) ...<Widget>[
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: TextField(
+            key: Key('session-name-${i + 1}'),
+            controller: _sessionNames[i],
+            enabled: !_saving,
+            maxLength: kSessionNameMax,
+            textInputAction: TextInputAction.next,
+            decoration: InputDecoration(
+              counterText: '',
+              isDense: true,
+              prefixIcon: Padding(
+                padding: const EdgeInsets.all(10),
+                child: CircleAvatar(
+                  radius: 12,
+                  backgroundColor: context.isDarkMode
+                      ? const Color(0x33E5383B)
+                      : const Color(0x1AE5383B),
+                  child: Text(
+                    '${i + 1}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: context.isDarkMode
+                          ? const Color(0xFFFF8A8C)
+                          : const Color(0xFFA4161A),
+                    ),
+                  ),
+                ),
+              ),
+              hintText: context.t('placeholder.sessionNameN', <String, Object?>{
+                'n': i + 1,
+              }),
+            ),
+          ),
+        ),
+        _sessionTimeRow(context, i),
+      ],
+    ];
+  }
+
+  /// Oturum adının altındaki "Başlangıç – Bitiş" saat düğmeleri.
+  Widget _sessionTimeRow(BuildContext context, int i) {
+    Widget chip(bool isStart) {
+      final TimeOfDay? value = isStart ? _sessionStarts[i] : _sessionEnds[i];
+      final bool enabled = !_saving && (isStart || _sessionStarts[i] != null);
+      return OutlinedButton.icon(
+        key: Key('session-${isStart ? 'start' : 'end'}-${i + 1}'),
+        onPressed: !enabled
+            ? null
+            : () async {
+                final TimeOfDay? picked = await _askTime(
+                  value ?? (isStart ? _startTime : _sessionStarts[i]),
+                );
+                if (picked == null || !mounted) return;
+                setState(() {
+                  if (isStart) {
+                    _sessionStarts[i] = picked;
+                  } else {
+                    _sessionEnds[i] = picked;
+                  }
+                });
+              },
+        style: OutlinedButton.styleFrom(
+          // Tema düğmeleri tam genişlik ister; satırda yan yana dursunlar.
+          minimumSize: const Size(0, 40),
+          visualDensity: VisualDensity.compact,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+        ),
+        icon: const Icon(Icons.schedule, size: 16),
+        label: Text(
+          value == null
+              ? context.t(isStart ? 'form.sessionStart' : 'form.sessionEnd')
+              : _formatTime(value),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, top: 2),
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: <Widget>[
+          chip(true),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 8),
+            child: Text('–'),
+          ),
+          chip(false),
+          if (_sessionStarts[i] != null)
+            IconButton(
+              key: Key('session-time-clear-${i + 1}'),
+              visualDensity: VisualDensity.compact,
+              icon: const Icon(Icons.close, size: 18),
+              onPressed: _saving
+                  ? null
+                  : () => setState(() {
+                      _sessionStarts[i] = null;
+                      _sessionEnds[i] = null;
+                    }),
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _title.dispose();
@@ -167,6 +305,9 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
     _imageUrl.dispose();
     _sessionCount.dispose();
     _threshold.dispose();
+    for (final TextEditingController c in _sessionNames) {
+      c.dispose();
+    }
     _locationName.dispose();
     _locationRadius.dispose();
     _descriptionFocus.dispose();
@@ -202,6 +343,15 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
     _contactEmail.text = event.contactEmail;
     _linkOnly = event.isLinkOnly;
     _sessionCount.text = '${event.sessionCount}';
+    _ensureSessionNameFields(event.sessionNames.length);
+    for (int i = 0; i < event.sessionNames.length; i++) {
+      _sessionNames[i].text = event.sessionNames[i];
+    }
+    _ensureSessionNameFields(event.sessionTimes.length);
+    for (int i = 0; i < event.sessionTimes.length; i++) {
+      _sessionStarts[i] = _parseTime(event.sessionTimes[i].start);
+      _sessionEnds[i] = _parseTime(event.sessionTimes[i].end);
+    }
     _checkinMode = event.resolvedCheckinMode;
     _threshold.text = event.certificateThresholdPercent?.toString() ?? '';
     for (final String key in kDefaultAutoNotifications.keys) {
@@ -790,6 +940,21 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
       eventStartAtMs: _combine(_eventDate, _startTime),
       eventEndAtMs: _combine(_eventDate, _endTime),
       sessionCount: sessionCount,
+      sessionNames: sessionCount > 1
+          ? normalizeSessionNames(
+              _sessionNames.map((TextEditingController c) => c.text).toList(),
+              sessionCount,
+            )
+          : const <String>[],
+      sessionTimes: sessionCount > 1
+          ? normalizeSessionTimes(<SessionTime>[
+              for (int i = 0; i < _sessionStarts.length; i++)
+                SessionTime(
+                  start: _formatTime(_sessionStarts[i]),
+                  end: _formatTime(_sessionEnds[i]),
+                ),
+            ], sessionCount)
+          : const <SessionTime>[],
       checkinMode: _checkinMode,
       certificateThresholdPercent: threshold,
       locationName: locationName,
@@ -1276,6 +1441,7 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
                         hintText: context.t('placeholder.sessionCountExample'),
                       ),
                     ),
+                    ..._sessionNameInputs(context),
                   ],
                   if (multiSession)
                     _NeonAlert(

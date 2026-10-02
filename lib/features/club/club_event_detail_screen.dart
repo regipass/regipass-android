@@ -30,6 +30,7 @@ import 'event_report_card.dart';
 import 'club_session_qr_screen.dart';
 import 'club_shell.dart';
 import 'registrations_export.dart';
+import '../../domain/session_names.dart';
 
 /// Dağıtılabilecek belge türleri — storage.rules `certificates/` kuralıyla
 /// (application/pdf veya image/*) birebir aynı olmalı.
@@ -618,9 +619,12 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
     );
     if (!ok || !mounted) return;
 
-    final String started = context.t(
-      'clubEvents.session.started',
-      <String, Object?>{'session': next},
+    final String started = withSessionName(
+      context.t('clubEvents.session.started', <String, Object?>{
+        'session': next,
+      }),
+      event.sessionNames,
+      next,
     );
     final String failed = context.t('clubEvents.feedback.updateError');
 

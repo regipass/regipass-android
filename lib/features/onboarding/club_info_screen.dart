@@ -157,7 +157,7 @@ class _ClubInfoScreenState extends ConsumerState<ClubInfoScreen> {
   }
 
   Future<void> _pickLogo() async {
-    final XFile? file = await pickProfilePhoto(context);
+    final XFile? file = await pickProfilePhoto(context, circle: false);
     if (file == null || !mounted) return;
 
     if (await file.length() > kMaxProfilePhotoBytes) {

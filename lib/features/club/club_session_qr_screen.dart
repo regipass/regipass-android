@@ -18,6 +18,7 @@ import '../shared/qr_code_view.dart';
 import '../shared/event_widgets.dart';
 import 'club_providers.dart';
 import 'club_shell.dart';
+import '../../domain/session_names.dart';
 
 /// Oturum QR'ı üretme ekranı (club-events.js#showSessionQr karşılığı).
 ///
@@ -122,7 +123,11 @@ class _SessionEventTile extends ConsumerWidget {
     final String status = completed
         ? context.t('clubEvents.session.stateAllDone')
         : started
-        ? context.t('clubEvents.session.stateActive')
+        ? withSessionName(
+            context.t('clubEvents.session.stateActive'),
+            event.sessionNames,
+            event.currentSession,
+          )
         : context.t('clubEvents.session.stateNotStarted');
 
     return Material(
@@ -348,9 +353,16 @@ Future<void> showSessionQrDialog(
     context: context,
     builder: (BuildContext dialogContext) => AlertDialog(
       title: Text(
-        dialogContext.t('clubEvents.session.qrTitle', <String, Object?>{
-          'session': session,
-        }),
+        <String>[
+          withSessionName(
+            dialogContext.t('clubEvents.session.qrTitle', <String, Object?>{
+              'session': session,
+            }),
+            event.sessionNames,
+            session,
+          ),
+          sessionTimeAt(event.sessionTimes, session),
+        ].where((String s) => s.isNotEmpty).join(' · '),
       ),
       content: _RotatingSignedQr(
         event: event,

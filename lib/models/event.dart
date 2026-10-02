@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/constants.dart';
 import '../domain/checkin_mode.dart';
 import '../domain/paid_event_consent.dart';
+import '../domain/session_names.dart';
 import 'profiles.dart';
 
 /// `events/{eventId}` — club-create-event.js#saveEvent yükünün karşılığı.
@@ -26,6 +27,8 @@ class AppEvent {
     this.quotaShardCount = 0,
     required this.deadlineAtMs,
     required this.sessionCount,
+    this.sessionNames = const <String>[],
+    this.sessionTimes = const <SessionTime>[],
     this.checkinMode = '',
     this.allowSessionWithoutCheckin = false,
     this.entryOpen = false,
@@ -111,6 +114,16 @@ class AppEvent {
           0,
       // Web'de 1 ve altı her değer "tek oturumlu" sayılır.
       sessionCount: rawSessionCount > 1 ? rawSessionCount : 1,
+      sessionNames: data['sessionNames'] is List
+          ? (data['sessionNames'] as List<dynamic>)
+                .map((dynamic e) => (e ?? '').toString())
+                .toList(growable: false)
+          : const <String>[],
+      sessionTimes: data['sessionTimes'] is List
+          ? (data['sessionTimes'] as List<dynamic>)
+                .map(SessionTime.fromMap)
+                .toList(growable: false)
+          : const <SessionTime>[],
       // Boş değer eski web kayıtlarını belirtir; [resolvedCheckinMode] onların
       // davranışını sessionCount'tan türetir.
       checkinMode: asString(data['checkinMode']),
@@ -247,6 +260,12 @@ class AppEvent {
 
   final int deadlineAtMs;
   final int sessionCount;
+
+  /// İsteğe bağlı oturum adları ([0] = 1. oturum); bkz. domain/session_names.dart.
+  final List<String> sessionNames;
+
+  /// İsteğe bağlı oturum saatleri ([0] = 1. oturum).
+  final List<SessionTime> sessionTimes;
   final String checkinMode;
   final bool allowSessionWithoutCheckin;
   final bool entryOpen;
@@ -326,13 +345,18 @@ class AppEvent {
       return (phone: '', email: '', hidden: true);
     }
     if (contactMode == 'custom') {
-      return (phone: contactPhone.trim(), email: contactEmail.trim(), hidden: false);
+      return (
+        phone: contactPhone.trim(),
+        email: contactEmail.trim(),
+        hidden: false,
+      );
     }
     return (phone: clubPhone.trim(), email: clubEmail.trim(), hidden: false);
   }
 
   /// Yeni etkinlik: kontenjan sunucuda kurulana kadar kayda kapalı.
-  bool get quotaSetupPending => registrationClosed && registrationClosedReason == 'quota-setup';
+  bool get quotaSetupPending =>
+      registrationClosed && registrationClosedReason == 'quota-setup';
   final bool hiddenFromClubList;
   final bool hiddenGlobally;
 
@@ -628,13 +652,17 @@ class EventRegistration {
       // İP-Y: aşağıdakileri yalnızca sunucu yazar (functions/attendance.js).
       ticketCode: asString(data['ticketCode']),
       attendanceFlags: data['attendanceFlags'] is List
-          ? (data['attendanceFlags'] as List<dynamic>).whereType<String>().toList()
+          ? (data['attendanceFlags'] as List<dynamic>)
+                .whereType<String>()
+                .toList()
           : const <String>[],
       attendanceVerified: data['attendanceVerified'] is Map
           ? <String, int>{
               for (final MapEntry<dynamic, dynamic> e
-                  in (data['attendanceVerified'] as Map<dynamic, dynamic>).entries)
-                if (e.key is String && e.value is num) e.key as String: (e.value as num).toInt(),
+                  in (data['attendanceVerified'] as Map<dynamic, dynamic>)
+                      .entries)
+                if (e.key is String && e.value is num)
+                  e.key as String: (e.value as num).toInt(),
             }
           : const <String, int>{},
     );

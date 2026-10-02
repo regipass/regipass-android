@@ -20,6 +20,7 @@ import '../../state/providers.dart';
 import '../shared/common_widgets.dart';
 import '../shared/qr_code_view.dart';
 import 'student_shell.dart';
+import '../../domain/session_names.dart';
 
 /// student-qr-checkin.html + js/pages/student-qr-checkin.js karşılığı.
 ///
@@ -251,15 +252,21 @@ class _StudentQrCheckinScreenState
 
     final CheckInResult? result = await _submit(event, token);
     if (result == null || !mounted) return;
+    final String sessionTitle = sessionNameAt(
+      event.sessionNames,
+      event.currentSession,
+    );
+    final String successText = context
+        .t('scan.sessionSuccess', <String, Object?>{
+          'current': event.currentSession,
+          'attended': result.sessionsAttended > 0
+              ? result.sessionsAttended
+              : registration.sessionsAttended + 1,
+          'total': event.sessionCount,
+        });
     _show(
       true,
-      context.t('scan.sessionSuccess', <String, Object?>{
-        'current': event.currentSession,
-        'attended': result.sessionsAttended > 0
-            ? result.sessionsAttended
-            : registration.sessionsAttended + 1,
-        'total': event.sessionCount,
-      }),
+      sessionTitle.isEmpty ? successText : '$sessionTitle\n$successText',
     );
     _returnToAppointment(registration.id);
   }

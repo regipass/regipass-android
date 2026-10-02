@@ -178,19 +178,18 @@ class _PostRegistrationSheetState
               runSpacing: 8,
               alignment: WrapAlignment.center,
               children: <Widget>[
+                // Tek dokunuşla cihazın takvim ekranı (iPhone: Apple Takvim).
+                FilledButton.icon(
+                  key: const Key('postRegCalendar'),
+                  icon: const Icon(Icons.event_available_outlined),
+                  label: Text(context.t('calendar.add')),
+                  onPressed: () => addToDeviceCalendar(event),
+                ),
                 OutlinedButton.icon(
                   key: const Key('postRegGoogle'),
                   icon: const Icon(Icons.calendar_month_outlined),
                   label: Text(context.t('calendar.google')),
                   onPressed: () => openGoogleCalendar(event),
-                ),
-                Builder(
-                  builder: (BuildContext b) => OutlinedButton.icon(
-                    key: const Key('postRegIcs'),
-                    icon: const Icon(Icons.event_available_outlined),
-                    label: Text(context.t('postRegistration.calendarApp')),
-                    onPressed: () => shareEventIcs(event, _originOf(b)),
-                  ),
                 ),
               ],
             ),

@@ -20,6 +20,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../domain/checkin_qr.dart';
 import '../domain/door_gate.dart';
+import '../domain/ticket_code.dart';
 import '../models/event.dart';
 import 'firebase_refs.dart';
 
@@ -589,6 +590,70 @@ class DoorGate {
       result: GateResult.checkedIn,
       scannedAtMs: scannedAtMs,
       legacy: verdict.legacy,
+      event: event,
+      registration: reg,
+      queued: true,
+    );
+  }
+
+  /// ELLE girilen bilet kodu (yalnızca kapıda giriş). Kod, etkinliğin
+  /// cihazdaki bilet listesinde aranır; bulunursa bilet QR'ı okutulmuş gibi
+  /// aynı kontrollerden geçer. İnternetsiz de çalışır.
+  Future<GateOutcome> processTicketCode(
+    String input, {
+    required String eventId,
+  }) async {
+    final DateTime scannedAt = _now();
+    final int scannedAtMs = scannedAt.millisecondsSinceEpoch;
+    GateOutcome plain(GateResult result, [GateEvent? event]) =>
+        GateOutcome(result: result, scannedAtMs: scannedAtMs, event: event);
+    if (eventId.isEmpty) return plain(GateResult.unknownEvent);
+    GatePack? pack = await preparePack(eventId);
+    final GateEvent? event = pack?.event;
+    if (pack == null || event == null) return plain(GateResult.unknownEvent);
+    ({TicketCodeMatch status, GateRegistration? registration}) match =
+        matchTicketCode(pack.registrations, input);
+    if (match.status == TicketCodeMatch.none) {
+      // Liste eski olabilir (kod az önce üretildi): internet varsa tazele.
+      pack = await preparePack(eventId, force: true) ?? pack;
+      match = matchTicketCode(pack.registrations, input);
+    }
+    final GateRegistration? reg = match.registration;
+    if (match.status != TicketCodeMatch.found || reg == null) {
+      return plain(
+        match.status == TicketCodeMatch.ambiguous
+            ? GateResult.codeAmbiguous
+            : GateResult.codeNotFound,
+        event,
+      );
+    }
+    final ({GateResult result, bool legacy}) verdict = evaluateGateTicket(
+      payload: <String, dynamic>{
+        'v': 1,
+        'type': 'event-checkin',
+        'registrationId': reg.id,
+        'eventId': eventId,
+        'studentId': reg.studentId,
+        'c': reg.ticketCode,
+      },
+      event: event,
+      registration: reg,
+      clubId: clubId,
+      now: scannedAt,
+      expectedEventId: eventId,
+    );
+    if (verdict.result != GateResult.checkedIn) {
+      return GateOutcome(
+        result: verdict.result,
+        scannedAtMs: scannedAtMs,
+        event: event,
+        registration: reg,
+      );
+    }
+    _admit(reg, eventId, scannedAtMs);
+    return GateOutcome(
+      result: GateResult.checkedIn,
+      scannedAtMs: scannedAtMs,
       event: event,
       registration: reg,
       queued: true,

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/app_strings.dart';
 import '../shared/common_widgets.dart';
+import '../shared/wallet_buttons.dart';
 import 'student_appointments_screen.dart';
 import 'student_providers.dart';
 import 'student_shell.dart';
@@ -22,7 +23,7 @@ class StudentQrGenerateScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: StudentAppBar(
-        title: context.t('dashboard.drawer.qrGenerate'),
+        title: context.t('studentQrGenerate.hero.title'),
         subtitle: context.t('studentAppointments.modal.qrHint'),
       ),
       body: items.when(
@@ -54,9 +55,18 @@ class StudentQrGenerateScreen extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
             itemCount: active.length,
             separatorBuilder: (_, _) => const SizedBox(height: 12),
-            itemBuilder: (BuildContext context, int index) => AppointmentCard(
-              item: active[index],
-              autoGenerateQr: true,
+            // İP-UX: Wallet'a ekle her biletin altında görünür (kayıttan
+            // sonra istendiği zaman). Wallet kapalıysa düğme hiç çizilmez.
+            itemBuilder: (BuildContext context, int index) => Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                AppointmentCard(item: active[index], autoGenerateQr: true),
+                WalletButtons(
+                  registrationId: active[index].registration.id,
+                  cancelled: active[index].isCancelled,
+                  paymentPending: active[index].paymentPending,
+                ),
+              ],
             ),
           );
         },
