@@ -14,10 +14,13 @@ import '../../models/event.dart';
 import '../../services/registration_service.dart';
 import '../../state/providers.dart';
 import '../../domain/club_follow.dart';
+import '../../domain/event_complaint.dart';
 import '../../services/club_follow_service.dart';
+import '../../services/event_complaint_service.dart';
 import '../shared/add_to_calendar_button.dart';
 import '../shared/club_follow_button.dart';
 import '../shared/common_widgets.dart';
+import '../shared/event_complaint_section.dart';
 import '../shared/event_link_widgets.dart';
 import '../shared/event_widgets.dart';
 import 'post_registration_sheet.dart';
@@ -103,6 +106,9 @@ class _StudentDashboardScreenState
     final FollowFilter followFilter = ref.watch(followFilterProvider);
     final Set<String> followedIds =
         ref.watch(followedClubIdsProvider).value ?? const <String>{};
+    // İP-ŞK: engellenen organizatörlerin etkinlikleri gösterilmez.
+    final Set<String> blockedIds =
+        ref.watch(blockedOrganizerIdsProvider).value ?? const <String>{};
 
     return Scaffold(
       appBar: StudentAppBar(
@@ -133,7 +139,11 @@ class _StudentDashboardScreenState
             // (web ile aynı keşif puanı; bkz. getStudentEventScore).
             final List<AppEvent> list = sortEventsForStudent(
               filterByFollow<AppEvent>(
-                all,
+                hideBlockedOrganizers<AppEvent>(
+                  all,
+                  blockedIds,
+                  (AppEvent e) => e.clubId,
+                ),
                 followFilter,
                 followedIds,
                 (AppEvent e) => e.clubId,
@@ -946,6 +956,13 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
                               style: Theme.of(context).textTheme.bodyLarge,
                             ),
                           ],
+
+                          // İP-ŞK: şikâyet et / organizatörü engelle.
+                          const SizedBox(height: 26),
+                          EventComplaintSection(
+                            event: event,
+                            onBlocked: () => Navigator.of(context).maybePop(),
+                          ),
                         ],
                       ),
                     ),
