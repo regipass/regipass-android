@@ -347,6 +347,12 @@ class _AppointmentDetailSheetState
 
                     const SizedBox(height: 20),
                     _SessionProgress(item: item),
+                    // İP-P1: program (✓ katıldın / Şu an).
+                    if (item.event != null)
+                      EventProgramSection(
+                        event: item.event!,
+                        registration: item.registration,
+                      ),
 
                     if (!widget.focusFeedback) ...<Widget>[
                       const SizedBox(height: 16),

@@ -697,6 +697,81 @@ void main() {
     );
   });
 
+  // İP-P1: etkinlik detayında Program — katılımcı (✓ / Şu an) ve
+  // organizatör (oturum başına kişi) görünümleri.
+  testWidgets('program', (WidgetTester tester) async {
+    final Map<String, dynamic> base = <String, dynamic>{
+      'title': 'Startup Okulu: 6 Haftalık Program',
+      'clubId': 'c2',
+      'clubName': 'İTÜ Girişimcilik Kulübü',
+      'sessionCount': 4,
+      'checkinMode': 'attendance_only',
+      'currentSession': 2,
+      'certificateThresholdPercent': 75,
+      'eventDateAtMs': _at(10, 2, 18),
+      'deadlineAtMs': _at(10, 1, 23),
+      'sessionNames': <String>[
+        'Açılış ve tanışma',
+        "Fikirden ürüne",
+        'Yatırımcı sunumu',
+        'Demo günü',
+      ],
+      'sessionTimes': <Map<String, String>>[
+        <String, String>{'start': '10:00', 'end': '10:45'},
+        <String, String>{'start': '11:00', 'end': '12:30'},
+        <String, String>{'start': '13:30', 'end': '15:00'},
+        <String, String>{'start': '', 'end': ''},
+      ],
+    };
+    final AppEvent ev = AppEvent.fromMap('p1', base);
+    final EventRegistration mine = EventRegistration.fromMap('p1_s1', <String, dynamic>{
+      'eventId': 'p1',
+      'studentId': 's1',
+      'attendanceVerified': <String, dynamic>{'s1': 1},
+      'sessionsAttended': 1,
+      'lastAttendedSession': 1,
+    });
+    final List<EventRegistration> all = <EventRegistration>[
+      mine,
+      EventRegistration.fromMap('p1_s2', <String, dynamic>{
+        'eventId': 'p1',
+        'studentId': 's2',
+        'attendanceVerified': <String, dynamic>{'s1': 1, 's2': 2},
+        'sessionsAttended': 2,
+        'lastAttendedSession': 2,
+      }),
+      EventRegistration.fromMap('p1_s3', <String, dynamic>{
+        'eventId': 'p1',
+        'studentId': 's3',
+        'manualAttendance': <String, dynamic>{
+          's1': <String, dynamic>{'atMs': 1},
+        },
+        'sessionsAttended': 1,
+        'lastAttendedSession': 1,
+      }),
+    ];
+    await _shoot(
+      tester,
+      name: '17-program',
+      home: Scaffold(
+        body: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: <Widget>[
+              const Text('Katılımcı görünümü', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+              EventProgramSection(event: ev, registration: mine),
+              const SizedBox(height: 28),
+              const Text('Organizatör görünümü', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+              EventProgramSection(event: ev, registrations: all),
+            ],
+          ),
+        ),
+      ),
+      overrides: student(),
+      height: 1100,
+    );
+  });
+
   testWidgets('student appointments', (WidgetTester tester) async {
     await _shoot(
       tester,

@@ -1250,6 +1250,19 @@ class _Body extends ConsumerWidget {
           icon: Icons.info_outline_rounded,
           child: EventInfoTable(rows: eventInfoRows(context, event)),
         ),
+        // İP-P1: program + oturum başına katılan sayısı.
+        if (event.isMultiSession) ...<Widget>[
+          const SizedBox(height: 16),
+          SectionCard(
+            title: context.t('program.title'),
+            icon: Icons.view_agenda_outlined,
+            child: EventProgramSection(
+              event: event,
+              registrations: list,
+              showTitle: false,
+            ),
+          ),
+        ],
 
         // İP-EL: etkinlik linki (kopyala/paylaş/QR afişi/özel ad).
         if (!event.cancelled) ...<Widget>[

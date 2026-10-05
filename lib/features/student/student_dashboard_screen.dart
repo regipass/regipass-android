@@ -1020,6 +1020,11 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
                                   ),
                                 ],
                           ),
+                          // İP-P1: program (kayıtlıysa ✓ / Şu an).
+                          EventProgramSection(
+                            event: event,
+                            registration: registration,
+                          ),
 
                           // Ücretli etkinlik: pop-up kapandıktan sonra da
                           // kulüp iletişim bilgileri kaybolmasın diye burada

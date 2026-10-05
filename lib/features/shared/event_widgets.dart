@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme.dart';
 import '../../core/constants.dart';
+import '../../domain/event_program.dart';
 import '../../domain/event_utils.dart';
 import '../../domain/paid_event_consent.dart';
 import '../../l10n/app_strings.dart';
@@ -1011,6 +1012,8 @@ class EventDetailSheet extends ConsumerWidget {
                           EventSectionTitle(context.t('eventModal.info')),
                           const SizedBox(height: 12),
                           EventInfoTable(rows: eventInfoRows(context, event)),
+                          // İP-P1: oturumlu etkinlikte program.
+                          EventProgramSection(event: event),
 
                           // İletişim: ücretsizde "İletişim Bilgileri", ücretlide
                           // "Ücret İçin İletişim Bilgileri" (blok kendisi karar
@@ -1066,6 +1069,148 @@ class EventDetailSheet extends ConsumerWidget {
                 ),
             ],
           ),
+    );
+  }
+}
+
+
+/// İP-P1: etkinlik detayında "Program" — oturum sırası, adı, saati; kayıtlı
+/// katılımcıya ✓ ve "Şu an", organizatöre oturum başına katılan sayısı.
+/// Oturumsuz etkinlikte hiçbir şey çizmez. Web: event-chips.js#renderProgramSection.
+class EventProgramSection extends StatelessWidget {
+  const EventProgramSection({
+    required this.event,
+    this.registration,
+    this.registrations,
+    this.showTitle = true,
+    super.key,
+  });
+
+  final AppEvent event;
+  final EventRegistration? registration;
+  final List<EventRegistration>? registrations;
+  final bool showTitle;
+
+  @override
+  Widget build(BuildContext context) {
+    final EventProgram? program = buildEventProgram(
+      event,
+      registration: registration,
+      registrations: registrations,
+    );
+    if (program == null) return const SizedBox.shrink();
+    final TextTheme text = Theme.of(context).textTheme;
+    return Column(
+      key: const Key('eventProgram'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        if (showTitle) ...<Widget>[
+          const SizedBox(height: 22),
+          EventSectionTitle(context.t('program.title')),
+          const SizedBox(height: 10),
+        ],
+        for (final ProgramItem item in program.items)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: _ProgramRow(item: item),
+          ),
+        if (program.needed != null && program.attendedCount != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text(
+              context.t('program.certNeeded', <String, Object?>{
+                'total': program.items.length,
+                'needed': program.needed,
+                'done': program.attendedCount,
+              }),
+              style: text.bodySmall?.copyWith(color: context.inkMuted),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _ProgramRow extends StatelessWidget {
+  const _ProgramRow({required this.item});
+
+  final ProgramItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool live = item.state == ProgramState.live;
+    final Color accent = item.attended
+        ? BrandColors.success
+        : live
+        ? BrandColors.red
+        : context.inkMuted;
+    String tag = '';
+    if (item.attended) {
+      tag = context.t(item.manual ? 'program.attendedManual' : 'program.attended');
+    } else if (live) {
+      tag = context.t('program.live');
+    }
+    if (item.count != null) {
+      tag = '${live ? '${context.t('program.live')} · ' : ''}'
+          '${context.t('program.people', <String, Object?>{'n': item.count})}';
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: context.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: live ? BrandColors.red : context.hairline,
+        ),
+      ),
+      child: Row(
+        children: <Widget>[
+          CircleAvatar(
+            radius: 15,
+            backgroundColor: accent.withValues(alpha: 0.12),
+            child: Text(
+              '${item.n}',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: item.attended ? BrandColors.success : BrandColors.red,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  item.name.isNotEmpty
+                      ? item.name
+                      : context.t('attendance.stage.session', <String, Object?>{
+                          'n': item.n,
+                        }),
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                if (item.time.isNotEmpty)
+                  Text(
+                    item.time,
+                    style: TextStyle(fontSize: 13, color: context.inkMuted),
+                  ),
+              ],
+            ),
+          ),
+          if (tag.isNotEmpty) ...<Widget>[
+            const SizedBox(width: 8),
+            Text(
+              tag,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: accent,
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

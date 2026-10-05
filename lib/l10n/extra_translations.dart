@@ -1416,6 +1416,13 @@ kExtraTranslations = <String, Map<String, String>>{
     'createEvent.lateRegistration': 'Etkinlik başladıktan sonra da kayıt al',
     'registration.scopeAsk.title': 'Bir bilgi eksik',
     'manualAttendance.title': 'Elle yoklama',
+    'program.title': 'Program',
+    'program.live': '● Şu an',
+    'program.attended': '✓ Katıldın',
+    'program.attendedManual': '✓ Katıldın (elle)',
+    'program.people': '{{n}} kişi',
+    'program.certNeeded':
+        'Belge için {{total}} oturumdan en az {{needed}} oturuma katılman gerekiyor · şu an {{done}}',
     'manualAttendance.addConfirm':
         '{{name}} için {{session}} elle "var" olarak işaretlensin mi? Raporda "!" ile ayrı görünür.',
     'manualAttendance.removeConfirm':
@@ -2972,6 +2979,13 @@ kExtraTranslations = <String, Map<String, String>>{
     'createEvent.lateRegistration': 'Keep registration open after the event starts',
     'registration.scopeAsk.title': 'One detail is missing',
     'manualAttendance.title': 'Manual attendance',
+    'program.title': 'Schedule',
+    'program.live': '● Now',
+    'program.attended': '✓ Attended',
+    'program.attendedManual': '✓ Attended (manual)',
+    'program.people': '{{n}} people',
+    'program.certNeeded':
+        'For the certificate attend at least {{needed}} of {{total}} sessions · so far {{done}}',
     'manualAttendance.addConfirm':
         'Mark {{name}} as present for {{session}} manually? It shows with "!" in the report.',
     'manualAttendance.removeConfirm':
