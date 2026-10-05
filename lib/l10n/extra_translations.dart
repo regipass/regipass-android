@@ -1559,6 +1559,11 @@ kExtraTranslations = <String, Map<String, String>>{
     'eventLink.card.slugHint': 'Küçük harf, rakam ve tire; 3–40 karakter. Boş bırakırsan kaldırılır.',
     'eventLink.card.slugSave': 'Kaydet',
     'eventLink.card.slugSaved': 'Link güncellendi.',
+    'eventLink.card.renew': 'Linki yenile (eskisini iptal et)',
+    'eventLink.card.renewConfirm':
+        'Şu anki link (özel adı dahil) hemen geçersiz olur; açan kişi "bağlantı geçersiz" görür. Yeni bir link verilir. Mevcut kayıtlar ve biletler etkilenmez; basılmış QR afişleri çalışmaz.',
+    'eventLink.card.renewDo': 'Yenile',
+    'eventLink.card.renewed': 'Yeni link oluşturuldu; eski link artık çalışmıyor.',
     'eventLink.card.cancel': 'Vazgeç',
     'eventLink.card.failed': 'Link bilgisi alınamadı.',
     'eventLink.card.retry': 'Tekrar dene',
@@ -3085,6 +3090,11 @@ kExtraTranslations = <String, Map<String, String>>{
     'eventLink.card.slugHint': 'Lowercase letters, digits and hyphens; 3–40 characters. Leave empty to remove.',
     'eventLink.card.slugSave': 'Save',
     'eventLink.card.slugSaved': 'Link updated.',
+    'eventLink.card.renew': 'Renew link (revoke the old one)',
+    'eventLink.card.renewConfirm':
+        'The current link (including its custom name) stops working immediately; anyone opening it sees "invalid link". A new link is created. Existing registrations and tickets are not affected; printed QR posters stop working.',
+    'eventLink.card.renewDo': 'Renew',
+    'eventLink.card.renewed': 'New link created; the old link no longer works.',
     'eventLink.card.cancel': 'Cancel',
     'eventLink.card.failed': 'Couldn\'t load the link.',
     'eventLink.card.retry': 'Try again',

@@ -183,6 +183,13 @@ class EventLinkService {
     );
     return data['slug'] is String ? data['slug'] as String : '';
   }
+
+  /// İP-B3: eski kod + ad hemen geçersiz olur, yeni kod verilir.
+  Future<void> renew(String eventId) async {
+    await fbFunctions.httpsCallable('regenerateEventLink').call(
+      <String, Object>{'eventId': eventId},
+    );
+  }
 }
 
 /// Sunucunun `details.reason` değeri (yoksa genel hata).

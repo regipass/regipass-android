@@ -151,6 +151,41 @@ class _ClubEventLinkCardState extends State<ClubEventLinkCard> {
     }
   }
 
+  /// İP-B3: "Linki yenile" — eski link hemen kapanır.
+  Future<void> _renew() async {
+    final bool? ok = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        title: Text(ctx.t('eventLink.card.renew')),
+        content: Text(ctx.t('eventLink.card.renewConfirm')),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(ctx.t('eventLink.card.cancel')),
+          ),
+          TextButton(
+            key: const Key('eventLinkRenewConfirm'),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(ctx.t('eventLink.card.renewDo')),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    setState(() => _saving = true);
+    try {
+      await const EventLinkService().renew(widget.event.id);
+      await _load();
+      if (!mounted) return;
+      setState(() => _editing = false);
+      _toast(context, context.t('eventLink.card.renewed'));
+    } catch (_) {
+      if (mounted) _toast(context, context.t('eventLink.card.failed'));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final ClubEventLink? link = _link;
@@ -294,6 +329,15 @@ class _ClubEventLinkCardState extends State<ClubEventLinkCard> {
             ],
           ),
         ],
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            key: const Key('eventLinkRenew'),
+            icon: const Icon(Icons.autorenew_rounded, size: 18),
+            label: Text(context.t('eventLink.card.renew')),
+            onPressed: _saving ? null : _renew,
+          ),
+        ),
       ],
     );
   }
