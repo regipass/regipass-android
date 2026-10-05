@@ -467,18 +467,18 @@ kExtraTranslations = <String, Map<String, String>>{
         '{{title}} yarım saat sonra başlıyor.',
     'notification.event.student.started.title': 'Etkinlik başladı',
     'notification.event.student.started.body': '{{title}} şimdi başladı.',
-    'notification.event.student.deadline.title': 'Başvurular kapandı',
+    'notification.event.student.deadline.title': 'Kayıtlar kapandı',
     'notification.event.student.deadline.body':
-        '{{title}} için başvuru süresi doldu.',
+        '{{title}} için kayıt süresi doldu.',
 
     'notification.event.club.upcoming.title': 'Etkinliğin yaklaşıyor',
     'notification.event.club.upcoming.body':
         '{{title}} yarım saat sonra başlıyor. Katılımcı girişine hazır ol.',
     'notification.event.club.started.title': 'Etkinlik başladı',
     'notification.event.club.started.body': '{{title}} şimdi başladı.',
-    'notification.event.club.deadline.title': 'Başvurular kapandı',
+    'notification.event.club.deadline.title': 'Kayıtlar kapandı',
     'notification.event.club.deadline.body':
-        '{{title}} için başvurular sona erdi, katılımcı listen kesinleşti.',
+        '{{title}} için kayıtlar sona erdi, katılımcı listen kesinleşti.',
 
     'notification.disabled':
         'Bildirimler cihaz ayarlarından kapalı. Etkinlik hatırlatmaları ve '
@@ -739,7 +739,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'clubEvents.quota.autoPaused':
         'Kontenjan dolduğu için kayıtlar beklemeye alındı. Kontenjanı artırırsan kayıtlar kendiliğinden yeniden açılır.',
     'clubEvents.registrations.subtitle':
-        'Kayıtları durdurursan yeni başvuru alınmaz.',
+        'Kayıtları durdurursan yeni kayıt alınmaz.',
     'clubEvents.registrations.closeAction': 'Kayıtları Durdur',
     'clubEvents.registrations.openAction': 'Kayıtları Yeniden Başlat',
     'clubEvents.registrations.pastLabel': 'Kayıtlar kapandı',
@@ -2559,7 +2559,7 @@ kExtraTranslations = <String, Map<String, String>>{
         'The event\'s name, content and goal.',
     'clubCreateEvent.section.participation': 'Attendance and Fee',
     'clubCreateEvent.section.participationDesc':
-        'Quota, fee and session settings.',
+        'Capacity, fee and session settings.',
     'clubCreateEvent.section.schedule': 'Date and Time',
     'clubCreateEvent.section.scheduleDesc':
         'Event day, time range and registration deadline.',

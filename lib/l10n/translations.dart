@@ -569,11 +569,11 @@ const Map<String, String> kTranslationsTr = <String, String>{
   'paidEventConsent.checkbox': 'Metni okudum ve kabul ediyorum.',
   'paidEventConsent.club.title': 'Ücretli Etkinlik Onayı',
   'paidEventConsent.club.text':
-      'Girdiğim bilgilerin doğruluğunu ve katılımcılarla paylaşılmasını onaylıyorum. Ücretli bir etkinlik ise tahsilat, iade ve vergilendirme dâhil tüm ödeme sürecinin tek sorumlusunun kulübümüz olduğunu; Regipass’ın bu işlemlerde taraf veya garantör olmadığını ve doğacak hiçbir ihtilaftan sorumlu tutulamayacağını kabul ediyorum.',
+      'Girdiğim bilgilerin doğruluğunu ve katılımcılarla paylaşılmasını onaylıyorum. Ücretli bir etkinlik ise tahsilat, iade ve vergilendirme dâhil tüm ödeme sürecinin tek sorumlusunun Organizatör olarak tarafımız olduğunu; Regipass’ın bu işlemlerde taraf veya garantör olmadığını ve doğacak hiçbir ihtilaftan sorumlu tutulamayacağını kabul ediyorum.',
   'paidEventConsent.club.confirm': 'Onayla ve Etkinliği Oluştur',
   'paidEventConsent.student.title': 'Ödeme Bilgilendirme Onayı',
   'paidEventConsent.student.text':
-      'Ödemenin Regipass dışında doğrudan Kulüple yapılacağını; kulübün girdiği iletişim bilgilerinin Regipass tarafından doğrulanmadığını; dolandırıcılık veya ödemenin karşılıksız kalması durumlarında Regipass\'ın hiçbir sorumluluğu olmadığını anladım ve kabul ediyorum.',
+      'Ödemenin Regipass dışında doğrudan Organizatörle yapılacağını; organizatörün girdiği iletişim bilgilerinin Regipass tarafından doğrulanmadığını; dolandırıcılık veya ödemenin karşılıksız kalması durumlarında Regipass\'ın hiçbir sorumluluğu olmadığını anladım ve kabul ediyorum.',
   'paidEventConsent.student.confirm': 'Onayla ve Kaydol',
   'table.fullName': 'Ad Soyad',
   'table.email': 'E-posta',
