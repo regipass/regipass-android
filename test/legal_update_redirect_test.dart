@@ -69,4 +69,30 @@ void main() {
       isNot(Routes.legalUpdate),
     );
   });
+
+  // İP-G2: silinmeyi bekleyen hesap
+  final Map<String, dynamic> pending = <String, dynamic>{
+    'termsAccepted': true,
+    'termsVersion': 'v1.1',
+    'pendingDeletion': <String, dynamic>{
+      'requestedAtMs': 1,
+      'purgeAfterMs': 2592000001,
+    },
+  };
+
+  test('silme talebi bekleyen kullanıcı panel yerine geri al ekranını görür', () {
+    final Session s = _session(pending);
+    expect(s.appUser!.pendingDeletionPurgeAfterMs, 2592000001);
+    expect(resolveRedirectForTest(s, Routes.studentHome), Routes.pendingDeletion);
+    expect(resolveRedirectForTest(s, Routes.pendingDeletion), isNull);
+  });
+
+  test('geri alınınca geri al ekranından panele döner', () {
+    final Session s = _session(<String, dynamic>{
+      'termsAccepted': true,
+      'termsVersion': 'v1.1',
+    });
+    expect(s.appUser!.hasPendingDeletion, isFalse);
+    expect(resolveRedirectForTest(s, Routes.pendingDeletion), Routes.studentHome);
+  });
 }

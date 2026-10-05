@@ -1259,7 +1259,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'accountSecurity.setPassword': 'Şifre Belirle',
     'accountSecurity.deleteAccount': 'Hesabımı Sil',
     'accountSecurity.deleteAccountDesc':
-        'Hesabın ve tüm kayıtların kalıcı olarak silinir.',
+        'Hesabın 30 gün sonra kalıcı olarak silinir; bu sürede geri alabilirsin.',
     'accountSecurity.phoneReauth.title': 'Telefonunla Doğrula',
     'accountSecurity.phoneReauth.subtitle':
         'Hesabına kayıtlı numaraya bir doğrulama kodu göndereceğiz.',
@@ -1286,19 +1286,43 @@ kExtraTranslations = <String, Map<String, String>>{
     'changePassword.feedback.phoneVerified':
         'Telefonun doğrulandı. Yeni şifreni belirleyebilirsin.',
 
-    'deleteAccount.subtitle': 'Bu işlem geri alınamaz.',
+    'deleteAccount.subtitle':
+        'Hesabın 30 gün sonra silinir; bu sürede giriş yaparsan geri alabilirsin.',
     'deleteAccount.warning':
-        'Hesabın, profilin ve etkinlik kayıtların kalıcı olarak silinir. Aynı '
-        'e-postayla yeniden kaydolabilirsin ama eski kayıtların geri gelmez.',
+        'Etkinlik kayıtların hemen bırakılır (yerin başkasına açılır). Hesabın, '
+        'profilin ve belgelerin 30 gün sonra kalıcı olarak silinir.',
     'deleteAccount.passwordLabel': 'Şifren',
     'deleteAccount.verifyByPhone': 'Telefonumla doğrula',
-    'deleteAccount.submit': 'Hesabımı Kalıcı Olarak Sil',
+    'deleteAccount.submit': 'Hesabımı Sil',
     'deleteAccount.feedback.passwordRequired':
         'Hesabını silmek için şifreni gir.',
     'deleteAccount.feedback.verifyFirst': 'Önce telefonunla kimliğini doğrula.',
     'deleteAccount.feedback.phoneVerified':
         'Kimliğin doğrulandı. Hesabını silebilirsin.',
-    'deleteAccount.notice.done': 'Hesabın kalıcı olarak silindi.',
+    'deleteAccount.notice.done':
+        'Silme talebin alındı. Hesabın 30 gün sonra silinecek; bu sürede '
+        'giriş yaparsan geri alabilirsin.',
+    'deleteAccount.error.clubHasEvents':
+        'Hesabını silmeden önce oluşturduğun etkinlikleri kaldır.',
+    'deleteAccount.error.banned':
+        'Engellenmiş hesaplar silinemez. Yardım için product@regipass.com '
+        'adresine yaz.',
+    'deleteAccount.error.failed':
+        'Silme talebin kaydedilemedi. İnternet bağlantını kontrol edip tekrar dene.',
+    'pendingDeletion.title': 'Hesabın silinmek üzere',
+    'pendingDeletion.lead':
+        'Hesabını silmek istedin. Hesabın ve tüm verilerin {{date}} tarihinde '
+        'kalıcı olarak silinecek.',
+    'pendingDeletion.note':
+        'Fikrini değiştirdiysen hesabını şimdi geri alabilirsin. Bırakılan '
+        'etkinlik kayıtların geri gelmez; istersen yeniden kaydolabilirsin.',
+    'pendingDeletion.restore': 'Hesabımı geri al',
+    'pendingDeletion.signOut': 'Çıkış yap (silme devam etsin)',
+    'pendingDeletion.error':
+        'Hesap geri alınamadı. İnternet bağlantını kontrol edip tekrar dene.',
+    'pendingDeletion.adminScheduled':
+        'Bu hesap Regipass ekibi tarafından silinmek üzere. Yardım için '
+        'product@regipass.com adresine yaz.',
 
     'screen.comingSoon': 'Bu bölüm hazırlanıyor.',
     'screen.comingSoonDesc':
@@ -2818,7 +2842,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'accountSecurity.setPassword': 'Set a Password',
     'accountSecurity.deleteAccount': 'Delete My Account',
     'accountSecurity.deleteAccountDesc':
-        'Your account and all of your records are permanently deleted.',
+        'Your account is permanently deleted after 30 days; you can restore it in that time.',
     'accountSecurity.phoneReauth.title': 'Verify with your phone',
     'accountSecurity.phoneReauth.subtitle':
         'We will send a verification code to the number registered to your '
@@ -2849,21 +2873,45 @@ kExtraTranslations = <String, Map<String, String>>{
     'changePassword.feedback.phoneVerified':
         'Your phone is verified. You can set your new password.',
 
-    'deleteAccount.subtitle': 'This action cannot be undone.',
+    'deleteAccount.subtitle':
+        'Your account is deleted after 30 days; sign in during that time to restore it.',
     'deleteAccount.warning':
-        'Your account, profile and event registrations are deleted '
-        'permanently. You can sign up again with the same email, but your old '
-        'records will not come back.',
+        'Your event registrations are released right away (your seat opens '
+        'for others). Your account, profile and certificates are permanently '
+        'deleted after 30 days.',
     'deleteAccount.passwordLabel': 'Your password',
     'deleteAccount.verifyByPhone': 'Verify with my phone',
-    'deleteAccount.submit': 'Permanently Delete My Account',
+    'deleteAccount.submit': 'Delete My Account',
     'deleteAccount.feedback.passwordRequired':
         'Enter your password to delete your account.',
     'deleteAccount.feedback.verifyFirst':
         'Verify your identity with your phone first.',
     'deleteAccount.feedback.phoneVerified':
         'Your identity is verified. You can delete your account.',
-    'deleteAccount.notice.done': 'Your account has been permanently deleted.',
+    'deleteAccount.notice.done':
+        'Deletion request received. Your account will be deleted in 30 days; '
+        'sign in during that time to restore it.',
+    'deleteAccount.error.clubHasEvents':
+        'Remove the events you created before deleting your account.',
+    'deleteAccount.error.banned':
+        'Blocked accounts cannot be deleted. For help, email '
+        'product@regipass.com.',
+    'deleteAccount.error.failed':
+        'Your deletion request could not be saved. Check your connection and try again.',
+    'pendingDeletion.title': 'Your account is scheduled for deletion',
+    'pendingDeletion.lead':
+        'You asked to delete your account. Your account and all your data will '
+        'be permanently deleted on {{date}}.',
+    'pendingDeletion.note':
+        'If you changed your mind, you can restore your account now. Released '
+        'event registrations do not come back; you can register again.',
+    'pendingDeletion.restore': 'Restore my account',
+    'pendingDeletion.signOut': 'Sign out (keep the deletion)',
+    'pendingDeletion.error':
+        'Your account could not be restored. Check your connection and try again.',
+    'pendingDeletion.adminScheduled':
+        'This account is scheduled for deletion by the Regipass team. For '
+        'help, email product@regipass.com.',
 
     'screen.comingSoon': 'This section is under construction.',
     'screen.comingSoonDesc':

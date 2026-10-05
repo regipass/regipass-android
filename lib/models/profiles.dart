@@ -91,6 +91,7 @@ class AppUser {
     this.webTermsVersion = '',
     this.commercialMessages = false,
     this.thirdPartyShare = false,
+    this.pendingDeletionPurgeAfterMs,
   });
 
   factory AppUser.fromMap(String uid, Map<String, dynamic> data) {
@@ -122,7 +123,18 @@ class AppUser {
       thirdPartyShare:
           _consentGiven(data, 'marketingThirdPartyShare') ??
           (data['marketingConsent'] == true),
+      pendingDeletionPurgeAfterMs: _pendingDeletion(data),
     );
+  }
+
+  /// İP-G2: `pendingDeletion.purgeAfterMs` (kullanıcı silme istediyse).
+  static int? _pendingDeletion(Map<String, dynamic> data) {
+    final Object? pending = data['pendingDeletion'];
+    if (pending is Map) {
+      final Object? ms = pending['purgeAfterMs'];
+      if (ms is num && ms > 0) return ms.toInt();
+    }
+    return null;
   }
 
   /// `consent.<key>.given` (yoksa null).
@@ -182,6 +194,12 @@ class AppUser {
 
   /// Verilerin üçüncü kurumlarla pazarlama amaçlı paylaşılması izni.
   final bool thirdPartyShare;
+
+  /// İP-G2: kullanıcı kendi hesabını silmek istediyse kalıcı silme zamanı.
+  /// Bu süre içinde giriş yapan kullanıcıya "Hesabımı geri al" sorulur.
+  final int? pendingDeletionPurgeAfterMs;
+
+  bool get hasPendingDeletion => pendingDeletionPurgeAfterMs != null;
 
   bool get hasStudentRole => roles['student'] == true;
   bool get hasClubRole => roles['club'] == true;

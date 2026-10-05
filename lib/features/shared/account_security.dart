@@ -26,6 +26,7 @@ import '../../app/theme.dart';
 import '../../core/input_guard.dart';
 import '../../core/password_policy.dart';
 import '../../l10n/app_strings.dart';
+import '../../services/account_deletion_service.dart';
 import '../../services/account_mail_service.dart';
 import '../../services/auth_repository.dart';
 import '../../state/providers.dart';
@@ -470,7 +471,7 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
     // Silme sırasında oturum kapanacağı için router bu ekranı değiştirir;
     // `ref` ve `context` okumaları o âna kadar bitmiş olmalı.
     final AuthRepository auth = ref.read(authRepositoryProvider);
-    final cleanup = ref.read(accountCleanupRepositoryProvider);
+    const AccountDeletionService deletion = AccountDeletionService();
     final roleSessionStore = ref.read(roleSessionStoreProvider);
     final notice = ref.read(signOutNoticeProvider.notifier);
     final pendingRole = ref.read(pendingOnboardingRoleProvider.notifier);
@@ -484,11 +485,19 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
         await auth.reauthenticateWithPassword(_password.text);
       }
 
-      await cleanup.deleteAccount(
-        user: user,
-        studentProfile: session.studentProfile,
-        clubProfile: session.clubProfile,
-      );
+      // İP-G2: hesap hemen silinmez; sunucu 30 gün sonrası için işaretler,
+      // kayıtları hemen bırakır. Bu sürede giriş yapan kullanıcıya
+      // PendingDeletionScreen "Hesabımı geri al" sorar.
+      await deletion.requestMyDeletion();
+    } on AccountDeletionException catch (error) {
+      if (!mounted) return;
+      setState(() => _deleting = false);
+      _setFeedback(context.t(switch (error.reason) {
+        'club-has-events' => 'deleteAccount.error.clubHasEvents',
+        'banned' => 'deleteAccount.error.banned',
+        _ => 'deleteAccount.error.failed',
+      }));
+      return;
     } catch (error) {
       if (!mounted) return;
       setState(() => _deleting = false);

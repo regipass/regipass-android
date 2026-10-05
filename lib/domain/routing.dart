@@ -47,6 +47,9 @@ class Routes {
   /// İP-HK: güncellenen sözleşmelerin yeniden onayı.
   static const String legalUpdate = '/legal-update';
 
+  /// İP-G2: silinmeyi bekleyen hesap (geri al / çıkış).
+  static const String pendingDeletion = '/pending-deletion';
+
   static const String studentHome = '/student'; // dashboard.html
   static const String studentAppointments = '/student/appointments';
   static const String studentQrGenerate = '/student/qr';

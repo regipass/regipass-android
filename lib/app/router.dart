@@ -47,6 +47,7 @@ import '../features/student/student_qr_checkin_screen.dart';
 import '../features/student/student_qr_generate_screen.dart';
 import '../features/student/student_shell.dart';
 import '../features/legal/legal_update_screen.dart';
+import '../features/legal/pending_deletion_screen.dart';
 import '../services/event_link_service.dart';
 import '../state/providers.dart';
 import 'demo_mode.dart';
@@ -138,6 +139,11 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
         path: Routes.phoneVerify,
         pageBuilder: (_, state) =>
             _instantPage(state, const PhoneVerifyScreen()),
+      ),
+      GoRoute(
+        path: Routes.pendingDeletion,
+        pageBuilder: (_, state) =>
+            _instantPage(state, const PendingDeletionScreen()),
       ),
       GoRoute(
         path: Routes.legalUpdate,
@@ -443,6 +449,14 @@ String? _resolveRedirect(Session session, Uri uri) {
         ? null
         : routeWithExternalQrContinuation(target, uri);
   }
+
+  // ── İP-G2: silinmeyi bekleyen hesap ─────────────────────────────
+  // Kullanıcı hesabını silmek istediyse 30 gün içinde giriş yaptığında
+  // panele geçmeden önce "Hesabımı geri al / Çıkış yap" sorulur.
+  if (!kDemoMode && (session.appUser?.hasPendingDeletion ?? false)) {
+    return location == Routes.pendingDeletion ? null : Routes.pendingDeletion;
+  }
+  if (location == Routes.pendingDeletion) return target;
 
   // ── İP-HK: güncellenen sözleşmelerin yeniden onayı ──────────────
   // Daha önce onay vermiş ama güncel sürümü onaylamamış kullanıcı panele
