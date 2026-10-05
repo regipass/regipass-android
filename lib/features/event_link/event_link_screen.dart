@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../app/responsive.dart';
 import '../../app/theme.dart';
 import '../../core/constants.dart';
 import '../../domain/routing.dart';
@@ -86,7 +87,7 @@ class _EventLinkScreenState extends ConsumerState<EventLinkScreen> {
   @override
   Widget build(BuildContext context) {
     final Session session = ref.watch(sessionProvider);
-    return Scaffold(
+    return ReadableScaffold(
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.close_rounded),

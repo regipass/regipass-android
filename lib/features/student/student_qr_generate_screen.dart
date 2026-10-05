@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/responsive.dart';
 import '../../l10n/app_strings.dart';
 import '../shared/common_widgets.dart';
 import '../shared/wallet_buttons.dart';
@@ -21,7 +22,7 @@ class StudentQrGenerateScreen extends ConsumerWidget {
     final AsyncValue<List<RegistrationWithEvent>> items =
         ref.watch(appointmentsProvider);
 
-    return Scaffold(
+    return ReadableScaffold(
       appBar: StudentAppBar(
         title: context.t('studentQrGenerate.hero.title'),
         subtitle: context.t('studentAppointments.modal.qrHint'),

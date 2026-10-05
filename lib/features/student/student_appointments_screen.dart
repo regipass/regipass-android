@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/responsive.dart';
 import '../../app/theme.dart';
 import '../../domain/event_feedback.dart';
 import '../../domain/event_utils.dart';
@@ -93,7 +94,7 @@ class _StudentAppointmentsScreenState
       appointmentsProvider,
     );
 
-    return Scaffold(
+    return ReadableScaffold(
       appBar: StudentAppBar(title: context.t('studentAppointments.title')),
       body: items.when(
         loading: () => const LoadingView(),

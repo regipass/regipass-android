@@ -5,6 +5,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/responsive.dart';
 import '../../app/theme.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/club_block.dart';
@@ -85,7 +86,7 @@ class _ClubBlockedStudentsScreenState
   @override
   Widget build(BuildContext context) {
     final AsyncValue<List<ClubBlock>> blocks = ref.watch(clubBlocksProvider);
-    return Scaffold(
+    return ReadableScaffold(
       appBar: AppBar(title: Text(context.t('clubBlock.listTitle'))),
       body: ListView(
         padding: const EdgeInsets.all(20),

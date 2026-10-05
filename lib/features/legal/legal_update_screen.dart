@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/responsive.dart';
 import '../../app/theme.dart';
 import '../../domain/legal_docs.dart';
 import '../../l10n/app_strings.dart';
@@ -98,7 +99,7 @@ class _LegalUpdateScreenState extends ConsumerState<LegalUpdateScreen> {
   @override
   Widget build(BuildContext context) {
     final List<String> items = _t('items') as List<String>;
-    return Scaffold(
+    return ReadableScaffold(
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),

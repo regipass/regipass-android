@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/responsive.dart';
 import '../../app/theme.dart';
 import '../../domain/notification_center.dart';
 import '../../domain/routing.dart';
@@ -95,7 +96,7 @@ class _ClubEventNotificationsScreenState
   Widget build(BuildContext context) {
     final AsyncValue<List<AppEvent>> events = ref.watch(clubEventsProvider);
     final String? eventId = widget.eventId;
-    return Scaffold(
+    return ReadableScaffold(
       appBar: AppBar(title: Text(context.t('clubNotify.title'))),
       body: events.when(
         loading: () => const LoadingView(),

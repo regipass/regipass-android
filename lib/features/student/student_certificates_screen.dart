@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../app/responsive.dart';
 import '../../app/theme.dart';
 import '../../domain/certificate_rules.dart';
 import '../../domain/event_utils.dart';
@@ -40,7 +41,7 @@ class StudentCertificatesScreen extends ConsumerWidget {
       ..sort((Map<String, Object?> a, Map<String, Object?> b) =>
           ((b['issuedAtMs'] as num?) ?? 0).compareTo((a['issuedAtMs'] as num?) ?? 0));
 
-    return Scaffold(
+    return ReadableScaffold(
       appBar: StudentAppBar(title: context.t('studentCertificates.title')),
       body: certificates.when(
         loading: () => const LoadingView(),

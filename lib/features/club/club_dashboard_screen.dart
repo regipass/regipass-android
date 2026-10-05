@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/responsive.dart';
 import '../../app/theme.dart';
 import '../../domain/event_utils.dart';
 import '../../domain/routing.dart';
@@ -96,14 +97,9 @@ class _ClubDashboardScreenState extends ConsumerState<ClubDashboardScreen> {
 
             final StudentProfile? pseudo = pseudoStudentFromClub(club);
 
-            return ListView.separated(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-              itemCount: list.length + 1,
-              separatorBuilder: (_, _) => const SizedBox(height: 16),
-              itemBuilder: (BuildContext context, int index) {
-                // İP-TK: takipçi sayısı (liste yok; yalnızca sayı).
-                if (index == 0) {
-                  return Column(
+            return AdaptiveCardList(
+              // İP-T2: tablette 2–3 sütun.
+              header: Column(
                     children: <Widget>[
                       PageHeader(
                         title: context.t('clubDashboard.hero.title'),
@@ -113,9 +109,10 @@ class _ClubDashboardScreenState extends ConsumerState<ClubDashboardScreen> {
                       ),
                       const ClubFollowerCountChip(),
                     ],
-                  );
-                }
-                final AppEvent event = list[index - 1];
+                  ),
+              itemCount: list.length,
+              itemBuilder: (BuildContext context, int index) {
+                final AppEvent event = list[index];
                 return EventSummaryCard(
                   event: event,
                   priority: getStudentEventPriority(event, pseudo),

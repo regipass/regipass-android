@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/responsive.dart';
 import '../../core/constants.dart';
 import '../../l10n/app_strings.dart';
 import '../../services/phone_directory_repository.dart';
@@ -124,7 +125,7 @@ class _PhoneChangeScreenState extends ConsumerState<PhoneChangeScreen> {
         session.clubProfile?.phone ??
         '';
 
-    return Scaffold(
+    return NarrowScaffold(
       appBar: AppBar(
         titleSpacing: 0,
         title: Row(

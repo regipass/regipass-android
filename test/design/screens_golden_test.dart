@@ -61,6 +61,13 @@ import 'package:regipass/state/providers.dart';
 final String _outDir =
     Platform.environment['SHOTS_DIR'] ?? '/tmp/claude-0/shots/mobile-after';
 
+// İP-T2: tablet çekimi için ekran boyutu (ör. iPad: SHOTS_W=820 SHOTS_H=1180).
+final double _shotW =
+    double.tryParse(Platform.environment['SHOTS_W'] ?? '') ?? 390;
+final double? _shotH = double.tryParse(Platform.environment['SHOTS_H'] ?? '');
+final bool _tablet = _shotW >= 600;
+final bool _lightOnly = Platform.environment['SHOTS_LIGHT_ONLY'] == '1';
+
 // ── Fontlar ────────────────────────────────────────────────────────────
 
 Future<void> _loadFonts() async {
@@ -436,11 +443,17 @@ Future<void> _shoot(
   // Gölgeler testte varsayılan olarak keskin bloklar hâlinde çizilir;
   // cihazdaki yumuşak görünüm için çekim süresince açılır.
   debugDisableShadows = false;
-  for (final Brightness brightness in Brightness.values) {
+  for (final Brightness brightness in _lightOnly
+      ? <Brightness>[Brightness.light]
+      : Brightness.values) {
+    final double h = _shotH ?? height;
     tester.view.devicePixelRatio = 2;
-    tester.view.physicalSize = Size(390 * 2, height * 2);
-    tester.view.padding = const FakeViewPadding(top: 88, bottom: 68);
-    tester.view.viewPadding = const FakeViewPadding(top: 88, bottom: 68);
+    tester.view.physicalSize = Size(_shotW * 2, h * 2);
+    final FakeViewPadding pad = _tablet
+        ? const FakeViewPadding(top: 48, bottom: 40)
+        : const FakeViewPadding(top: 88, bottom: 68);
+    tester.view.padding = pad;
+    tester.view.viewPadding = pad;
 
     final ThemeData theme = buildRegipassTheme(brightness: brightness);
     await tester.pumpWidget(

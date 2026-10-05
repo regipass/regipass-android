@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/responsive.dart';
 import '../../app/theme.dart';
 import '../../core/constants.dart';
 import '../../l10n/app_strings.dart';
@@ -80,7 +81,7 @@ class _RoleSelectScreenState extends ConsumerState<RoleSelectScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return NarrowScaffold(
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),

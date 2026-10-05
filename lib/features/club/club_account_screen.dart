@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../app/responsive.dart';
 import '../../app/theme.dart';
 import '../../core/constants.dart';
 import '../../core/input_guard.dart';
@@ -518,7 +519,7 @@ class _ClubAccountScreenState extends ConsumerState<ClubAccountScreen> {
     final Session session = ref.watch(sessionProvider);
     final ClubProfile? profile = session.clubProfile;
     if (profile == null) {
-      return const Scaffold(body: LoadingView());
+      return ReadableScaffold(body: LoadingView());
     }
 
     _fill(profile);
@@ -527,7 +528,7 @@ class _ClubAccountScreenState extends ConsumerState<ClubAccountScreen> {
     // geliyor), bu yüzden kilit yalnızca kaydetme sırasında anlamlı.
     final bool locked = _saving;
 
-    return Scaffold(
+    return ReadableScaffold(
       appBar: ClubAppBar(
         title: context.t('clubAccount.title'),
         actions: <Widget>[

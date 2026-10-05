@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app/responsive.dart';
 import '../../l10n/app_strings.dart';
 import '../notifications/notification_list_view.dart';
 import 'student_shell.dart';
@@ -15,7 +16,7 @@ class StudentNotificationsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return ReadableScaffold(
       appBar: StudentAppBar(
         title: context.t('student.notifications.title'),
         showBack: true,

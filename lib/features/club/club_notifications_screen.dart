@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app/responsive.dart';
 import '../../l10n/app_strings.dart';
 import '../notifications/notification_list_view.dart';
 import 'club_shell.dart';
@@ -13,7 +14,7 @@ class ClubNotificationsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return ReadableScaffold(
       appBar: ClubAppBar(
         title: context.t('student.notifications.title'),
         showBack: true,

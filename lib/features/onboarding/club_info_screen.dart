@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../app/responsive.dart';
 import '../../app/theme.dart';
 import '../../core/constants.dart';
 import '../../core/input_guard.dart';
@@ -447,7 +448,7 @@ class _ClubInfoScreenState extends ConsumerState<ClubInfoScreen> {
         session.pendingRole == null &&
         (session.clubProfile?.onboardingCompleted ?? false);
 
-    final Widget content = Scaffold(
+    final Widget content = ReadableScaffold(
       appBar: AppBar(
         automaticallyImplyLeading: isEditing,
         leading: isEditing

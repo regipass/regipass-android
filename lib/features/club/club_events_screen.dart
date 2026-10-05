@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/responsive.dart';
 import '../../app/theme.dart';
 import '../../domain/event_utils.dart';
 import '../../domain/routing.dart';
@@ -244,10 +245,11 @@ class _ClubEventsScreenState extends ConsumerState<ClubEventsScreen> {
                           ),
                         ],
                       )
-                    : ListView.separated(
+                    // İP-T2: tablette 2–3 sütun.
+                    : AdaptiveCardList(
                         padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
                         itemCount: visible.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 14),
+                        spacing: 14,
                         itemBuilder: (BuildContext context, int index) {
                           final AppEvent event = visible[index];
                           return EventSummaryCard(

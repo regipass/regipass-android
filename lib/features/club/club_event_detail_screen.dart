@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/responsive.dart';
 import '../../app/theme.dart';
 import '../../core/app_log.dart';
 import '../../domain/event_feedback.dart';
@@ -1039,7 +1040,7 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
       doorGate.seedFromEvent(watched, liveRegs);
     }
 
-    return Scaffold(
+    return ReadableScaffold(
       appBar: ClubAppBar(
         title: eventAsync.value?.title ?? context.t('clubEvents.title'),
         showBack: true,

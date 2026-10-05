@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../app/responsive.dart';
 import '../../app/theme.dart';
 import '../../core/constants.dart';
 import '../../core/input_guard.dart';
@@ -411,11 +412,11 @@ class _StudentAccountScreenState extends ConsumerState<StudentAccountScreen> {
     final StudentProfile? profile = session.studentProfile;
 
     if (profile == null) {
-      return const Scaffold(body: LoadingView());
+      return ReadableScaffold(body: LoadingView());
     }
     _fill(profile);
 
-    return Scaffold(
+    return ReadableScaffold(
       appBar: StudentAppBar(
         title: context.t('studentAccount.title'),
         // Bu ekranda sağdaki eylem çıkıştır: hesabın kendisi zaten burası,

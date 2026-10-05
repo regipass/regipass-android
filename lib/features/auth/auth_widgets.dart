@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/responsive.dart';
 import '../../app/theme.dart';
 import '../../l10n/app_strings.dart';
 import '../landing/diagonal_marquee.dart';
@@ -585,7 +586,6 @@ class AuthFixedBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
 
     // Klavye payı kaydırma görünümünün İÇİNE değil, DIŞINA veriliyor: böylece
     // görünür alan gerçekten klavyenin üstünde biten bir pencere olur.
@@ -595,6 +595,15 @@ class AuthFixedBody extends StatelessWidget {
     //
     // Pay yalnızca klavye yüksekliği değiştiğinde oynar; klavye kapalıyken
     // düzen tam olarak eskisi gibi ortalanır.
+    // İP-T2: tablette form ortada dar kalır; zemin tam genişlik.
+    return ReadableWidth(
+      maxWidth: kNarrowMaxWidth,
+      child: _fixedBody(context),
+    );
+  }
+
+  Widget _fixedBody(BuildContext context) {
+    final double keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
     return AnimatedPadding(
       duration: const Duration(milliseconds: 160),
       curve: Curves.easeOut,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/responsive.dart';
 import '../../app/theme.dart';
 import '../../core/constants.dart';
 import '../../domain/checkin_qr.dart';
@@ -188,13 +189,12 @@ class _StudentDashboardScreenState
               );
             }
 
-            return ListView.separated(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-              itemCount: list.length + 1,
-              separatorBuilder: (_, _) => const SizedBox(height: 16),
+            // İP-T2: tablette 2–3 sütun.
+            return AdaptiveCardList(
+              header: filterBar,
+              itemCount: list.length,
               itemBuilder: (BuildContext context, int index) {
-                if (index == 0) return filterBar;
-                final AppEvent event = list[index - 1];
+                final AppEvent event = list[index];
                 return _EventCard(
                   event: event,
                   // -1: takip edilen kulüp (kartta "Takip ettiğin kulüp").

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/responsive.dart';
 import '../../app/system_ui.dart';
 import '../../app/theme.dart';
 import '../../domain/event_utils.dart';
@@ -356,14 +357,16 @@ class _ExploreList extends ConsumerWidget {
       backgroundColor: context.authColors.card,
       onRefresh: () async =>
           ref.read(exploreShuffleProvider.notifier).reshuffle(),
-      child: ListView.separated(
+      // İP-T2: tablette 2–3 sütun.
+      child: AdaptiveCardList(
         // Sol şerit kartların üstüne binmesin diye soldan biraz fazla boşluk.
         padding: const EdgeInsets.fromLTRB(20, 16, 16, 28),
-        itemCount: events.length + 1,
-        separatorBuilder: (_, _) => const SizedBox(height: 14),
+        spacing: 14,
+        physics: const AlwaysScrollableScrollPhysics(),
+        header: const _GuestNotice(),
+        itemCount: events.length,
         itemBuilder: (BuildContext context, int index) {
-          if (index == 0) return const _GuestNotice();
-          final AppEvent event = events[index - 1];
+          final AppEvent event = events[index];
           return _ExploreCard(event: event, onTap: () => onOpenDetail(event));
         },
       ),

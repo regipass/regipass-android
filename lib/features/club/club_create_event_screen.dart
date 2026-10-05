@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../app/responsive.dart';
 import '../../app/theme.dart';
 import '../../core/constants.dart';
 import '../../core/input_guard.dart';
@@ -1319,7 +1320,7 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
     // Bölüm listesi kulübün alanlarıyla başladığı için profil izlenir.
     final ClubProfile? club = ref.watch(sessionProvider).clubProfile;
 
-    return Scaffold(
+    return ReadableScaffold(
       appBar: ClubAppBar(
         title: _isEdit
             ? context.t('clubCreateEvent.editTitle')

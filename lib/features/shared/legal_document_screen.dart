@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app/responsive.dart';
 import '../../app/theme.dart';
 import '../../domain/legal_docs.dart';
 import '../../l10n/app_strings.dart';
@@ -42,7 +43,7 @@ class LegalDocumentScreen extends StatelessWidget {
         .where((String line) => line.isNotEmpty)
         .toList();
 
-    return Scaffold(
+    return ReadableScaffold(
       appBar: AppBar(title: Text(document.title(language))),
       body: SafeArea(
         child: ListView.builder(

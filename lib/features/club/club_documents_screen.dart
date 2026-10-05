@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/responsive.dart';
 import '../../app/theme.dart';
 import '../../core/constants.dart';
 import '../../domain/routing.dart';
@@ -291,7 +292,7 @@ class _ClubDocumentsScreenState extends ConsumerState<ClubDocumentsScreen> {
     // için gelinmiştir; dönüş yolu görünür olmalı.
     final bool underReview = profile?.clubStatus == ClubStatus.pendingReview;
 
-    return Scaffold(
+    return ReadableScaffold(
       appBar: ClubAppBar(
         title: context.t('clubDocuments.title'),
         actions: <Widget>[

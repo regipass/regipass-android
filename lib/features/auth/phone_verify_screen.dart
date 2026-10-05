@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/responsive.dart';
 import '../../app/theme.dart';
 import '../../core/input_guard.dart';
 import '../../core/constants.dart';
@@ -299,14 +300,14 @@ class _PhoneVerifyScreenState extends ConsumerState<PhoneVerifyScreen> {
         : (session.studentProfile?.phone ?? session.clubProfile?.phone ?? '');
 
     if (phone.isEmpty) {
-      return const Scaffold(body: LoadingView());
+      return NarrowScaffold(body: LoadingView());
     }
 
     final bool codeSent = _verificationId != null;
     // Numara değiştirilince kilit kendiliğinden kalkar.
     final bool numberBlocked = _blockedPhone == phone;
 
-    return Scaffold(
+    return NarrowScaffold(
       appBar: AppBar(
         titleSpacing: 16,
         title: Row(

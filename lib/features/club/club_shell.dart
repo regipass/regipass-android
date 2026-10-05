@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/responsive.dart';
 import '../../app/theme.dart';
 import '../../domain/routing.dart';
 import '../../l10n/app_strings.dart';
@@ -232,7 +233,12 @@ class _FloatingQrNavBar extends StatelessWidget {
             child: CustomPaint(
               painter: _NotchedBarPainter(surface: context.surface),
               child: Padding(
-                padding: EdgeInsets.only(bottom: safeBottom),
+                // İP-T2: tablette sekmeler ortada toplanır.
+                padding: EdgeInsets.only(
+                  bottom: safeBottom,
+                  left: navBarSideInset(context),
+                  right: navBarSideInset(context),
+                ),
                 // Ink'in çubuk yüzeyinin ÜZERİNDE çizilmesi için araya saydam
                 // bir Material giriyor; yoksa dalga arkadaki Scaffold
                 // yüzeyine düşüyor ve tüm çubuk yanıyormuş gibi görünüyor.

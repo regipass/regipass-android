@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/responsive.dart';
 import '../../app/theme.dart';
 import '../../core/constants.dart';
 import '../../domain/routing.dart';
@@ -81,7 +82,7 @@ class _ClubPendingScreenState extends ConsumerState<ClubPendingScreen> {
         ref.watch(sessionProvider).clubProfile?.adminMessages ??
         const <AdminMessage>[];
 
-    return Scaffold(
+    return ReadableScaffold(
       appBar: ClubAppBar(
         title: context.t('clubPending.title'),
         actions: <Widget>[
