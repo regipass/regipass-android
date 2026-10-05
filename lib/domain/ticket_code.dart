@@ -17,6 +17,14 @@ String formatTicketCode(String code) {
 String normalizeTicketCodeInput(String value) =>
     value.replaceAll(RegExp(r'\s+'), '');
 
+/// İP-B6: sesli okunan kodda harf büyüklüğü, tire/alt çizgi ve karışan
+/// harfler (O→0, I/L→1) önemsenmez. Web: ticket-code.js#canonicalTicketCode.
+String canonicalTicketCode(String value) => value
+    .toUpperCase()
+    .replaceAll(RegExp(r'[\s_-]+'), '')
+    .replaceAll('O', '0')
+    .replaceAll(RegExp('[IL]'), '1');
+
 enum TicketCodeMatch { tooShort, none, ambiguous, found }
 
 /// Büyük/küçük harf ve boşluk önemsenmez; yalnızca harf büyüklüğü farklı iki
@@ -38,9 +46,9 @@ enum TicketCodeMatch { tooShort, none, ambiguous, found }
   if (exact.length == 1) {
     return (status: TicketCodeMatch.found, registration: exact.first);
   }
-  final String lower = typed.toLowerCase();
+  final String canon = canonicalTicketCode(typed);
   final List<GateRegistration> loose = list
-      .where((GateRegistration r) => r.ticketCode.toLowerCase() == lower)
+      .where((GateRegistration r) => canonicalTicketCode(r.ticketCode) == canon)
       .toList(growable: false);
   if (loose.length == 1) {
     return (status: TicketCodeMatch.found, registration: loose.first);

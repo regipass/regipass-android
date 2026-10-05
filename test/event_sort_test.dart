@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:regipass/domain/event_utils.dart';
 import 'package:regipass/domain/registration_capacity.dart';
 import 'package:regipass/domain/session_names.dart';
+import 'package:regipass/domain/ticket_code.dart';
 
 /// İP-B2: bilet/etkinlik listeleri en yakın tarihe göre (web: event-sort.test.mjs).
 void main() {
@@ -106,5 +107,9 @@ void main() {
       )?.code,
       'before-event',
     );
+  });
+
+  test('İP-B6: elle kod — harf büyüklüğü, tire, O/0, I/L/1 önemsenmez', () {
+    expect(canonicalTicketCode('ab-c_dOIl'), 'ABCD011');
   });
 }
