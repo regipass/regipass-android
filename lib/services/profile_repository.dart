@@ -118,6 +118,25 @@ class ProfileRepository {
     }, SetOptions(merge: true));
   }
 
+  /// İP-G4: kayıtta alınan "18 yaşından büyüğüm" beyanı
+  /// (web: consent.ageOver18). En iyi çaba; kayıt akışını durdurmaz.
+  Future<void> recordAgeConfirmation({
+    required String uid,
+    required int confirmedAtMs,
+    required String termsVersion,
+  }) async {
+    await userDoc(uid).set(<String, dynamic>{
+      'consent': <String, dynamic>{
+        'ageOver18': <String, dynamic>{
+          'given': true,
+          'version': termsVersion,
+          'givenAt': Timestamp.fromMillisecondsSinceEpoch(confirmedAtMs),
+        },
+      },
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
   /// info.js#saveStudentProfile — profil ve users dokümanı tek transaction'da
   /// yazılır.
   ///

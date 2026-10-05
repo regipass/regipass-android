@@ -262,24 +262,40 @@ class PendingConsent {
     required this.termsAccepted,
     required this.marketingConsent,
     required this.acceptedAtMs,
+    this.ageConfirmed = false,
   });
 
   final bool termsAccepted;
   final bool marketingConsent;
   final int acceptedAtMs;
+
+  /// İP-G4: "18 yaşından büyüğüm" beyanı (zorunlu).
+  final bool ageConfirmed;
 }
 
 class PendingConsentNotifier extends Notifier<PendingConsent?> {
   @override
   PendingConsent? build() => null;
 
-  void set({required bool termsAccepted, required bool marketingConsent}) {
+  void set({
+    required bool termsAccepted,
+    required bool marketingConsent,
+    bool? ageConfirmed,
+  }) {
     state = PendingConsent(
       termsAccepted: termsAccepted,
       marketingConsent: marketingConsent,
       acceptedAtMs: DateTime.now().millisecondsSinceEpoch,
+      // Verilmezse önceki beyan korunur (kutular ayrı ayrı değişir).
+      ageConfirmed: ageConfirmed ?? state?.ageConfirmed ?? false,
     );
   }
+
+  void setAge(bool value) => set(
+    termsAccepted: state?.termsAccepted ?? false,
+    marketingConsent: state?.marketingConsent ?? false,
+    ageConfirmed: value,
+  );
 
   void clear() => state = null;
 }

@@ -372,6 +372,8 @@ kExtraTranslations = <String, Map<String, String>>{
     // Kayıt ekranındaki zorunlu KVKK/sözleşme onayı işaretlenmeden kayıt
     // düğmesi zaten pasif kalır; bu metin yalnızca Enter/gönder ile
     // tetiklenen kenar durumlar için (bkz. register_screen.dart).
+    'auth.feedback.ageRequired':
+        'Kayıt olmak için 18 yaşından büyük olduğunu onaylamalısın.',
     'auth.feedback.termsRequired':
         'Devam etmek için Kullanıcı ve Organizatör Sözleşmesi ile KVKK Aydınlatma '
         'Metni\'ni onaylamalısın.',
@@ -2015,6 +2017,7 @@ kExtraTranslations = <String, Map<String, String>>{
         'This account type already exists. Please sign in.',
     'auth.error.emailRegisteredWrongPassword':
         'This email is registered, but the password is wrong.',
+    'auth.feedback.ageRequired': 'To sign up, confirm that you are over 18.',
     'auth.feedback.termsRequired':
         'To continue, you must approve the User and Organizer Agreement and the '
         'Data Protection Notice.',

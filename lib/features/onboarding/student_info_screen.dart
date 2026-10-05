@@ -327,6 +327,14 @@ class _StudentInfoScreenState extends ConsumerState<StudentInfoScreen> {
       );
       return;
     }
+    if (!termsAlreadyAccepted &&
+        ref.read(pendingConsentProvider)?.ageConfirmed != true) {
+      _setFeedback(
+        context.t('auth.feedback.ageRequired'),
+        FeedbackTone.error,
+      );
+      return;
+    }
 
     // XSS kalıbı yakalanırsa kaydetmeden uyar (web ile aynı davranış).
     if (detectHarmfulInput(_firstName.text) ||
@@ -456,6 +464,19 @@ class _StudentInfoScreenState extends ConsumerState<StudentInfoScreen> {
             termsVersion: kLegalDocsVersion,
           );
       profileSaved = true;
+      if (pendingConsent != null && pendingConsent.ageConfirmed) {
+        try {
+          await ref
+              .read(profileRepositoryProvider)
+              .recordAgeConfirmation(
+                uid: user.uid,
+                confirmedAtMs: pendingConsent.acceptedAtMs,
+                termsVersion: kLegalDocsVersion,
+              );
+        } catch (_) {
+          // En iyi çaba: kayıt yine tamamlanır.
+        }
+      }
       if (pendingConsent != null) {
         ref.read(pendingConsentProvider.notifier).clear();
       }
@@ -890,6 +911,13 @@ class _StudentInfoScreenState extends ConsumerState<StudentInfoScreen> {
                                   false,
                               marketingConsent: value,
                             ),
+                  ageConfirmed:
+                      ref.watch(pendingConsentProvider)?.ageConfirmed ?? false,
+                  onAgeChanged: _saving
+                      ? null
+                      : (bool value) => ref
+                            .read(pendingConsentProvider.notifier)
+                            .setAge(value),
                 ),
               ],
               const SizedBox(height: 12),

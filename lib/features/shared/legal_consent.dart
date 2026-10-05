@@ -33,6 +33,8 @@ class LegalConsentSection extends StatelessWidget {
     required this.marketingConsent,
     this.onTermsChanged,
     this.onMarketingChanged,
+    this.ageConfirmed,
+    this.onAgeChanged,
     this.readOnly = false,
     this.textColor,
     this.mutedColor,
@@ -43,6 +45,11 @@ class LegalConsentSection extends StatelessWidget {
   final bool marketingConsent;
   final ValueChanged<bool>? onTermsChanged;
   final ValueChanged<bool>? onMarketingChanged;
+
+  /// İP-G4: "18 yaşından büyüğüm" kutusu (zorunlu). null ise gösterilmez
+  /// (ör. salt okunur özet).
+  final bool? ageConfirmed;
+  final ValueChanged<bool>? onAgeChanged;
   final bool readOnly;
   final Color? textColor;
   final Color? mutedColor;
@@ -63,9 +70,13 @@ class LegalConsentSection extends StatelessWidget {
     final String marketingText = isEn
         ? 'I allow my personal data to be shared with third-party '
               'institutions unaffiliated with Regipass for advertising/'
-              'marketing purposes.'
+              'marketing purposes. (Optional)'
         : 'Kişisel verilerimin, reklam/pazarlama amacıyla iş ortağı olmayan '
-              'üçüncü kurum ve kuruluşlarla paylaşılmasına izin veriyorum.';
+              'üçüncü kurum ve kuruluşlarla paylaşılmasına izin veriyorum. '
+              '(İsteğe bağlı)';
+    final String ageText = isEn
+        ? 'I declare that I am over 18 years old.'
+        : '18 yaşından büyük olduğumu beyan ederim.';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -100,6 +111,17 @@ class LegalConsentSection extends StatelessWidget {
             ],
           ),
         ),
+        if (ageConfirmed != null) ...<Widget>[
+          const SizedBox(height: 12),
+          _ConsentRow(
+            value: ageConfirmed!,
+            onChanged: readOnly ? null : onAgeChanged,
+            readOnly: readOnly,
+            accent: accent,
+            textColor: ink,
+            spans: <InlineSpan>[TextSpan(text: ageText)],
+          ),
+        ],
         const SizedBox(height: 12),
         _ConsentRow(
           value: marketingConsent,

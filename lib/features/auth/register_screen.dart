@@ -53,6 +53,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   // bağlı kalmalı çünkü Açık Rıza Metni'nin kendisi bunu öyle tarif ediyor.
   bool _termsAccepted = false;
   bool _marketingConsent = false;
+  // İP-G4: platform 18+; beyan zorunlu.
+  bool _ageConfirmed = false;
+
+  bool get _requiredConsents => _termsAccepted && _ageConfirmed;
 
   bool get _hasRole => _selectedRole.isNotEmpty;
 
@@ -115,6 +119,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         .set(
           termsAccepted: _termsAccepted,
           marketingConsent: _marketingConsent,
+          ageConfirmed: _ageConfirmed,
         );
     return pendingRole;
   }
@@ -141,6 +146,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             acceptedAtMs: consent.acceptedAtMs,
             termsVersion: kLegalDocsVersion,
           );
+      if (consent.ageConfirmed) {
+        await ref
+            .read(profileRepositoryProvider)
+            .recordAgeConfirmation(
+              uid: uid,
+              confirmedAtMs: consent.acceptedAtMs,
+              termsVersion: kLegalDocsVersion,
+            );
+      }
     } catch (_) {
       // Yoksay — bkz. yukarıdaki not.
     }
@@ -153,6 +167,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
     if (!_termsAccepted) {
       _setFeedback(context.t('auth.feedback.termsRequired'));
+      return Future<void>.value();
+    }
+    if (!_ageConfirmed) {
+      _setFeedback(context.t('auth.feedback.ageRequired'));
       return Future<void>.value();
     }
 
@@ -262,6 +280,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       _setFeedback(context.t('auth.feedback.termsRequired'));
       return Future<void>.value();
     }
+    if (!_ageConfirmed) {
+      _setFeedback(context.t('auth.feedback.ageRequired'));
+      return Future<void>.value();
+    }
 
     return _run(() async {
       final authRepository = ref.read(authRepositoryProvider);
@@ -289,6 +311,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             .set(
               termsAccepted: _termsAccepted,
               marketingConsent: _marketingConsent,
+              ageConfirmed: _ageConfirmed,
             );
         await _persistConsent(user.uid);
         keepSession = true;
@@ -446,6 +469,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             onMarketingChanged: _loading
                 ? null
                 : (bool value) => setState(() => _marketingConsent = value),
+            ageConfirmed: _ageConfirmed,
+            onAgeChanged: _loading
+                ? null
+                : (bool value) => setState(() => _ageConfirmed = value),
             // Giriş/kayıt sahnesi her modda kendi sabit koyu paletinde kalır
             // (bkz. app/theme.dart#BrandSurfaces) — context.ink/inkMuted
             // burada kullanılmaz.
@@ -461,7 +488,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           AuthPrimaryButton(
             label: context.t('auth.emailLogin'),
             loading: _loading,
-            onPressed: _termsAccepted ? _registerWithEmail : null,
+            onPressed: _requiredConsents ? _registerWithEmail : null,
           ),
 
           const SizedBox(height: 18),
@@ -473,7 +500,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               label: context.t('auth.googleContinue'),
               icon: Icons.g_mobiledata_rounded,
               leading: const GoogleMark(size: 25),
-              enabled: !_loading && _termsAccepted,
+              enabled: !_loading && _requiredConsents,
               borderless: true,
               onPressed: () => _registerWithProvider(
                 ref.read(authRepositoryProvider).signInWithGoogle,
@@ -485,7 +512,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             child: AuthSocialButton(
               label: context.t('auth.appleContinue'),
               icon: Icons.apple,
-              enabled: !_loading && _termsAccepted,
+              enabled: !_loading && _requiredConsents,
               borderless: true,
               onPressed: () => _registerWithProvider(
                 ref.read(authRepositoryProvider).signInWithApple,
