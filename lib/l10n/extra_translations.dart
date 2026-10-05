@@ -1414,6 +1414,12 @@ kExtraTranslations = <String, Map<String, String>>{
     'registration.club.quotaNow': 'Kontenjan {{n}} oldu.',
     'registration.club.quotaNowOpen': 'Kontenjan {{n}} oldu. Kayıtlar açık.',
     'createEvent.lateRegistration': 'Etkinlik başladıktan sonra da kayıt al',
+    'registration.scopeAsk.title': 'Bir bilgi eksik',
+    'registration.scopeAsk.body':
+        'Bu etkinlik belirli üniversite/bölümlere açık. Bilgini seç; hesabına da kaydedilir.',
+    'registration.scopeAsk.university': 'Üniversite',
+    'registration.scopeAsk.department': 'Bölüm',
+    'registration.scopeAsk.save': 'Kaydet ve devam et',
     'createEvent.lateRegistrationHint':
         'Kapı girişi ya da ilk oturum başlayınca kayıtlar kapanmaz; son kayıt tarihine kadar (yer varsa) kayıt sürer ve etkinlik Keşfet\'te kalır. Geç gelenler için son kayıt tarihini etkinlik günü yap.',
     'registration.club.quotaBlocked.event-started':
@@ -2924,6 +2930,12 @@ kExtraTranslations = <String, Map<String, String>>{
     'registration.club.quotaNow': 'Capacity is now {{n}}.',
     'registration.club.quotaNowOpen': 'Capacity is now {{n}}. Registration is open.',
     'createEvent.lateRegistration': 'Keep registration open after the event starts',
+    'registration.scopeAsk.title': 'One detail is missing',
+    'registration.scopeAsk.body':
+        'This event is open to certain universities/departments. Pick yours; it is also saved to your account.',
+    'registration.scopeAsk.university': 'University',
+    'registration.scopeAsk.department': 'Department',
+    'registration.scopeAsk.save': 'Save and continue',
     'createEvent.lateRegistrationHint':
         'Registration does not close when check-in or the first session starts; it stays open (if seats remain) until the registration deadline and the event stays in Discover. Set the deadline to the event day for latecomers.',
     'registration.club.quotaBlocked.event-started':

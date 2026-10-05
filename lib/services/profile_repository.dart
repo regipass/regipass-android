@@ -464,6 +464,24 @@ class ProfileRepository {
     });
   }
 
+  /// İP-B4b: üniversite/bölüme özel etkinliğe kaydolurken profilde boş olan
+  /// alanı doldurur (yalnızca verilenler yazılır).
+  Future<void> fillStudentScopeFields({
+    required String uid,
+    String? university,
+    String? department,
+  }) async {
+    final Map<String, dynamic> patch = <String, dynamic>{
+      if (university != null && university.isNotEmpty) 'university': university,
+      if (department != null && department.isNotEmpty) 'department': department,
+    };
+    if (patch.isEmpty) return;
+    await studentProfileDoc(uid).update(<String, dynamic>{
+      ...patch,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
   /// Yeni numarayı ve doğrulanmış bayrağını TEK yazımda kaydeder.
   ///
   /// Hesap ekranındaki pop-up akışı bunu kullanır: numara Firestore'a ancak

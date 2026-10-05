@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
+import '../../core/constants.dart';
 import '../../domain/checkin_qr.dart';
 import '../../domain/event_utils.dart';
 import '../../domain/paid_event_consent.dart';
@@ -11,6 +12,7 @@ import '../../domain/registration_state.dart';
 import '../../domain/routing.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/event.dart';
+import '../../models/profiles.dart';
 import '../../services/registration_service.dart';
 import '../../state/providers.dart';
 import '../../domain/club_follow.dart';
@@ -280,7 +282,7 @@ String priorityLabel(BuildContext context, int priority) => switch (priority) {
 /// dashboard.js#getScopeLabel
 String scopeLabel(BuildContext context, String targetScope) =>
     switch (targetScope) {
-      'university_department' => context.t('dashboard.scope.department'),
+      TargetScope.universityDepartment => context.t('dashboard.scope.department'),
       'department' => context.t('dashboard.scope.departmentOnly'),
       'university' => context.t('dashboard.scope.university'),
       _ => context.t('dashboard.scope.all'),
@@ -434,6 +436,11 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
         _toast(context.t('dashboard.alerts.registrationClosed'));
         return;
       }
+
+      // İP-B4b: üniversite/bölüme özel etkinlikte profilde bu bilgi yoksa
+      // (ör. linkten hesap açan kişi) reddetmek yerine sorulur ve profile
+      // yazılır. Web: event-link.js; sunucu yine kendi denetler.
+      if (!await _fillScopeFieldsIfMissing(latest) || !mounted) return;
 
       // Ücretli etkinlikte onay, kayıt Firestore'a yazılmadan hemen önce
       // alınır. Pencere kapatılır ya da kutu işaretlenmezse kayıt yapılmaz.
@@ -640,6 +647,101 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
       _toast(context.t('registration.errors.generic'));
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// İP-B4b: eksik üniversite/bölüm sorulur. false: vazgeçildi / yazılamadı.
+  Future<bool> _fillScopeFieldsIfMissing(AppEvent event) async {
+    final String? uid = ref.read(currentUidProvider);
+    final StudentProfile? me = ref.read(studentProfileProvider).value;
+    if (uid == null || me == null) return true;
+    final String scope = TargetScope.normalize(event.targetScope);
+    final bool askUni =
+        TargetScope.needsUniversity(scope) &&
+        me.university.trim().isEmpty &&
+        event.targetUniversities.isNotEmpty;
+    final bool askDept =
+        TargetScope.needsDepartment(scope) &&
+        me.department.trim().isEmpty &&
+        event.targetDepartments.isNotEmpty;
+    if (!askUni && !askDept) return true;
+
+    String? uni = askUni && event.targetUniversities.length == 1
+        ? event.targetUniversities.first
+        : null;
+    String? dept;
+    final bool? ok = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) => StatefulBuilder(
+        builder: (BuildContext ctx, StateSetter setLocal) => AlertDialog(
+          title: Text(ctx.t('registration.scopeAsk.title')),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Text(ctx.t('registration.scopeAsk.body')),
+              if (askUni) ...<Widget>[
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  key: const Key('scopeAskUniversity'),
+                  initialValue: uni,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    labelText: ctx.t('registration.scopeAsk.university'),
+                  ),
+                  items: <DropdownMenuItem<String>>[
+                    for (final String u in event.targetUniversities)
+                      DropdownMenuItem<String>(value: u, child: Text(u)),
+                  ],
+                  onChanged: (String? v) => setLocal(() => uni = v),
+                ),
+              ],
+              if (askDept) ...<Widget>[
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  key: const Key('scopeAskDepartment'),
+                  initialValue: dept,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    labelText: ctx.t('registration.scopeAsk.department'),
+                  ),
+                  items: <DropdownMenuItem<String>>[
+                    for (final String d in event.targetDepartments)
+                      DropdownMenuItem<String>(value: d, child: Text(d)),
+                  ],
+                  onChanged: (String? v) => setLocal(() => dept = v),
+                ),
+              ],
+            ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(ctx.t('common.cancel')),
+            ),
+            TextButton(
+              onPressed: (askUni && uni == null) || (askDept && dept == null)
+                  ? null
+                  : () => Navigator.of(ctx).pop(true),
+              child: Text(ctx.t('registration.scopeAsk.save')),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (ok != true || !mounted) return false;
+    try {
+      await ref
+          .read(profileRepositoryProvider)
+          .fillStudentScopeFields(
+            uid: uid,
+            university: askUni ? uni : null,
+            department: askDept ? dept : null,
+          );
+      return true;
+    } catch (_) {
+      if (mounted) _toast(context.t('registration.errors.generic'));
+      return false;
     }
   }
 

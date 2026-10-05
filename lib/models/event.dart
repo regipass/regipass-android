@@ -88,7 +88,7 @@ class AppEvent {
       feeType: asString(data['feeType']),
       feeAmount: asInt(data['feeAmount']) ?? 0,
       feeInfo: asString(data['feeInfo']),
-      targetScope: (data['targetScope'] as String?) ?? TargetScope.public,
+      targetScope: TargetScope.normalize(data['targetScope'] as String?),
       targetUniversity: asString(data['targetUniversity']),
       // Çoklu hedef: yeni kayıtlarda dizi, eski kayıtlarda yalnızca tekil
       // alan var. `clubFields` ile aynı yaklaşım — okuyan taraf iki durumu

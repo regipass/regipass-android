@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme.dart';
+import '../../core/constants.dart';
 import '../../domain/event_utils.dart';
 import '../../domain/paid_event_consent.dart';
 import '../../l10n/app_strings.dart';
@@ -19,7 +20,7 @@ import 'common_widgets.dart';
 /// dashboard.js#getScopeLabel
 String eventScopeLabel(BuildContext context, String targetScope) =>
     switch (targetScope) {
-      'university_department' => context.t('dashboard.scope.department'),
+      TargetScope.universityDepartment => context.t('dashboard.scope.department'),
       'department' => context.t('dashboard.scope.departmentOnly'),
       'university' => context.t('dashboard.scope.university'),
       _ => context.t('dashboard.scope.all'),

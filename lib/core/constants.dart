@@ -79,7 +79,14 @@ class TargetScope {
   static const String public = 'public';
   static const String university = 'university';
   static const String department = 'department';
-  static const String universityDepartment = 'university_department';
+  /// Web ve sunucu bu adı kullanır. Eski mobil sürümler
+  /// 'university_department' yazıyordu; okurken [normalize] ile çevrilir.
+  static const String universityDepartment = 'department_university';
+  static const String legacyUniversityDepartment = 'university_department';
+
+  /// İP-B4b: eski mobil adını yeni ada çevirir.
+  static String normalize(String? scope) =>
+      scope == legacyUniversityDepartment ? universityDepartment : (scope ?? public);
 
   /// Kapsam üniversite seçimi gerektiriyor mu?
   static bool needsUniversity(String scope) =>
