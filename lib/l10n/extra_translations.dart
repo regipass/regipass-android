@@ -1415,6 +1415,16 @@ kExtraTranslations = <String, Map<String, String>>{
     'registration.club.quotaNowOpen': 'Kontenjan {{n}} oldu. Kayıtlar açık.',
     'createEvent.lateRegistration': 'Etkinlik başladıktan sonra da kayıt al',
     'registration.scopeAsk.title': 'Bir bilgi eksik',
+    'clubCreateEvent.sessionTime.end-before-start':
+        '{{n}}. oturumun bitiş saati başlangıçtan sonra olmalı.',
+    'clubCreateEvent.sessionTime.overlap':
+        '{{n}}. oturum, {{prev}}. oturum bitmeden başlıyor. Saatleri çakışmayacak şekilde düzelt.',
+    'clubCreateEvent.sessionTime.order':
+        '{{n}}. oturum, {{prev}}. oturumdan önce başlıyor. Oturumları saat sırasına göre yaz.',
+    'clubCreateEvent.sessionTime.before-event':
+        '{{n}}. oturum, etkinliğin başlangıç saatinden önce başlıyor.',
+    'clubCreateEvent.sessionTime.after-event':
+        '{{n}}. oturum, etkinliğin bitiş saatinden sonra bitiyor.',
     'registration.scopeAsk.body':
         'Bu etkinlik belirli üniversite/bölümlere açık. Bilgini seç; hesabına da kaydedilir.',
     'registration.scopeAsk.university': 'Üniversite',
@@ -2931,6 +2941,16 @@ kExtraTranslations = <String, Map<String, String>>{
     'registration.club.quotaNowOpen': 'Capacity is now {{n}}. Registration is open.',
     'createEvent.lateRegistration': 'Keep registration open after the event starts',
     'registration.scopeAsk.title': 'One detail is missing',
+    'clubCreateEvent.sessionTime.end-before-start':
+        'Session {{n}} must end after it starts.',
+    'clubCreateEvent.sessionTime.overlap':
+        'Session {{n}} starts before session {{prev}} ends. Fix the times so they do not overlap.',
+    'clubCreateEvent.sessionTime.order':
+        'Session {{n}} starts before session {{prev}}. List sessions in time order.',
+    'clubCreateEvent.sessionTime.before-event':
+        'Session {{n}} starts before the event start time.',
+    'clubCreateEvent.sessionTime.after-event':
+        'Session {{n}} ends after the event end time.',
     'registration.scopeAsk.body':
         'This event is open to certain universities/departments. Pick yours; it is also saved to your account.',
     'registration.scopeAsk.university': 'University',

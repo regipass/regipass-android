@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:regipass/domain/event_utils.dart';
 import 'package:regipass/domain/registration_capacity.dart';
+import 'package:regipass/domain/session_names.dart';
 
 /// İP-B2: bilet/etkinlik listeleri en yakın tarihe göre (web: event-sort.test.mjs).
 void main() {
@@ -74,6 +75,36 @@ void main() {
         allowLateRegistration: true,
       ),
       SessionRegistrationGateAction.none,
+    );
+  });
+
+  test('İP-B1: oturum saatleri çakışma / sıra / ters saat / aralık', () {
+    List<SessionTime> l(List<List<String>> x) => <SessionTime>[
+      for (final List<String> p in x) SessionTime(start: p[0], end: p[1]),
+    ];
+    expect(
+      findSessionTimeProblem(l(<List<String>>[<String>['10:00', '11:00'], <String>['11:00', '12:00']])),
+      isNull,
+    );
+    expect(
+      findSessionTimeProblem(l(<List<String>>[<String>['10:00', '11:00'], <String>['10:30', '12:00']]))?.code,
+      'overlap',
+    );
+    expect(
+      findSessionTimeProblem(l(<List<String>>[<String>['10:00', '09:30']]))?.code,
+      'end-before-start',
+    );
+    expect(
+      findSessionTimeProblem(l(<List<String>>[<String>['10:00', ''], <String>['09:00', '']]))?.session,
+      2,
+    );
+    expect(
+      findSessionTimeProblem(
+        l(<List<String>>[<String>['08:00', '09:00']]),
+        eventStart: '09:00',
+        eventEnd: '17:00',
+      )?.code,
+      'before-event',
     );
   });
 }

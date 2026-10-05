@@ -96,3 +96,44 @@ String sessionTimeAt(List<SessionTime> times, int n) {
   final int i = n - 1;
   return i >= 0 && i < times.length ? times[i].label : '';
 }
+
+/// İP-B1: oturum saatleri tutarlı mı? Sorunlu ilk oturum (1'den) + kod;
+/// sorun yoksa null. Kodlar: end-before-start, overlap, order, before-event,
+/// after-event. Saati boş oturum atlanır. Web: session-names.js#findSessionTimeProblem.
+({int session, String code})? findSessionTimeProblem(
+  List<SessionTime> times, {
+  String eventStart = '',
+  String eventEnd = '',
+}) {
+  final String evStart = _cleanTime(eventStart);
+  final String evEnd = _cleanTime(eventEnd);
+  String? prevStart;
+  String prevEnd = '';
+  for (int i = 0; i < times.length; i++) {
+    final String start = _cleanTime(times[i].start);
+    if (start.isEmpty) continue;
+    final String end = _cleanTime(times[i].end);
+    final int session = i + 1;
+    if (end.isNotEmpty && end.compareTo(start) <= 0) {
+      return (session: session, code: 'end-before-start');
+    }
+    if (evStart.isNotEmpty && start.compareTo(evStart) < 0) {
+      return (session: session, code: 'before-event');
+    }
+    if (evEnd.isNotEmpty && (end.isEmpty ? start : end).compareTo(evEnd) > 0) {
+      return (session: session, code: 'after-event');
+    }
+    if (prevStart != null) {
+      if (start.compareTo(prevStart) < 0) return (session: session, code: 'order');
+      if (prevEnd.isNotEmpty && start.compareTo(prevEnd) < 0) {
+        return (session: session, code: 'overlap');
+      }
+      if (prevEnd.isEmpty && start == prevStart) {
+        return (session: session, code: 'overlap');
+      }
+    }
+    prevStart = start;
+    prevEnd = end;
+  }
+  return null;
+}

@@ -52,6 +52,7 @@ enum _Field {
   threshold,
   checkinMode,
   location,
+  sessionTimes,
 }
 
 /// Etkinlik görseli için üst sınır.
@@ -126,6 +127,9 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
   DateTime? _eventDate;
   TimeOfDay? _startTime;
   TimeOfDay? _endTime;
+
+  /// İP-B1: saati sorunlu oturum (1'den); kırmızı uyarı satırı.
+  int? _sessionTimeErrorIndex;
 
   /// İP-B: otomatik bildirimler (varsayılan hepsi açık).
   final Map<String, bool> _autoNotify = Map<String, bool>.of(
@@ -245,6 +249,7 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
                 );
                 if (picked == null || !mounted) return;
                 setState(() {
+                  _sessionTimeErrorIndex = null;
                   if (isStart) {
                     _sessionStarts[i] = picked;
                   } else {
@@ -267,8 +272,16 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
       );
     }
 
-    return Padding(
+    final bool hasError = _sessionTimeErrorIndex == i + 1;
+    return Container(
+      key: Key('session-time-row-${i + 1}'),
       padding: const EdgeInsets.only(left: 4, top: 2),
+      decoration: hasError
+          ? BoxDecoration(
+              border: Border.all(color: BrandColors.danger),
+              borderRadius: BorderRadius.circular(12),
+            )
+          : null,
       child: Wrap(
         crossAxisAlignment: WrapCrossAlignment.center,
         children: <Widget>[
@@ -978,6 +991,33 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
         return;
       }
       threshold = raw;
+    }
+
+    // İP-B1: oturum saatleri çakışmasın / sırası karışmasın.
+    if (sessionCount > 1) {
+      final ({int session, String code})? problem = findSessionTimeProblem(
+        normalizeSessionTimes(<SessionTime>[
+          for (int i = 0; i < _sessionStarts.length; i++)
+            SessionTime(
+              start: _formatTime(_sessionStarts[i]),
+              end: _formatTime(_sessionEnds[i]),
+            ),
+        ], sessionCount),
+        eventStart: _formatTime(_startTime),
+        eventEnd: _formatTime(_endTime),
+      );
+      setState(() => _sessionTimeErrorIndex = problem?.session);
+      if (problem != null) {
+        _fail(
+          _Field.sessionTimes,
+          context.t('clubCreateEvent.sessionTime.${problem.code}',
+              <String, Object?>{
+                'n': problem.session,
+                'prev': problem.session - 1,
+              }),
+        );
+        return;
+      }
     }
 
     // Konumun tek kaynağı harita: koordinat varsa kaydedilir, ad yalnızca
