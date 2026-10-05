@@ -613,6 +613,7 @@ class EventRegistration {
     this.ticketCode = '',
     this.attendanceFlags = const <String>[],
     this.attendanceVerified = const <String, int>{},
+    this.manualAttendance = const <String, int>{},
     this.studentPhotoUrl = '',
     this.paymentStatus = '',
     this.paymentMarkedAtMs = 0,
@@ -669,6 +670,19 @@ class EventRegistration {
                       .entries)
                 if (e.key is String && e.value is num)
                   e.key as String: (e.value as num).toInt(),
+            }
+          : const <String, int>{},
+      // İP-B5: organizatörün elle işaretlediği oturumlar → zaman (ms).
+      manualAttendance: data['manualAttendance'] is Map
+          ? <String, int>{
+              for (final MapEntry<dynamic, dynamic> e
+                  in (data['manualAttendance'] as Map<dynamic, dynamic>)
+                      .entries)
+                if (e.key is String && e.value is Map)
+                  e.key as String:
+                      ((e.value as Map<dynamic, dynamic>)['atMs'] as num?)
+                          ?.toInt() ??
+                      1,
             }
           : const <String, int>{},
     );
@@ -728,6 +742,9 @@ class EventRegistration {
 
   /// Sunucudan geçen adımlar: `door`, `s1`, `s2` ... → zaman (ms).
   final Map<String, int> attendanceVerified;
+
+  /// İP-B5: organizatörün elle "var" işaretlediği oturumlar (`s2` → ms).
+  final Map<String, int> manualAttendance;
 
   bool get isCheckedIn => checkedInAtMs != null && checkedInAtMs! > 0;
 

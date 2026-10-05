@@ -307,6 +307,32 @@ class RegistrationService {
     });
   }
 
+  /// İP-B5: elle yoklama ekle/geri al ya da o anki oturuma bilet koduyla
+  /// yoklama. Dönüş: `marked` | `already` | `removed`.
+  Future<({String status, String name, int session})> setSessionAttendance({
+    required String eventId,
+    String studentId = '',
+    String ticketCode = '',
+    int session = 0,
+    bool present = true,
+  }) async {
+    final Map<String, dynamic> out = await _call(
+      'clubSetSessionAttendance',
+      <String, Object?>{
+        'eventId': eventId,
+        'present': present,
+        if (studentId.isNotEmpty) 'studentId': studentId,
+        if (ticketCode.isNotEmpty) 'ticketCode': ticketCode,
+        if (session > 0) 'session': session,
+      },
+    );
+    return (
+      status: '${out['status'] ?? ''}',
+      name: '${out['name'] ?? ''}',
+      session: (out['session'] as num?)?.toInt() ?? session,
+    );
+  }
+
   /// Toplu (çoklu seçim) "Ödendi": en fazla [maxBulk] öğrenci. Dönüş:
   /// durumu değişen kayıt sayısı ve bulunamayan (bu arada silinmiş) kayıtlar.
   Future<BulkResult> setPaymentStatusBulk({

@@ -31,6 +31,7 @@ import 'club_session_qr_screen.dart';
 import 'club_shell.dart';
 import 'registrations_export.dart';
 import '../../domain/session_names.dart';
+import '../../domain/session_attendance.dart';
 
 /// Dağıtılabilecek belge türleri — storage.rules `certificates/` kuralıyla
 /// (application/pdf veya image/*) birebir aynı olmalı.
@@ -296,6 +297,122 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
   }
 
   // ── İP-K: ödeme, kayıt silme, "+5 yer aç" ───────────────────────────
+
+  /// İP-B5: elle yoklama ekle / geri al.
+  Future<void> _setSessionAttendance(
+    AppEvent event,
+    EventRegistration reg,
+    int session,
+    bool present,
+  ) async {
+    final String label = withSessionName(
+      context.t('attendance.stage.session', <String, Object?>{'n': session}),
+      event.sessionNames,
+      session,
+    );
+    final bool ok = await _confirm(
+      context.t('manualAttendance.title'),
+      context.t(
+        present ? 'manualAttendance.addConfirm' : 'manualAttendance.removeConfirm',
+        <String, Object?>{'name': reg.displayName, 'session': label},
+      ),
+    );
+    if (!ok || !mounted) return;
+    await _run(() async {
+      try {
+        final ({String status, String name, int session}) out = await ref
+            .read(registrationServiceProvider)
+            .setSessionAttendance(
+              eventId: event.id,
+              studentId: reg.studentId,
+              session: session,
+              present: present,
+            );
+        if (!mounted) return;
+        _setFeedback(
+          context.t(
+            out.status == 'already'
+                ? 'manualAttendance.already'
+                : present
+                ? 'manualAttendance.added'
+                : 'manualAttendance.removed',
+            <String, Object?>{'name': reg.displayName, 'session': label},
+          ),
+          out.status == 'already' ? FeedbackTone.info : FeedbackTone.success,
+        );
+      } on RegistrationFailure catch (failure) {
+        if (!mounted) return;
+        _setFeedback(_manualAttendanceError(failure), FeedbackTone.error);
+      }
+    });
+  }
+
+  String _manualAttendanceError(RegistrationFailure failure) {
+    final String key = 'manualAttendance.error.${failure.reason}';
+    final String text = context.t(key);
+    return text == key ? context.t('manualAttendance.error.generic') : text;
+  }
+
+  /// İP-B5: o anki oturuma bilet koduyla yoklama (görevli kodu yazar).
+  Future<void> _sessionCodeEntry(AppEvent event) async {
+    final TextEditingController code = TextEditingController();
+    final String? typed = await showDialog<String>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        title: Text(ctx.t('manualAttendance.codeTitle')),
+        content: TextField(
+          key: const Key('sessionCodeInput'),
+          controller: code,
+          autofocus: true,
+          textCapitalization: TextCapitalization.characters,
+          autocorrect: false,
+          decoration: InputDecoration(
+            hintText: ctx.t('manualAttendance.codeHint'),
+          ),
+          onSubmitted: (String v) => Navigator.of(ctx).pop(v),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(ctx.t('common.cancel')),
+          ),
+          TextButton(
+            key: const Key('sessionCodeSubmit'),
+            onPressed: () => Navigator.of(ctx).pop(code.text),
+            child: Text(ctx.t('manualAttendance.codeSubmit')),
+          ),
+        ],
+      ),
+    );
+    code.dispose();
+    final String value = (typed ?? '').trim();
+    if (value.isEmpty || !mounted) return;
+    await _run(() async {
+      try {
+        final ({String status, String name, int session}) out = await ref
+            .read(registrationServiceProvider)
+            .setSessionAttendance(eventId: event.id, ticketCode: value);
+        if (!mounted) return;
+        final String label = withSessionName(
+          context.t('attendance.stage.session', <String, Object?>{'n': out.session}),
+          event.sessionNames,
+          out.session,
+        );
+        _setFeedback(
+          context.t(
+            out.status == 'already'
+                ? 'manualAttendance.already'
+                : 'manualAttendance.added',
+            <String, Object?>{'name': out.name, 'session': label},
+          ),
+          out.status == 'already' ? FeedbackTone.info : FeedbackTone.success,
+        );
+      } on RegistrationFailure catch (failure) {
+        if (!mounted) return;
+        _setFeedback(_manualAttendanceError(failure), FeedbackTone.error);
+      }
+    });
+  }
 
   Future<void> _setPayment(AppEvent event, EventRegistration reg, bool paid) async {
     if (!paid) {
@@ -977,6 +1094,10 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
                 _setPayment(event, reg, paid),
             onRemoveRegistration: (EventRegistration reg) =>
                 _removeRegistration(event, reg),
+            onSetSessionAttendance:
+                (EventRegistration reg, int session, bool present) =>
+                    _setSessionAttendance(event, reg, session, present),
+            onSessionCode: () => _sessionCodeEntry(event),
             onBlockStudent: _blockStudent,
             onAddSeats: () => _addSeats(event),
             selected: _selected,
@@ -1010,6 +1131,8 @@ class _Body extends ConsumerWidget {
     required this.onDownloadExcel,
     required this.onSetPayment,
     required this.onRemoveRegistration,
+    required this.onSetSessionAttendance,
+    required this.onSessionCode,
     required this.onBlockStudent,
     required this.onAddSeats,
     required this.selected,
@@ -1041,6 +1164,11 @@ class _Body extends ConsumerWidget {
   /// İP-K
   final void Function(EventRegistration reg, bool paid) onSetPayment;
   final ValueChanged<EventRegistration> onRemoveRegistration;
+
+  /// İP-B5: elle yoklama + kodla oturum yoklaması.
+  final void Function(EventRegistration reg, int session, bool present)
+  onSetSessionAttendance;
+  final VoidCallback onSessionCode;
   final ValueChanged<EventRegistration> onBlockStudent;
   final VoidCallback onAddSeats;
 
@@ -1232,6 +1360,19 @@ class _Body extends ConsumerWidget {
             onReopen: onReopenSessions,
             onShowQr: onShowSessionQr,
           ),
+          // İP-B5: o anki oturuma bilet koduyla yoklama.
+          if (event.currentSession >= 1 &&
+              !event.sessionsCompleted &&
+              !event.cancelled)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: OutlinedButton.icon(
+                key: const Key('sessionCodeEntry'),
+                icon: const Icon(Icons.keyboard_alt_outlined, size: 18),
+                label: Text(context.t('manualAttendance.codeTitle')),
+                onPressed: busy ? null : onSessionCode,
+              ),
+            ),
           if (event.hasDoorCheckin)
             SwitchListTile.adaptive(
               contentPadding: const EdgeInsets.symmetric(horizontal: 4),
@@ -1365,6 +1506,10 @@ class _Body extends ConsumerWidget {
                     onToggleSelected(reg.studentId, value),
                 onSetPayment: (bool paid) => onSetPayment(reg, paid),
                 onRemove: () => onRemoveRegistration(reg),
+                onSetSessionAttendance: event.cancelled || busy
+                    ? null
+                    : (int session, bool present) =>
+                          onSetSessionAttendance(reg, session, present),
                 onBlock: busy ? null : () => onBlockStudent(reg),
               ),
             ),
@@ -2058,6 +2203,7 @@ class _StudentTile extends StatelessWidget {
     required this.onSetPayment,
     required this.onRemove,
     this.onBlock,
+    this.onSetSessionAttendance,
     this.selectable = false,
     this.selected = false,
     this.onSelected,
@@ -2078,6 +2224,9 @@ class _StudentTile extends StatelessWidget {
 
   /// İP-KB: kulüpten engelle (geçmiş etkinlikte de; null = meşgul).
   final VoidCallback? onBlock;
+
+  /// İP-B5: oturuma elle "var" / geri al (null = kapalı).
+  final void Function(int session, bool present)? onSetSessionAttendance;
 
   @override
   Widget build(BuildContext context) {
@@ -2157,6 +2306,12 @@ class _StudentTile extends StatelessWidget {
                 ),
             ],
           ),
+          if (event.isMultiSession)
+            _SessionChips(
+              registration: registration,
+              event: event,
+              onSet: onSetSessionAttendance,
+            ),
           const SizedBox(height: 6),
           _Line(icon: Icons.mail_outline, text: registration.studentEmail),
           if (registration.studentPhone.isNotEmpty)
@@ -2499,6 +2654,89 @@ class _WaitlistRow extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// İP-B5: oturum oturum katılım. ✓ = QR, ! = elle; boşa dokununca elle "var",
+/// elle işarete dokununca geri al. Henüz başlamamış oturum soluk.
+class _SessionChips extends StatelessWidget {
+  const _SessionChips({
+    required this.registration,
+    required this.event,
+    required this.onSet,
+  });
+
+  final EventRegistration registration;
+  final AppEvent event;
+  final void Function(int session, bool present)? onSet;
+
+  @override
+  Widget build(BuildContext context) {
+    final int count = event.sessionCount < 1 ? 1 : event.sessionCount;
+    final ({List<int> sessions, List<int> manual, bool exact}) att =
+        resolveAttendedSessions(registration, count);
+    final int reached = lastReachedSession(event);
+    Widget chip(int n) {
+      final bool manual = att.manual.contains(n);
+      final bool inn = att.sessions.contains(n);
+      final bool future = n > reached;
+      final Color border = manual
+          ? const Color(0xFFF0B65A)
+          : inn
+          ? const Color(0xFF9FD5B4)
+          : context.hairline;
+      final Color fg = manual
+          ? const Color(0xFF8A5300)
+          : inn
+          ? BrandColors.success
+          : context.inkMuted;
+      final VoidCallback? tap = onSet == null || future || (inn && !manual)
+          ? null
+          : () => onSet!(n, !manual);
+      return Opacity(
+        opacity: future ? 0.45 : 1,
+        child: InkWell(
+          key: Key('att-${registration.studentId}-$n'),
+          borderRadius: BorderRadius.circular(999),
+          onTap: tap,
+          child: Container(
+            constraints: const BoxConstraints(minWidth: 36, minHeight: 30),
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: border),
+            ),
+            child: Text(
+              manual ? '$n!' : (inn ? '$n✓' : '$n'),
+              style: TextStyle(fontWeight: FontWeight.w700, color: fg),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: <Widget>[for (int n = 1; n <= count; n++) chip(n)],
+          ),
+          if (!att.exact)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                context.t('manualAttendance.uncertain'),
+                style: TextStyle(fontSize: 12, color: context.inkMuted),
+              ),
+            ),
+        ],
       ),
     );
   }

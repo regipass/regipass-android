@@ -1415,6 +1415,31 @@ kExtraTranslations = <String, Map<String, String>>{
     'registration.club.quotaNowOpen': 'Kontenjan {{n}} oldu. Kayıtlar açık.',
     'createEvent.lateRegistration': 'Etkinlik başladıktan sonra da kayıt al',
     'registration.scopeAsk.title': 'Bir bilgi eksik',
+    'manualAttendance.title': 'Elle yoklama',
+    'manualAttendance.addConfirm':
+        '{{name}} için {{session}} elle "var" olarak işaretlensin mi? Raporda "!" ile ayrı görünür.',
+    'manualAttendance.removeConfirm':
+        '{{name}} için {{session}} elle konan "var" işareti kaldırılsın mı?',
+    'manualAttendance.added': '{{name}}: {{session}} yoklamasına eklendi.',
+    'manualAttendance.removed': '{{name}}: {{session}} işareti kaldırıldı.',
+    'manualAttendance.already': '{{name}} {{session}} için zaten yoklamada.',
+    'manualAttendance.uncertain': 'Bazı oturumlar belirsiz (eski kayıt).',
+    'manualAttendance.codeTitle': 'Bilet koduyla yoklama',
+    'manualAttendance.codeHint': 'Biletteki kod (ör. K7P2Q X9A1B)',
+    'manualAttendance.codeSubmit': 'Yoklamaya ekle',
+    'manualAttendance.error.generic': 'Yoklama kaydedilemedi. Tekrar dene.',
+    'manualAttendance.error.session-not-started':
+        'Bu oturum henüz başlamadı; ancak başlamış oturumlara işaret konabilir.',
+    'manualAttendance.error.not-manual':
+        'Bu yoklama QR ile alınmış; elle geri alınamaz.',
+    'manualAttendance.error.payment-pending':
+        'Ödemesi onaylanmamış katılımcıya yoklama yazılmaz.',
+    'manualAttendance.error.code-not-found':
+        'Bu kodla kayıtlı katılımcı bulunamadı. Kodu kontrol et.',
+    'manualAttendance.error.code-ambiguous':
+        'Bu kod birden çok kayda uyuyor; tam yazımını dene.',
+    'manualAttendance.error.code-short': 'Kod en az 6 karakter olmalı.',
+    'manualAttendance.error.not-registered': 'Bu kişinin kaydı bulunamadı.',
     'clubCreateEvent.sessionTime.end-before-start':
         '{{n}}. oturumun bitiş saati başlangıçtan sonra olmalı.',
     'clubCreateEvent.sessionTime.overlap':
@@ -2946,6 +2971,31 @@ kExtraTranslations = <String, Map<String, String>>{
     'registration.club.quotaNowOpen': 'Capacity is now {{n}}. Registration is open.',
     'createEvent.lateRegistration': 'Keep registration open after the event starts',
     'registration.scopeAsk.title': 'One detail is missing',
+    'manualAttendance.title': 'Manual attendance',
+    'manualAttendance.addConfirm':
+        'Mark {{name}} as present for {{session}} manually? It shows with "!" in the report.',
+    'manualAttendance.removeConfirm':
+        'Remove the manual mark for {{name}} in {{session}}?',
+    'manualAttendance.added': '{{name}}: added to {{session}} attendance.',
+    'manualAttendance.removed': '{{name}}: mark removed for {{session}}.',
+    'manualAttendance.already': '{{name}} is already in {{session}} attendance.',
+    'manualAttendance.uncertain': 'Some sessions are uncertain (old record).',
+    'manualAttendance.codeTitle': 'Attendance by ticket code',
+    'manualAttendance.codeHint': 'Code on the ticket (e.g. K7P2Q X9A1B)',
+    'manualAttendance.codeSubmit': 'Add to attendance',
+    'manualAttendance.error.generic': 'Could not save attendance. Try again.',
+    'manualAttendance.error.session-not-started':
+        'This session has not started; only started sessions can be marked.',
+    'manualAttendance.error.not-manual':
+        'This attendance was scanned by QR; it cannot be removed manually.',
+    'manualAttendance.error.payment-pending':
+        'Attendance is not recorded while payment is pending.',
+    'manualAttendance.error.code-not-found':
+        'No registration found for this code. Check the code.',
+    'manualAttendance.error.code-ambiguous':
+        'This code matches more than one registration; type it exactly.',
+    'manualAttendance.error.code-short': 'The code must be at least 6 characters.',
+    'manualAttendance.error.not-registered': 'Registration not found.',
     'clubCreateEvent.sessionTime.end-before-start':
         'Session {{n}} must end after it starts.',
     'clubCreateEvent.sessionTime.overlap':
