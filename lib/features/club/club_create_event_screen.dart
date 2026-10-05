@@ -112,6 +112,7 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
 
   /// İP-EL: yalnızca linki olanlar görsün (keşfette görünmez).
   bool _linkOnly = false;
+  bool _allowLate = false;
   String _checkinMode = CheckinMode.checkinOnly;
   String _targetScope = TargetScope.public;
 
@@ -343,6 +344,7 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
     _contactPhone.text = formatContactPhone(event.contactPhone);
     _contactEmail.text = event.contactEmail;
     _linkOnly = event.isLinkOnly;
+    _allowLate = event.allowLateRegistration;
     _sessionCount.text = '${event.sessionCount}';
     _ensureSessionNameFields(event.sessionNames.length);
     for (int i = 0; i < event.sessionNames.length; i++) {
@@ -1054,6 +1056,7 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
       contactEmail: contactEmail,
       autoNotifications: Map<String, bool>.of(_autoNotify),
       visibility: _linkOnly ? 'link' : 'public',
+      allowLateRegistration: _allowLate,
     );
 
     String? createdEventId;
@@ -1447,6 +1450,28 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
                       title: Text(context.t('eventLink.create.linkOnly')),
                       subtitle: Text(
                         context.t('eventLink.create.linkOnlyHint'),
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          color: context.inkMuted,
+                        ),
+                      ),
+                    ),
+                  ),
+                  // İP-B4: etkinlik başladıktan sonra da kayıt al.
+                  Material(
+                    type: MaterialType.transparency,
+                    child: CheckboxListTile(
+                      key: const Key('allowLateRegistration'),
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      value: _allowLate,
+                      onChanged: _saving
+                          ? null
+                          : (bool? v) => setState(() => _allowLate = v == true),
+                      title: Text(context.t('createEvent.lateRegistration')),
+                      subtitle: Text(
+                        context.t('createEvent.lateRegistrationHint'),
                         style: TextStyle(
                           fontSize: 12.5,
                           color: context.inkMuted,

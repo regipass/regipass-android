@@ -201,6 +201,14 @@ bool isEventFinished(AppEvent event, {DateTime? now}) {
 bool eventHasStarted(AppEvent event) =>
     event.currentSession > 0 || event.entryOpen;
 
+/// İP-B4: başlamış etkinliğe yeni kayıt kapalı mı? Organizatör "başladıktan
+/// sonra da kayıt al" dediyse yalnız oturumlar tamamen bitince kapanır.
+/// Web: event-utils.js#isRegistrationsReopenBlocked; sunucu:
+/// registrations.js#lateRegistrationBlocked.
+bool lateRegistrationBlocked(AppEvent event) => event.allowLateRegistration
+    ? event.sessionsCompleted
+    : eventHasStarted(event);
+
 /// Yeni bir öğrenci bu etkinliğe kaydolabilir mi (tersi: kapalı)?
 ///
 /// Süresi geçmiş VEYA kulübün elle/otomatik kapattığı VEYA fiilen başlamış
@@ -210,7 +218,7 @@ bool isRegistrationClosed(AppEvent? event, {DateTime? now}) {
   if (event == null) return true;
   return event.registrationClosed ||
       isPastEvent(event, now: now) ||
-      eventHasStarted(event);
+      lateRegistrationBlocked(event);
 }
 
 /// Zaten KAYITLI bir öğrenci için etkinlik gerçekten bitti mi?

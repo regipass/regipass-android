@@ -336,7 +336,9 @@ class EventRepository {
             : DateTime.now().millisecondsSinceEpoch,
         'entryOpenUpdatedAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
-        if (open && !live.registrationClosed) ...<String, dynamic>{
+        if (open &&
+            !live.registrationClosed &&
+            !live.allowLateRegistration) ...<String, dynamic>{
           'registrationClosed': true,
           'registrationClosedAt': FieldValue.serverTimestamp(),
           'registrationClosedReason': ClosedReason.checkinStarted,
@@ -402,6 +404,7 @@ class EventRepository {
           nextSession: nextSession,
           registrationClosed: live.registrationClosed,
           closedReason: live.registrationClosedReason,
+          allowLateRegistration: live.allowLateRegistration,
         )) {
           case SessionRegistrationGateAction.close:
             data['registrationClosed'] = true;
@@ -505,7 +508,7 @@ class EventRepository {
         final Doc doc = eventDoc(eventId);
         final AppEvent? event = AppEvent.fromDoc(await tx.get(doc));
         if (event == null) throw StateError('scan.eventNotFound');
-        if (!closed && eventHasStarted(event)) {
+        if (!closed && lateRegistrationBlocked(event)) {
           throw StateError('clubEvents.registrations.blockedRunning');
         }
         tx.update(doc, <String, dynamic>{
@@ -976,8 +979,25 @@ class EventRepository {
       ..remove('quota')
       ..remove('quotaShardCount');
 
+    // İP-B4: başlamış etkinlikte geç kayıt sonradan açılırsa, başlarken
+    // kendiliğinden kapanan kayıtlar geri açılır (elle durdurulduysa değil).
+    final bool lateReopen =
+        draft.allowLateRegistration &&
+        current != null &&
+        current.registrationClosed &&
+        <String>[
+          ClosedReason.sessionsStarted,
+          ClosedReason.checkinStarted,
+          'event-started',
+        ].contains(current.registrationClosedReason);
     await eventDoc(eventId).update(<String, dynamic>{
       ...fields,
+      if (lateReopen) ...<String, dynamic>{
+        'registrationClosed': false,
+        'registrationClosedAt': null,
+        'registrationClosedReason': null,
+        'registrationReopenedAt': FieldValue.serverTimestamp(),
+      },
       if (paid && paidEventConsent != null)
         kPaidConsentLogField: <String, dynamic>{
           ...paidEventConsent.toLogMap(),
@@ -1110,6 +1130,7 @@ class EventDraft {
     this.contactEmail = '',
     this.autoNotifications = kDefaultAutoNotifications,
     this.visibility = 'public',
+    this.allowLateRegistration = false,
   });
 
   final String title;
@@ -1157,6 +1178,9 @@ class EventDraft {
   /// İP-EL: `public` (keşfette görünür) ya da `link` (yalnızca linki olan görür).
   final String visibility;
 
+  /// İP-B4: başladıktan sonra da kayıt al.
+  final bool allowLateRegistration;
+
   EventDraft copyWith({String? imageUrl}) => EventDraft(
     title: title,
     description: description,
@@ -1191,6 +1215,7 @@ class EventDraft {
     contactEmail: contactEmail,
     autoNotifications: autoNotifications,
     visibility: visibility,
+    allowLateRegistration: allowLateRegistration,
   );
 
   Map<String, dynamic> toMap() => <String, dynamic>{
@@ -1238,6 +1263,7 @@ class EventDraft {
     'contactPhone': contactMode == 'custom' ? contactPhone : '',
     'contactEmail': contactMode == 'custom' ? contactEmail : '',
     'visibility': visibility == 'link' ? 'link' : 'public',
+    'allowLateRegistration': allowLateRegistration,
     'updatedAt': FieldValue.serverTimestamp(),
   };
 }

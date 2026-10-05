@@ -345,8 +345,13 @@ SessionRegistrationGateAction sessionRegistrationGateAction({
   required int nextSession,
   required bool registrationClosed,
   required String closedReason,
+  bool allowLateRegistration = false,
 }) {
-  if (previousSession <= 0 && nextSession >= 1 && !registrationClosed) {
+  // İP-B4: organizatör geç kayda izin verdiyse başlarken kayıtlar kapanmaz.
+  if (previousSession <= 0 &&
+      nextSession >= 1 &&
+      !registrationClosed &&
+      !allowLateRegistration) {
     return SessionRegistrationGateAction.close;
   }
 

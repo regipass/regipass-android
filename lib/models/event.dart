@@ -59,6 +59,7 @@ class AppEvent {
     required this.hiddenFromClubList,
     required this.hiddenGlobally,
     this.visibility = 'public',
+    this.allowLateRegistration = false,
     required this.currentSession,
     required this.sessionsCompleted,
     required this.createdAtMs,
@@ -164,6 +165,7 @@ class AppEvent {
       hiddenFromClubList: data['hiddenFromClubList'] == true,
       hiddenGlobally: data['hiddenGlobally'] == true,
       visibility: data['visibility'] == 'link' ? 'link' : 'public',
+      allowLateRegistration: data['allowLateRegistration'] == true,
       currentSession: asInt(data['currentSession']) ?? 0,
       sessionsCompleted: data['sessionsCompleted'] == true,
       createdAtMs: asInt(data['createdAtMs']) ?? 0,
@@ -364,6 +366,10 @@ class AppEvent {
   /// `regipass.com/e/<kod>` bağlantısını alan kişi açar.
   final String visibility;
   bool get isLinkOnly => visibility == 'link';
+
+  /// İP-B4: etkinlik başladıktan sonra da kayıt alınır (kapı/oturum
+  /// başlayınca kayıtlar kendiliğinden kapanmaz). Web: allowLateRegistration.
+  final bool allowLateRegistration;
   final int currentSession;
   final bool sessionsCompleted;
   final int createdAtMs;

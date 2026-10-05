@@ -1412,6 +1412,22 @@ kExtraTranslations = <String, Map<String, String>>{
     'registration.club.paid': 'Ödendi',
     'registration.club.paymentTitle': 'Ödeme',
     'registration.club.quotaNow': 'Kontenjan {{n}} oldu.',
+    'registration.club.quotaNowOpen': 'Kontenjan {{n}} oldu. Kayıtlar açık.',
+    'createEvent.lateRegistration': 'Etkinlik başladıktan sonra da kayıt al',
+    'createEvent.lateRegistrationHint':
+        'Kapı girişi ya da ilk oturum başlayınca kayıtlar kapanmaz; son kayıt tarihine kadar (yer varsa) kayıt sürer ve etkinlik Keşfet\'te kalır. Geç gelenler için son kayıt tarihini etkinlik günü yap.',
+    'registration.club.quotaBlocked.event-started':
+        'Kontenjan {{n}} oldu, ancak kapı girişi ya da oturum başladığı için yeni kayıt alınmıyor. Geç gelenler de kaydolsun istiyorsan etkinliği düzenleyip "Etkinlik başladıktan sonra da kayıt al"ı aç.',
+    'registration.club.quotaBlocked.registration-closed':
+        'Kontenjan {{n}} oldu, ancak kayıtları sen durdurmuştun. Yeni kayıt için "Kayıtları Yeniden Başlat"a bas.',
+    'registration.club.quotaBlocked.deadline-passed':
+        'Kontenjan {{n}} oldu, ancak son kayıt tarihi geçtiği için yeni kayıt alınmıyor. Etkinliği düzenleyip son kayıt tarihini uzatabilirsin.',
+    'registration.club.quotaBlocked.event-past':
+        'Kontenjan {{n}} oldu, ancak etkinliğin günü geçtiği için yeni kayıt alınmıyor.',
+    'registration.club.quotaBlocked.event-hidden':
+        'Kontenjan {{n}} oldu, ancak etkinlik yönetici tarafından gizlendiği için yeni kayıt alınmıyor.',
+    'registration.club.quotaBlocked.quota-setup':
+        'Kontenjan {{n}} oldu; kurulum sürüyor, birkaç saniye sonra kayıtlar açılır.',
     'registration.club.quotaSetupDone': 'Kontenjan kuruldu, kayıtlar açıldı.',
     'registration.club.quotaSetupFailed': 'Kontenjan ayarlanamadı, etkinlik şu an kayda kapalı. Etkinliği düzenleyip yeniden kaydet.',
     'registration.club.quotaSetupStatus': 'Kontenjan Kuruluyor',
@@ -2906,6 +2922,22 @@ kExtraTranslations = <String, Map<String, String>>{
     'registration.club.paid': 'Paid',
     'registration.club.paymentTitle': 'Payment',
     'registration.club.quotaNow': 'Capacity is now {{n}}.',
+    'registration.club.quotaNowOpen': 'Capacity is now {{n}}. Registration is open.',
+    'createEvent.lateRegistration': 'Keep registration open after the event starts',
+    'createEvent.lateRegistrationHint':
+        'Registration does not close when check-in or the first session starts; it stays open (if seats remain) until the registration deadline and the event stays in Discover. Set the deadline to the event day for latecomers.',
+    'registration.club.quotaBlocked.event-started':
+        'Capacity is now {{n}}, but check-in or a session has started, so no new registrations are accepted.',
+    'registration.club.quotaBlocked.registration-closed':
+        'Capacity is now {{n}}, but you paused registrations. Tap "Restart Registrations" to accept new ones.',
+    'registration.club.quotaBlocked.deadline-passed':
+        'Capacity is now {{n}}, but the registration deadline has passed. Edit the event to extend it.',
+    'registration.club.quotaBlocked.event-past':
+        'Capacity is now {{n}}, but the event day has passed.',
+    'registration.club.quotaBlocked.event-hidden':
+        'Capacity is now {{n}}, but the event was hidden by an admin.',
+    'registration.club.quotaBlocked.quota-setup':
+        'Capacity is now {{n}}; setup is still running, registration opens in a few seconds.',
     'registration.club.quotaSetupDone': 'Capacity set up; registration is open.',
     'registration.club.quotaSetupFailed': 'The capacity could not be set up; registration is closed. Edit and save the event to try again.',
     'registration.club.quotaSetupStatus': 'Setting Up Capacity',

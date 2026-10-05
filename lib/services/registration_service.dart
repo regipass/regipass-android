@@ -401,13 +401,24 @@ class RegistrationService {
   Future<int> setEventQuota({
     required String eventId,
     required int quota,
+  }) async =>
+      (await setEventQuotaDetailed(eventId: eventId, quota: quota)).quota;
+
+  /// İP-B4: kontenjan + yeni kayıt hâlâ alınamıyorsa nedeni
+  /// (`registrationBlockReason`, ör. `event-started`; açıksa boş).
+  Future<({int quota, String blockReason})> setEventQuotaDetailed({
+    required String eventId,
+    required int quota,
   }) async {
     final Map<String, dynamic> out = await _call(
       'setEventQuota',
       <String, Object?>{'eventId': eventId, 'quota': quota},
       timeout: const Duration(seconds: 60),
     );
-    return (out['quota'] as num?)?.toInt() ?? quota;
+    return (
+      quota: (out['quota'] as num?)?.toInt() ?? quota,
+      blockReason: '${out['blockReason'] ?? ''}',
+    );
   }
 
   /// Etkinliği iptal eder. Hiç kaydı olmayan etkinlik tamamen silinir.

@@ -255,7 +255,7 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
       return;
     }
 
-    if (reopening && eventHasStarted(event)) {
+    if (reopening && lateRegistrationBlocked(event)) {
       await _notice(
         context.t('clubEvents.registrations.title'),
         context.t('clubEvents.registrations.blockedRunning'),
@@ -555,14 +555,24 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
     if (!ok || !mounted) return;
     await _run(() async {
       try {
-        final int quota = await ref.read(registrationServiceProvider).setEventQuota(
+        final ({int quota, String blockReason}) result = await ref
+            .read(registrationServiceProvider)
+            .setEventQuotaDetailed(
               eventId: event.id,
               quota: event.quota + step,
             );
         if (!mounted) return;
+        // İP-B4: kontenjan arttı ama yeni kayıt alınamıyorsa nedenini söyle.
+        final String blockedKey =
+            'registration.club.quotaBlocked.${result.blockReason}';
+        final bool blocked =
+            result.blockReason.isNotEmpty && context.t(blockedKey) != blockedKey;
         _setFeedback(
-          context.t('registration.club.quotaNow', <String, Object?>{'n': quota}),
-          FeedbackTone.success,
+          context.t(
+            blocked ? blockedKey : 'registration.club.quotaNowOpen',
+            <String, Object?>{'n': result.quota},
+          ),
+          blocked ? FeedbackTone.warning : FeedbackTone.success,
         );
       } on RegistrationFailure catch (failure) {
         if (!mounted) return;

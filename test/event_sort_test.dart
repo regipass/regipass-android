@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:regipass/domain/event_utils.dart';
+import 'package:regipass/domain/registration_capacity.dart';
 
 /// İP-B2: bilet/etkinlik listeleri en yakın tarihe göre (web: event-sort.test.mjs).
 void main() {
@@ -51,6 +52,28 @@ void main() {
         now: now,
       ),
       greaterThan(0),
+    );
+  });
+
+  test('İP-B4: geç kayıt açıksa ilk oturumda kayıtlar kapanmaz', () {
+    expect(
+      sessionRegistrationGateAction(
+        previousSession: 0,
+        nextSession: 1,
+        registrationClosed: false,
+        closedReason: '',
+      ),
+      SessionRegistrationGateAction.close,
+    );
+    expect(
+      sessionRegistrationGateAction(
+        previousSession: 0,
+        nextSession: 1,
+        registrationClosed: false,
+        closedReason: '',
+        allowLateRegistration: true,
+      ),
+      SessionRegistrationGateAction.none,
     );
   });
 }
