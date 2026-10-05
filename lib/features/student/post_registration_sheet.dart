@@ -5,6 +5,7 @@
 ///   - Google Takvim ya da takvim uygulaması (.ics) — telefonun takvim ekranı
 ///     dolu açılır, kişi tek dokunuşla kaydeder.
 ///   - Bileti resim olarak kaydet (kapı girişi olan etkinlikte).
+///   - Apple / Google Cüzdan'a ekle (İP-B2; ödeme bekleyende görünmez).
 ///   - "Bundan sonra sorma": cihazda hatırlanır; pencere yerine kısa uyarı.
 library;
 
@@ -18,6 +19,7 @@ import '../../models/event.dart';
 import '../../state/providers.dart';
 import '../shared/add_to_calendar_button.dart';
 import '../shared/ticket_image.dart';
+import '../shared/wallet_buttons.dart';
 
 const String kPostRegistrationSkipKey = 'regipass.postRegistration.skip';
 
@@ -44,6 +46,7 @@ Future<void> showPostRegistrationSheet(
   BuildContext context, {
   required AppEvent event,
   required String message,
+  bool paymentPending = false,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -52,15 +55,24 @@ Future<void> showPostRegistrationSheet(
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
-    builder: (_) => _PostRegistrationSheet(event: event, message: message),
+    builder: (_) => _PostRegistrationSheet(
+      event: event,
+      message: message,
+      paymentPending: paymentPending,
+    ),
   );
 }
 
 class _PostRegistrationSheet extends ConsumerStatefulWidget {
-  const _PostRegistrationSheet({required this.event, required this.message});
+  const _PostRegistrationSheet({
+    required this.event,
+    required this.message,
+    this.paymentPending = false,
+  });
 
   final AppEvent event;
   final String message;
+  final bool paymentPending;
 
   @override
   ConsumerState<_PostRegistrationSheet> createState() =>
@@ -131,6 +143,7 @@ class _PostRegistrationSheetState
     final AppEvent event = widget.event;
     final bool calendar = canAddToCalendar(event);
     final bool ticket = event.hasDoorCheckin;
+    final String? uid = ref.watch(currentUidProvider);
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
       child: Column(
@@ -216,6 +229,14 @@ class _PostRegistrationSheetState
               style: text.bodySmall,
             ),
           ],
+          // İP-B2: cüzdana ekle (ayar kapalıyken / ödeme bekleyende boş).
+          if (uid != null)
+            WalletButtons(
+              key: const Key('postRegWallet'),
+              registrationId: '${event.id}_$uid',
+              cancelled: event.cancelled,
+              paymentPending: widget.paymentPending,
+            ),
           if (_feedback != null) ...<Widget>[
             const SizedBox(height: 10),
             Text(

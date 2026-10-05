@@ -484,6 +484,7 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
           message: result.paymentPending
               ? '${context.t('dashboard.alerts.registerSuccess')}\n${context.t('registration.alerts.paymentPendingNote')}'
               : context.t('dashboard.alerts.registerSuccess'),
+          paymentPending: result.paymentPending,
         );
         return;
       }

@@ -160,6 +160,13 @@ class RegistrationWithEvent {
       ? event!.clubName
       : registration.clubName;
 
+  /// Listelerde sıralama zamanı (bkz. event_utils.dart#compareByUpcomingEvent).
+  int get sortTimeMs => eventSortTime(
+    startAtMs: event?.eventStartAtMs,
+    dateAtMs: event?.eventDateAtMs,
+    deadlineAtMs: deadlineAtMs,
+  );
+
   int get deadlineAtMs => (event?.deadlineAtMs ?? 0) > 0
       ? event!.deadlineAtMs
       : registration.deadlineAtMs;
@@ -297,14 +304,19 @@ final FutureProvider<List<RegistrationWithEvent>> appointmentsProvider =
           )
           .toList();
 
-      items.sort((RegistrationWithEvent a, RegistrationWithEvent b) {
-        if (a.deadlineAtMs != b.deadlineAtMs) {
-          return a.deadlineAtMs.compareTo(b.deadlineAtMs);
-        }
-        return b.registration.registeredAtMs.compareTo(
-          a.registration.registeredAtMs,
-        );
-      });
+      // İP-B2: en yakın tarihli etkinlik en üstte (eskiden son başvuruya
+      // göre sıralanıyordu).
+      final DateTime now = DateTime.now();
+      items.sort(
+        (RegistrationWithEvent a, RegistrationWithEvent b) =>
+            compareByUpcomingEvent(
+              timeA: a.sortTimeMs,
+              timeB: b.sortTimeMs,
+              registeredA: a.registration.registeredAtMs,
+              registeredB: b.registration.registeredAtMs,
+              now: now,
+            ),
+      );
 
       return items;
     });

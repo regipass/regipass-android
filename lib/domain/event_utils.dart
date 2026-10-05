@@ -468,3 +468,37 @@ List<AppEvent> sortEventsForStudent(
 
   return sorted;
 }
+
+/// Sıralama için etkinliğin zamanı (başlangıç saati > gün > son başvuru).
+/// Web: event-utils.js#eventSortTime.
+int eventSortTime({int? startAtMs, int? dateAtMs, int deadlineAtMs = 0}) {
+  if ((startAtMs ?? 0) > 0) return startAtMs!;
+  if ((dateAtMs ?? 0) > 0) return dateAtMs!;
+  return deadlineAtMs > 0 ? deadlineAtMs : 0;
+}
+
+/// Bilet/etkinlik listeleri (İP-B2): günü gelmemiş (bugün dahil) etkinlikler
+/// EN YAKIN tarih en üstte; günü geçmişler onlardan sonra, en yeni önce;
+/// tarihsizler en sonda. Aynı zamanda olanlarda son kaydolunan önce.
+/// Web: event-utils.js#compareByUpcomingEvent.
+int compareByUpcomingEvent({
+  required int timeA,
+  required int timeB,
+  int registeredA = 0,
+  int registeredB = 0,
+  DateTime? now,
+}) {
+  final int byRegistration = registeredB.compareTo(registeredA);
+  if (timeA <= 0 || timeB <= 0) {
+    final int missing = (timeA > 0 ? 0 : 1) - (timeB > 0 ? 0 : 1);
+    return missing != 0 ? missing : byRegistration;
+  }
+  final DateTime current = now ?? DateTime.now();
+  final bool pastA = _isDayBeforeToday(timeA, current);
+  final bool pastB = _isDayBeforeToday(timeB, current);
+  if (pastA != pastB) return pastA ? 1 : -1;
+  if (timeA != timeB) {
+    return pastA ? timeB.compareTo(timeA) : timeA.compareTo(timeB);
+  }
+  return byRegistration;
+}

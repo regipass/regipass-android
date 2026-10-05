@@ -384,6 +384,16 @@ class _AppointmentDetailSheetState
                         ],
                       ),
                     ],
+                    // İP-B2: cüzdan düğmesi bilete bağlı değil — etkinlik günü
+                    // bilet gizlense de (giriş yapıldı / yalnız yoklama)
+                    // etkinlik bitene kadar burada durur.
+                    if (item.event != null && !item.isClosed)
+                      WalletButtons(
+                        key: const Key('detailWallet'),
+                        registrationId: item.registration.id,
+                        cancelled: item.isCancelled,
+                        paymentPending: item.paymentPending,
+                      ),
                     const SizedBox(height: 24),
                     // Oturumlu etkinlik: okutma düğmesi kulüp QR'ı açana
                     // kadar gizlidir, açılınca belirir. Tek oturumlu: eskisi
