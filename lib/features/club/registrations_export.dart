@@ -69,6 +69,12 @@ String buildRegistrationsExcelXml({
   String locale = 'tr',
   DateTime? now,
 }) {
+  // İP-G6: web ile aynı ek sütunlar — ücretli etkinlikte ödeme durumu, kapı
+  // girişi olan etkinlikte giriş, oturumlu etkinlikte katıldığı oturum sayısı.
+  final bool en = locale == 'en';
+  final bool showPayment = event.isPaid;
+  final bool showCheckin = event.hasDoorCheckin;
+  final bool showSessions = event.isMultiSession;
   final List<List<String>> rows = <List<String>>[
     <String>[labels.reportTitle, '', '', '', '', ''],
     <String>[labels.eventNameLabel, event.title, '', '', '', ''],
@@ -86,7 +92,12 @@ String buildRegistrationsExcelXml({
       '',
     ],
     <String>['', '', '', '', '', ''],
-    labels.headers,
+    <String>[
+      ...labels.headers,
+      if (showPayment) en ? 'Payment' : 'Ödeme',
+      if (showCheckin) en ? 'Door entry' : 'Kapı Girişi',
+      if (showSessions) en ? 'Sessions' : 'Oturum',
+    ],
     for (final EventRegistration reg in registrations)
       <String>[
         reg.displayName,
@@ -95,10 +106,24 @@ String buildRegistrationsExcelXml({
         reg.studentUniversity,
         reg.studentDepartment,
         formatDateTime(reg.registeredAtMs, locale: locale),
+        if (showPayment)
+          reg.paymentStatus == 'pending'
+              ? (en ? 'Pending' : 'Bekleniyor')
+              : (en ? 'Paid' : 'Ödendi'),
+        if (showCheckin)
+          (reg.checkedInAtMs ?? 0) > 0
+              ? '${en ? 'Attended' : 'Katıldı'} — ${formatDateTime(reg.checkedInAtMs, locale: locale)}'
+              : (en ? 'Did not attend' : 'Katılmadı'),
+        if (showSessions) '${reg.sessionsAttended}/${event.sessionCount}',
       ],
   ];
 
   final String xmlRows = rows.map(_row).join();
+  final String extraColumns = <String>[
+    if (showPayment) '      <Column ss:AutoFitWidth="0" ss:Width="110"/>\n',
+    if (showCheckin) '      <Column ss:AutoFitWidth="0" ss:Width="220"/>\n',
+    if (showSessions) '      <Column ss:AutoFitWidth="0" ss:Width="90"/>\n',
+  ].join();
 
   return '''<?xml version="1.0"?>
 <?mso-application progid="Excel.Sheet"?>
@@ -114,7 +139,7 @@ String buildRegistrationsExcelXml({
       <Column ss:AutoFitWidth="0" ss:Width="260"/>
       <Column ss:AutoFitWidth="0" ss:Width="220"/>
       <Column ss:AutoFitWidth="0" ss:Width="190"/>
-      $xmlRows
+$extraColumns      $xmlRows
     </Table>
   </Worksheet>
 </Workbook>''';

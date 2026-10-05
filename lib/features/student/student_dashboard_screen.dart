@@ -280,8 +280,14 @@ String priorityLabel(BuildContext context, int priority) => switch (priority) {
 };
 
 /// dashboard.js#getScopeLabel
-String scopeLabel(BuildContext context, String targetScope) =>
-    switch (targetScope) {
+String scopeLabel(
+  BuildContext context,
+  String targetScope, {
+  bool linkOnly = false,
+}) => linkOnly
+    // İP-G6: yalnızca linkle paylaşılan etkinlik "Herkese Açık" görünmesin.
+    ? context.t('dashboard.scope.linkOnly')
+    : switch (targetScope) {
       TargetScope.universityDepartment => context.t('dashboard.scope.department'),
       'department' => context.t('dashboard.scope.departmentOnly'),
       'university' => context.t('dashboard.scope.university'),
@@ -799,7 +805,7 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
   String _audience(BuildContext context, AppEvent event) {
     // Bölüm hedeflenmemişse alan olarak kulübün kendi alanları yazılır.
     final List<String> parts = <String>[
-      scopeLabel(context, event.targetScope),
+      scopeLabel(context, event.targetScope, linkOnly: event.isLinkOnly),
       ...event.targetUniversities,
       ...eventAudienceFields(event),
     ];
@@ -948,7 +954,7 @@ class _EventDetailSheetState extends ConsumerState<_EventDetailSheet> {
                                 tone: feedbackToneFor(view.statusTone),
                               ),
                               StatusPill(
-                                label: scopeLabel(context, event.targetScope),
+                                label: scopeLabel(context, event.targetScope, linkOnly: event.isLinkOnly),
                               ),
                               StatusPill(
                                 label: priorityLabel(context, priority),

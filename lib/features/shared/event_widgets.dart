@@ -19,8 +19,14 @@ import 'common_widgets.dart';
 /// burada bir kez kuruluyor, eylemler dışarıdan veriliyor.
 
 /// dashboard.js#getScopeLabel
-String eventScopeLabel(BuildContext context, String targetScope) =>
-    switch (targetScope) {
+String eventScopeLabel(
+  BuildContext context,
+  String targetScope, {
+  bool linkOnly = false,
+}) => linkOnly
+    // İP-G6: yalnızca linkle paylaşılan etkinlik "Herkese Açık" görünmesin.
+    ? context.t('dashboard.scope.linkOnly')
+    : switch (targetScope) {
       TargetScope.universityDepartment => context.t('dashboard.scope.department'),
       'department' => context.t('dashboard.scope.departmentOnly'),
       'university' => context.t('dashboard.scope.university'),
@@ -132,7 +138,7 @@ class EventSummaryCard extends StatelessWidget {
         statusOverride ?? eventStatus(context, event);
 
     final List<String> tags = <String>[
-      eventScopeLabel(context, event.targetScope),
+      eventScopeLabel(context, event.targetScope, linkOnly: event.isLinkOnly),
       if (priority != null) eventPriorityLabel(context, priority!),
       if (event.isMultiSession)
         context.t('eventModal.sessionsValue', <String, Object?>{
@@ -461,7 +467,7 @@ List<({IconData icon, String label, String value})> eventInfoRows(
   // alan olarak kulübün kendi alanları yazılır: satır boş kalmasın, öğrenci
   // etkinliğin hangi alana dokunduğunu görsün.
   final List<String> audience = <String>[
-    eventScopeLabel(context, event.targetScope),
+    eventScopeLabel(context, event.targetScope, linkOnly: event.isLinkOnly),
     ...event.targetUniversities,
     ...eventAudienceFields(event),
   ];
@@ -999,6 +1005,7 @@ class EventDetailSheet extends ConsumerWidget {
                                 label: eventScopeLabel(
                                   context,
                                   event.targetScope,
+                                  linkOnly: event.isLinkOnly,
                                 ),
                               ),
                               if (priority != null)

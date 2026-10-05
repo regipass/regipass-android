@@ -117,4 +117,28 @@ void main() {
       expect(registrationsFileName('!!! ???'), 'etkinlik-kayitli-ogrenciler.xls');
     });
   });
+
+  test('İP-G6: ücretli etkinlikte Ödeme sütunu yazılır', () {
+    final AppEvent paid = AppEvent.fromMap('e1', <String, dynamic>{
+      'title': 'Gala',
+      'clubName': 'Kulüp',
+      'feeType': 'paid',
+      'feeAmount': 100,
+    });
+    final EventRegistration reg = EventRegistration.fromMap('e1_s1', <String, dynamic>{
+      'eventId': 'e1',
+      'studentId': 's1',
+      'studentName': 'Ali Can',
+      'paymentStatus': 'pending',
+      'registeredAtMs': DateTime(2026, 3, 14, 9, 30).millisecondsSinceEpoch,
+    });
+    final String xml = buildRegistrationsExcelXml(
+      event: paid,
+      registrations: <EventRegistration>[reg],
+      labels: labels,
+      now: DateTime(2026, 3, 20, 12),
+    );
+    expect(xml, contains('Ödeme'));
+    expect(xml, contains('Bekleniyor'));
+  });
 }

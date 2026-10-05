@@ -454,7 +454,12 @@ class _CertificateRow extends ConsumerWidget {
         // iki satır birbirinden ayırt edilemiyordu.
         subtitle: Text(
           <String>[
-            if (certificate.fileName.isNotEmpty) _displayName,
+            // İP-G6: organizatörün şablon dosya adı ("sablon-2.pdf") belge adı
+            // gibi görünüyordu; şablon adları gösterilmez.
+            if (certificate.fileName.isNotEmpty &&
+                !RegExp(r'(ş|s)ablon|template|taslak', caseSensitive: false)
+                    .hasMatch(certificate.fileName))
+              _displayName,
             certificate.clubName.isNotEmpty ? certificate.clubName : '-',
             formatDeadline(certificate.issuedAtMs, locale: context.lang),
           ].join(' • '),

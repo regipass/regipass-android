@@ -1239,7 +1239,7 @@ class _Body extends ConsumerWidget {
               label: eventStatus(context, event).label,
               tone: eventStatus(context, event).tone,
             ),
-            StatusPill(label: eventScopeLabel(context, event.targetScope)),
+            StatusPill(label: eventScopeLabel(context, event.targetScope, linkOnly: event.isLinkOnly)),
             StatusPill(label: eventFeeLabel(context, event)),
           ],
         ),
