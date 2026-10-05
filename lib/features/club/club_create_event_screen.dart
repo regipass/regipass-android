@@ -969,10 +969,11 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
     }
 
     // Mod, oturum sayısını değil kapı girişinin gerekip gerekmediğini de
-    // belirler. Yoklama içeren iki modda en az iki oturum zorunludur.
-    final int rawSessions = int.tryParse(_sessionCount.text.trim()) ?? 1;
+    // belirler. Yoklama içeren iki modda en az bir oturum gerekir (İP-G3:
+    // tek oturumlu etkinlik de açılabilir; web ile aynı).
+    final int rawSessions = int.tryParse(_sessionCount.text.trim()) ?? 0;
     final bool hasSessions = CheckinMode.hasSessions(_checkinMode);
-    if (hasSessions && rawSessions <= 1) {
+    if (hasSessions && rawSessions < 1) {
       _fail(
         _Field.checkinMode,
         context.t('clubCreateEvent.feedback.sessionCountRequired'),
@@ -1564,9 +1565,9 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
                                   _sessionCount.text = '1';
                                   _threshold.clear();
                                 } else if ((int.tryParse(_sessionCount.text) ??
-                                        1) <=
+                                        0) <
                                     1) {
-                                  _sessionCount.text = '2';
+                                  _sessionCount.text = '1';
                                 }
                               });
                             },

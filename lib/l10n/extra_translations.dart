@@ -1018,7 +1018,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'checkinMode.checkin_onlyDesc':
         'Oturum yoklaması yok; kapı girişi yeterli.',
     'clubCreateEvent.feedback.sessionCountRequired':
-        'Yoklamalı etkinlikte oturum sayısı en az 2 olmalı.',
+        'Yoklamalı etkinlikte oturum sayısı en az 1 olmalı.',
     'clubCreateEvent.subtitle':
         '',
     'clubCreateEvent.editTitle': 'Etkinliği Düzenle',
@@ -2594,7 +2594,7 @@ kExtraTranslations = <String, Map<String, String>>{
     'checkinMode.checkin_onlyDesc':
         'No session attendance; door check-in is enough.',
     'clubCreateEvent.feedback.sessionCountRequired':
-        'An event with attendance needs at least 2 sessions.',
+        'An event with attendance needs at least 1 session.',
     'clubCreateEvent.image.pick': 'Choose From Device',
     'notification.openTarget': 'View',
     'clubCreateEvent.location.nameHint':
