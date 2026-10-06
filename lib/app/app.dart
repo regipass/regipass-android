@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../services/app_update_gate.dart';
 import '../core/constants.dart';
 import '../core/keyboard.dart';
 import '../domain/account_expiry.dart';
@@ -325,7 +326,8 @@ class _RegipassAppState extends ConsumerState<RegipassApp>
             // şeridine dokunulduğunda geri gelir (bkz. lib/app/system_ui.dart).
             // Dinleyici yönlendiricinin üstünde: hangi ekran/pop-up açık olursa
             // olsun aynı kural işler.
-            child: NotificationSync(
+            // İP-H: zorunlu güncelleme kapısı (app_config/mobile).
+            child: UpdateGate(child: NotificationSync(
               child: OfflineBanner(
                 // Sistem çubuklarının şeridi her şeyin üstünde buğulanır; açılan
                 // sayfa ya da pencere ne olursa olsun çubukların altı aynı görünür
@@ -345,7 +347,7 @@ class _RegipassAppState extends ConsumerState<RegipassApp>
                   ),
                 ),
               ),
-            ),
+            )),
           ),
         ),
       ),

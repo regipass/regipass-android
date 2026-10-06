@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -450,9 +451,8 @@ class EventImage extends StatelessWidget {
   Widget build(BuildContext context) {
     if (url.isEmpty) return EventCoverPlaceholder(height: height);
 
-    // Etkinlik görselleri Storage'a değil doğrudan dokümana yazılıyor:
-    // web `readImageAsDataUrl` ile base64 bir `data:` adresi kaydediyor,
-    // mobil de aynı biçimi kullanıyor. `Image.network` bu adresleri
+    // Eski etkinliklerde görsel belgeye base64 (`data:`) gömülüydü (İP-H ile
+    // Storage'a taşınıyor; geçişte hâlâ görülebilir). `Image.network` bu adresleri
     // çözemediği için gömülü görselin baytları burada ayrıştırılır —
     // aksi hâlde yüklenen her görsel kartlarda kırık görünüyor.
     if (url.startsWith('data:')) {
@@ -469,18 +469,25 @@ class EventImage extends StatelessWidget {
       );
     }
 
-    return Image.network(
-      url,
-      height: height,
-      width: double.infinity,
-      fit: BoxFit.cover,
-      errorBuilder: (BuildContext context, _, _) =>
-          EventCoverPlaceholder(height: height),
-      loadingBuilder:
-          (BuildContext context, Widget child, ImageChunkEvent? progress) =>
-              progress == null
-              ? child
-              : Container(height: height, color: context.subtleFill),
+    // İP-H: görsel diskte önbelleklenir (her açılışta yeniden inmez) ve
+    // ekrandaki genişliğe göre küçültülerek çözülür (bellek + hız).
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final double dpr = MediaQuery.maybeDevicePixelRatioOf(context) ?? 2;
+        final double w = constraints.maxWidth.isFinite ? constraints.maxWidth : 600;
+        return CachedNetworkImage(
+          imageUrl: url,
+          height: height,
+          width: double.infinity,
+          fit: BoxFit.cover,
+          memCacheWidth: (w * dpr).round().clamp(200, 1600),
+          fadeInDuration: const Duration(milliseconds: 150),
+          placeholder: (BuildContext context, String _) =>
+              Container(height: height, color: context.subtleFill),
+          errorWidget: (BuildContext context, String _, Object _) =>
+              EventCoverPlaceholder(height: height),
+        );
+      },
     );
   }
 }
@@ -560,12 +567,14 @@ class ClubLogoBox extends StatelessWidget {
 
     // Logolar çoğunlukla saydam PNG: koyu temada kaybolmasın diye kutunun
     // zemini her zaman boyanır.
-    final Widget image = Image.network(
-      logoUrl,
+    final Widget image = CachedNetworkImage(
+      imageUrl: logoUrl,
       fit: fill ? BoxFit.cover : BoxFit.contain,
       width: fill ? double.infinity : null,
       height: fill ? double.infinity : null,
-      errorBuilder: (BuildContext context, _, _) => Icon(
+      memCacheWidth: (size * (MediaQuery.maybeDevicePixelRatioOf(context) ?? 2)).round().clamp(64, 1024),
+      fadeInDuration: Duration.zero,
+      errorWidget: (BuildContext context, String _, Object _) => Icon(
         Icons.groups_outlined,
         color: context.hairline,
         size: size * 0.52,

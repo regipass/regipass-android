@@ -73,7 +73,8 @@ String buildRegistrationsExcelXml({
   // girişi olan etkinlikte giriş, oturumlu etkinlikte katıldığı oturum sayısı.
   final bool en = locale == 'en';
   final bool showPayment = event.isPaid;
-  final bool showCheckin = event.hasDoorCheckin;
+  final bool showCheckin = event.hasDoorCheckin &&
+      (event.entryOpen || event.entryStartedAtMs > 0);
   final bool showSessions = event.isMultiSession;
   final List<List<String>> rows = <List<String>>[
     <String>[labels.reportTitle, '', '', '', '', ''],

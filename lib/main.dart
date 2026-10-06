@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui' as ui;
 
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
@@ -71,6 +72,25 @@ void main() {
 /// `docs/telefon-dogrulama-recaptcha.md`.
 Future<void> _initFirebase() async {
   await Firebase.initializeApp(options: appFirebaseOptions);
+
+  // İP-H: App Check — sunucuya yalnızca gerçek Regipass uygulamasının
+  // istekleri ulaşsın (Android: Play Integrity, iOS: DeviceCheck). Konsolda
+  // "zorunlu" yapılana kadar yalnızca ölçer; başlatılamazsa uygulama sürer.
+  // Hata ayıklama/test yapılarında hata ayıklama sağlayıcısı kullanılır.
+  if (!kDemoMode) {
+    unawaited(
+      FirebaseAppCheck.instance
+          .activate(
+            providerAndroid: kReleaseMode
+                ? const AndroidPlayIntegrityProvider()
+                : const AndroidDebugProvider(),
+            providerApple: kReleaseMode
+                ? const AppleDeviceCheckProvider()
+                : const AppleDebugProvider(),
+          )
+          .catchError((Object _) {}),
+    );
+  }
 
   try {
     await FirebaseAuth.instance.setSettings(
