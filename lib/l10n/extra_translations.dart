@@ -11,6 +11,9 @@ library;
 const Map<String, Map<String, String>>
 kExtraTranslations = <String, Map<String, String>>{
   'tr': <String, String>{
+    // İP-P (1.0.13): mobile özel paket hattı metinleri
+    'plan.mobile.companyWeb':
+        'Firma hesabıyla etkinlik, etkinlik paketi seçilerek regipass.com\'dan açılır. Açtığın etkinliği burada yönetebilirsin.',
     // İP-8 / İP-9: yeni sertifika sistemi (web language.js ile aynı metinler)
     'cert.panel.title': 'Katılım Belgesi',
     'cert.editor.sampleName': 'Ad Soyad',
@@ -1661,6 +1664,9 @@ kExtraTranslations = <String, Map<String, String>>{
     'complaint.error.generic': 'İşlem yapılamadı. İnternetini kontrol edip tekrar dene.',
   },
   'en': <String, String>{
+    // İP-P (1.0.13): mobile-only package line texts
+    'plan.mobile.companyWeb':
+        'Company accounts create events on regipass.com by choosing an event package. You can manage the event here.',
     // İP-8 / İP-9: yeni sertifika sistemi (web language.js ile aynı metinler)
     'cert.panel.title': 'Certificate of Attendance',
     'cert.editor.sampleName': 'First Last',

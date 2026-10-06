@@ -9,6 +9,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/constants.dart';
+import '../domain/plans.dart';
 import '../domain/routing.dart';
 import '../domain/staff_access.dart';
 import '../models/event.dart';
@@ -25,6 +26,7 @@ import '../services/notification_read_store.dart';
 import '../services/notification_service.dart';
 import '../services/phone_directory_repository.dart';
 import '../services/phone_hint_repository.dart';
+import '../services/plan_service.dart';
 import '../services/password_reset_auth_session.dart';
 import '../services/profile_repository.dart';
 import '../services/registration_service.dart';
@@ -75,6 +77,20 @@ final eventByIdProvider = StreamProvider.family<AppEvent?, String>((
 /// test edilebilir hâlde durur.
 final Provider<RegistrationService> registrationServiceProvider =
     Provider<RegistrationService>((Ref ref) => const RegistrationService());
+
+/// İP-P1 (mobil): paket bilgisi.
+final Provider<PlanService> planServiceProvider =
+    Provider<PlanService>((Ref ref) => const PlanService());
+
+/// Organizatörün paket özeti (her açılışta tazelenir). Hata → sistem kapalı say.
+final FutureProvider<PlanSummary> myPlanProvider =
+    FutureProvider.autoDispose<PlanSummary>((Ref ref) async {
+  try {
+    return await ref.watch(planServiceProvider).getMyPlan();
+  } catch (_) {
+    return const PlanSummary(enabled: false);
+  }
+});
 
 final Provider<AdminRepository> adminRepositoryProvider =
     Provider<AdminRepository>((Ref ref) => const AdminRepository());

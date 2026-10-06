@@ -22,6 +22,7 @@ import '../../domain/checkin_mode.dart';
 import '../../domain/event_contact.dart';
 import '../../domain/event_utils.dart';
 import '../../domain/paid_event_consent.dart';
+import '../../domain/plans.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/event.dart';
 import '../../models/profiles.dart';
@@ -157,6 +158,9 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
   _Field? _invalidField;
 
   bool get _isEdit => (widget.eventId ?? '').isNotEmpty;
+
+  /// İP-P1 (1.0.13): paket sınırları (build'de güncellenir; _save kullanır).
+  PlanFormLimits _limits = const PlanFormLimits();
 
   /// Uyarıyı ve suçlu alanı birlikte ayarlar.
   void _fail(_Field field, String message) {
@@ -855,6 +859,21 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
       return;
     }
 
+    // İP-P1: paket yeni etkinliğe izin vermiyorsa (Ücretsiz hakkı bitti,
+    // paket bitti, firma) kayıt denenmez; neden ekranda yazar.
+    if (!_isEdit && !_limits.canCreate) {
+      _setFeedback(context.t(_limits.blockKey), FeedbackTone.error);
+      return;
+    }
+    if (_feeType == 'paid' && !_limits.allowPaid) {
+      _setFeedback(context.t('plan.lock.text', <String, Object?>{'feature': context.t('plan.feature.paidEvents')}), FeedbackTone.error);
+      return;
+    }
+    if (CheckinMode.hasSessions(_checkinMode) && !_limits.allowSessions) {
+      _fail(_Field.checkinMode, context.t('plan.lock.text', <String, Object?>{'feature': context.t('plan.feature.sessions')}));
+      return;
+    }
+
     if (detectHarmfulInput(_title.text) ||
         detectHarmfulInput(_description.text) ||
         detectHarmfulInput(_purpose.text)) {
@@ -894,6 +913,11 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
     final int? quota = int.tryParse(_quota.text.trim());
     if (quota == null || quota < 1) {
       _fail(_Field.quota, context.t('clubCreateEvent.feedback.invalidQuota'));
+      return;
+    }
+    final int? maxCapacity = _limits.maxCapacity;
+    if (maxCapacity != null && quota > maxCapacity) {
+      _fail(_Field.quota, context.t('plan.error.capacity', <String, Object?>{'max': maxCapacity}));
       return;
     }
 
@@ -1156,7 +1180,18 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
         }
       }
       if (!mounted) return;
-      if (error is RegistrationFailure && !error.isNetwork) {
+      final String planKey = error is RegistrationFailure ? planErrorKey(error.reason) : '';
+      if (planKey.isNotEmpty) {
+        final RegistrationFailure failure = error as RegistrationFailure;
+        final Object? feature = failure.details['feature'];
+        _setFeedback(
+          context.t(planKey, <String, Object?>{
+            'max': failure.details['max'] ?? '',
+            'feature': feature is String ? context.t('plan.feature.$feature') : '',
+          }),
+          FeedbackTone.error,
+        );
+      } else if (error is RegistrationFailure && !error.isNetwork) {
         _setFeedback(
           context.t('registration.errors.${error.reason}', <String, Object?>{
             'registered': error.registered ?? '',
@@ -1318,6 +1353,16 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
 
     final bool multiSession = CheckinMode.hasSessions(_checkinMode);
 
+    // İP-P1: paket sınırları. Yeni etkinlikte kulübün paketi, düzenlemede
+    // etkinliğin damgası (planTier) belirler; asıl denetim sunucuda.
+    final PlanSummary? plan = _isEdit ? null : ref.watch(myPlanProvider).value;
+    _limits = planFormLimits(
+      plan,
+      planTier: _isEdit
+          ? (ref.watch(_editEventProvider(widget.eventId!)).value?.planTier ?? '')
+          : '',
+    );
+
     // Bölüm listesi kulübün alanlarıyla başladığı için profil izlenir.
     final ClubProfile? club = ref.watch(sessionProvider).clubProfile;
 
@@ -1342,6 +1387,8 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
             children: <Widget>[
+              if (plan != null && plan.enabled)
+                _PlanBanner(plan: plan, limits: _limits),
               // Açıklama boşsa (yeni etkinlik) hiç yer kaplamaz.
               if (!(!_isEdit && context.t('clubCreateEvent.subtitle').isEmpty))
                 Padding(
@@ -1440,10 +1487,12 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
                     child: _ChoiceRow(
                       options: <({String value, String label})>[
                         (value: 'free', label: context.t('eventModal.free')),
-                        (
-                          value: 'paid',
-                          label: context.t('clubCreateEvent.fee.paid'),
-                        ),
+                        // İP-P1: Ücretsiz pakette ücretli etkinlik yok.
+                        if (_limits.allowPaid || _feeType == 'paid')
+                          (
+                            value: 'paid',
+                            label: context.t('clubCreateEvent.fee.paid'),
+                          ),
                       ],
                       selected: _feeType,
                       enabled: !_saving,
@@ -1550,6 +1599,10 @@ class _ClubCreateEventScreenState extends ConsumerState<ClubCreateEventScreen> {
                       ),
                       items: <DropdownMenuItem<String>>[
                         for (final String mode in CheckinMode.values)
+                          // İP-P1: Ücretsiz pakette yalnız kapı girişi.
+                          if (_limits.allowSessions ||
+                              !CheckinMode.hasSessions(mode) ||
+                              mode == _checkinMode)
                           DropdownMenuItem<String>(
                             value: mode,
                             child: Text(context.t('checkinMode.$mode')),
@@ -2831,6 +2884,51 @@ class _DateWheelsState extends State<_DateWheels> {
           onSelected: (int i) => _set(year: widget.first.year + i),
         ),
       ],
+    );
+  }
+}
+
+/// İP-P1 (1.0.13): yeni etkinlik formunun üstünde paket notu.
+class _PlanBanner extends StatelessWidget {
+  const _PlanBanner({required this.plan, required this.limits});
+
+  final PlanSummary plan;
+  final PlanFormLimits limits;
+
+  @override
+  Widget build(BuildContext context) {
+    final String text;
+    final bool blocked = !limits.canCreate;
+    if (blocked) {
+      text = context.t(limits.blockKey);
+    } else if (plan.isStarter) {
+      text = context.t('plan.create.starterNote', <String, Object?>{'left': plan.freeLeft});
+    } else {
+      return const SizedBox.shrink();
+    }
+    final Color tone = blocked ? const Color(0xFFC0292B) : const Color(0xFF8A5300);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: tone.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: tone.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          if (blocked)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
+                context.t('plan.create.blockedTitle'),
+                style: TextStyle(fontWeight: FontWeight.w700, color: tone),
+              ),
+            ),
+          Text(text, style: TextStyle(fontSize: 13.5, height: 1.4, color: tone)),
+        ],
+      ),
     );
   }
 }

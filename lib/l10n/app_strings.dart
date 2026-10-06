@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'extra_translations.dart';
+import 'feature_translations.dart';
 import 'translations.dart';
 
 const String kDefaultLanguage = 'tr';
@@ -41,8 +42,10 @@ String translate(
   final String lang = normalizeLanguage(language);
 
   final String value = kExtraTranslations[lang]?[key] ??
+      kFeatureTranslations[lang]?[key] ??
       kTranslations[lang]?[key] ??
       kExtraTranslations[kDefaultLanguage]?[key] ??
+      kFeatureTranslations[kDefaultLanguage]?[key] ??
       kTranslations[kDefaultLanguage]?[key] ??
       key;
 

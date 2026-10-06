@@ -50,6 +50,14 @@ class AppEvent {
     required this.clubFields,
     required this.registrationClosed,
     this.registrationClosedReason = '',
+    this.planTier = '',
+    this.eventFormat = 'in_person',
+    this.approvalStatus = '',
+    this.approvalRejectReason = '',
+    this.institutionApproval = '',
+    this.institutionRejectReason = '',
+    this.photosNotifiedAtMs = 0,
+    this.hallSessionCount = 0,
     this.cancelled = false,
     this.cancelReason = '',
     this.seatsFull = false,
@@ -153,6 +161,15 @@ class AppEvent {
       clubFields: asStringList(data['clubFields'], asString(data['clubField'])),
       registrationClosed: data['registrationClosed'] == true,
       registrationClosedReason: asString(data['registrationClosedReason']),
+      // İP-P (1.0.13): paket damgası, online biçim, onaylar, fotoğraf, salon.
+      planTier: asString(data['planTier']),
+      eventFormat: asString(data['eventFormat']) == 'online' ? 'online' : 'in_person',
+      approvalStatus: asString(data['approvalStatus']),
+      approvalRejectReason: asString(data['approvalRejectReason']),
+      institutionApproval: asString(data['institutionApproval']),
+      institutionRejectReason: asString(data['institutionRejectReason']),
+      photosNotifiedAtMs: (data['photosNotifiedAtMs'] as num?)?.toInt() ?? 0,
+      hallSessionCount: (data['hallSessionCount'] as num?)?.toInt() ?? 0,
       // İP-K: iptal ve "kontenjan dolu" ipucu yalnızca sunucudan yazılır
       // (functions/registrations.js).
       cancelled: data['cancelled'] == true,
@@ -327,6 +344,32 @@ class AppEvent {
   /// Ayrım şart: kontenjan dolduğu için kendiliğinden kapanan etkinlik yer
   /// açılınca geri açılmalı, kulübün eliyle durdurduğu etkinlik açılmamalı.
   final String registrationClosedReason;
+
+  /// İP-P1: etkinliğin açıldığı paket (sunucu damgası; boş = paket yok / eski).
+  final String planTier;
+
+  /// İP-ON: 'online' | 'in_person'.
+  final String eventFormat;
+  bool get isOnline => eventFormat == 'online';
+
+  /// İP-P2: 1.000+ etkinliğin yönetici onayı ('pending' | 'rejected' | '').
+  final String approvalStatus;
+  final String approvalRejectReason;
+
+  /// İP-KR: kurum (SKS) onayı ('pending' | 'rejected' | 'approved' | '').
+  final String institutionApproval;
+  final String institutionRejectReason;
+
+  /// Onay bekleyen / reddedilen etkinlik Keşfet'te görünmez.
+  bool get awaitingApproval =>
+      approvalStatus == 'pending' || approvalStatus == 'rejected' ||
+      institutionApproval == 'pending' || institutionApproval == 'rejected';
+
+  /// İP-FT: fotoğraflar yüklendi (ilk yükleme anı).
+  final int photosNotifiedAtMs;
+
+  /// İP-SL: çok salonlu etkinlikte program oturum sayısı.
+  final int hallSessionCount;
 
   /// İP-K: kulüp etkinliği iptal etti (kayıtlar korunur, biletler geçersiz).
   final bool cancelled;
