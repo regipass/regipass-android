@@ -225,9 +225,9 @@ class RegistrationService {
             attempt < _maxAttempts;
         if (retry) {
           onWaiting?.call(attempt);
-          await Future<void>.delayed(
-            Duration(milliseconds: 400 * attempt * attempt),
-          );
+          // İP-H: sunucu zaten kendi içinde birkaç kez deniyor; telefonda
+          // kısa bekle (0,25 / 0,5 / 0,75 sn — önceden 0,4 / 1,6 / 3,6 sn).
+          await Future<void>.delayed(Duration(milliseconds: 250 * attempt));
           continue;
         }
         final RegistrationResult result = RegistrationResult(
