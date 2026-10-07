@@ -9,6 +9,7 @@ void main() {
     expect(planFeatureAllowed('campus', 'halls'), isTrue);
     expect(planFeatureAllowed('event_standard', 'vouchers'), isFalse);
     expect(planFeatureAllowed('event_plus', 'photos'), isFalse);
+    expect(planFeatureAllowed('event_plus', 'passport'), isFalse);
     expect(planFeatureAllowed('event_premium', 'photos'), isTrue);
     expect(planFeatureAllowed('', 'sessions'), isTrue);
   });

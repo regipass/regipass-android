@@ -27,8 +27,8 @@ final Map<String, Map<String, bool>> kPlanTierFeatures = <String, Map<String, bo
     'sessions', 'messages', 'paidEvents', 'vouchers', 'passport', 'halls',
     'photos',
   }),
-  // Fotoğraf galerisi Premium ve üstünde (Arda, 7 Eki).
-  'event_plus': _all(off: <String>{'halls', 'photos'}),
+  // Fotoğraf galerisi ve stant pasaportu Premium ve üstünde (Arda, 7 Eki).
+  'event_plus': _all(off: <String>{'halls', 'photos', 'passport'}),
   'event_premium': _all(off: <String>{'halls'}),
   'event_kongre': _all(),
   'none': _all(off: kPlanFeatures.toSet()),
