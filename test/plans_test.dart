@@ -8,7 +8,8 @@ void main() {
     expect(planFeatureAllowed('pro', 'halls'), isFalse);
     expect(planFeatureAllowed('campus', 'halls'), isTrue);
     expect(planFeatureAllowed('event_standard', 'vouchers'), isFalse);
-    expect(planFeatureAllowed('event_plus', 'photos'), isTrue);
+    expect(planFeatureAllowed('event_plus', 'photos'), isFalse);
+    expect(planFeatureAllowed('event_premium', 'photos'), isTrue);
     expect(planFeatureAllowed('', 'sessions'), isTrue);
   });
 
