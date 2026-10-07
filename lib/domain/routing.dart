@@ -56,6 +56,8 @@ class Routes {
   static const String studentQrCheckin = '/student/scan';
   static const String studentCertificates = '/student/certificates';
   static const String studentAccount = '/student/account';
+  // İP-GR (1.0.13): görevli olarak kapıda bilet okutma (?eventId=&clubId=).
+  static const String studentStaffScan = '/student/staff-scan';
 
   /// Üst çubuktaki zil düğmesinin hedefi. İçeriği sonraki aşamada dolacak.
   static const String studentNotifications = '/student/notifications';

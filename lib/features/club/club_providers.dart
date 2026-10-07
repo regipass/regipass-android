@@ -268,6 +268,26 @@ final FutureProvider<DoorGate?> doorGateProvider = FutureProvider<DoorGate?>((
   return gate;
 });
 
+/// İP-GR (mobil 1.0.13): görevli olarak başka bir organizatörün kapısı.
+/// Bilet listesi ve bekleyen okumalar o organizatörün adıyla saklanır.
+// ignore: always_specify_types
+final staffDoorGateProvider = FutureProvider.family<DoorGate?, String>((
+  Ref ref,
+  String clubId,
+) async {
+  final String? uid = ref.watch(currentUidProvider);
+  if (uid == null || clubId.isEmpty) return null;
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  final DoorGate gate = DoorGate(
+    clubId: clubId,
+    prefs: prefs,
+    backend: GateBackend.firestore(clubId, staffUid: uid),
+    isOnline: () => ref.read(onlineProvider),
+  );
+  ref.onDispose(gate.dispose);
+  return gate;
+});
+
 /// İP-K: kulübün etkinliğinin bekleme listesi uzunluğu (toplama sorgusu).
 /// İşlemlerden sonra `ref.invalidate` ile tazelenir.
 // ignore: always_specify_types

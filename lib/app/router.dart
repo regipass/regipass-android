@@ -203,6 +203,14 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
             builder: (_, _) => const StudentAccountScreen(),
           ),
           GoRoute(
+            path: Routes.studentStaffScan,
+            builder: (BuildContext context, GoRouterState state) =>
+                ClubQrCheckinScreen(
+                  eventId: state.uri.queryParameters['eventId'],
+                  staffClubId: state.uri.queryParameters['clubId'] ?? '',
+                ),
+          ),
+          GoRoute(
             path: Routes.studentNotifications,
             builder: (_, _) => const StudentNotificationsScreen(),
           ),

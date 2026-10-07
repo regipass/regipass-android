@@ -34,9 +34,12 @@ import 'club_shell.dart';
 /// [eventId] verilirse (etkinlik ekranından gelindiyse) yalnızca o etkinliğin
 /// biletleri kabul edilir.
 class ClubQrCheckinScreen extends ConsumerStatefulWidget {
-  const ClubQrCheckinScreen({this.eventId, super.key});
+  const ClubQrCheckinScreen({this.eventId, this.staffClubId, super.key});
 
   final String? eventId;
+
+  /// İP-GR: görevli modu — etkinliğin organizatörü (boşsa kulübün kendi kapısı).
+  final String? staffClubId;
 
   @override
   ConsumerState<ClubQrCheckinScreen> createState() =>
@@ -172,7 +175,10 @@ class _ClubQrCheckinScreenState extends ConsumerState<ClubQrCheckinScreen>
 
   Future<void> _init() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
-    final DoorGate? gate = await ref.read(doorGateProvider.future);
+    final String staffClubId = widget.staffClubId ?? '';
+    final DoorGate? gate = staffClubId.isNotEmpty
+        ? await ref.read(staffDoorGateProvider(staffClubId).future)
+        : await ref.read(doorGateProvider.future);
     if (!mounted || gate == null) return;
     setState(() {
       _gate = gate;
@@ -436,6 +442,8 @@ class _ClubQrCheckinScreenState extends ConsumerState<ClubQrCheckinScreen>
         title: context.t('dashboard.drawer.qrCheckin'),
         subtitle: context.t('gate.cameraHint'),
         showBack: (widget.eventId ?? '').isNotEmpty,
+        // Görevli öğrenci hesabındadır: kulüp bildirimleri düğmesi gösterilmez.
+        actions: (widget.staffClubId ?? '').isNotEmpty ? const <Widget>[] : null,
       ),
       backgroundColor: BrandColors.black,
       body: Stack(

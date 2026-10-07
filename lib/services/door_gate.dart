@@ -155,7 +155,9 @@ class GateBackend {
   });
 
   /// Gerçek Firestore bağlantıları.
-  factory GateBackend.firestore(String clubId) => GateBackend(
+  /// İP-GR: [staffUid] verilirse giriş görevli adına yazılır (kurallar:
+  /// staffCanMarkCheckIn — etkinliğin kulübü + görevlinin uid'i).
+  factory GateBackend.firestore(String clubId, {String staffUid = ''}) => GateBackend(
     fetchEvent: (String eventId) async {
       final DocumentSnapshot<Map<String, dynamic>> snap = await eventDoc(
         eventId,
@@ -185,6 +187,7 @@ class GateBackend {
           'checkedInAtMs': checkedInAtMs,
           'checkedInAt': FieldValue.serverTimestamp(),
           'checkedInByClubId': clubId,
+          if (staffUid.isNotEmpty) 'checkedInByStaffUid': staffUid,
           'updatedAt': FieldValue.serverTimestamp(),
         }),
     // İP-K: kapıda "Ödendi olarak işaretle" (sunucu yazar).
