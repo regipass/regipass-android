@@ -31,6 +31,8 @@ import 'event_report_card.dart';
 import 'club_session_qr_screen.dart';
 import 'club_shell.dart';
 import 'registrations_export.dart';
+import '../../domain/plans.dart';
+import '../shared/plan_widgets.dart';
 import '../../domain/session_names.dart';
 import '../../domain/session_attendance.dart';
 
@@ -949,6 +951,14 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
   /// Katılımcıları web'dekiyle aynı Excel dosyasına yazıp paylaşım sayfasını
   /// açar (club-events.js#downloadStudentsBtn).
   Future<void> _downloadStudentsExcel(AppEvent event) async {
+    // İP-P1: Excel / rapor dosyası Ücretsiz pakette yok.
+    if (!planFeatureAllowed(event.planTier, 'reportFile')) {
+      _setFeedback(
+        context.t('plan.lock.text', <String, Object?>{'feature': context.t('plan.feature.reportFile')}),
+        FeedbackTone.error,
+      );
+      return;
+    }
     final List<EventRegistration> registrations =
         ref.read(eventRegistrationsProvider(event.id)).value ??
             const <EventRegistration>[];
@@ -1209,6 +1219,24 @@ class _Body extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
         ],
+        // İP-P2 / İP-KR: yönetici (1.000+) ya da kurum (SKS) onayı.
+        if (!event.cancelled && (event.approvalStatus == 'pending' || event.approvalStatus == 'rejected')) ...<Widget>[
+          FeedbackBanner(
+            message: event.approvalStatus == 'rejected'
+                ? context.t('approval.rejected', <String, Object?>{'reason': event.approvalRejectReason.isEmpty ? '-' : event.approvalRejectReason})
+                : '${context.t('approval.title')}: ${context.t('approval.mobile.web')}',
+            tone: FeedbackTone.warning,
+          ),
+          const SizedBox(height: 12),
+        ] else if (!event.cancelled && (event.institutionApproval == 'pending' || event.institutionApproval == 'rejected')) ...<Widget>[
+          FeedbackBanner(
+            message: event.institutionApproval == 'rejected'
+                ? context.t('approval.institutionRejected', <String, Object?>{'reason': event.institutionRejectReason.isEmpty ? '-' : event.institutionRejectReason})
+                : context.t('approval.institutionPending'),
+            tone: FeedbackTone.warning,
+          ),
+          const SizedBox(height: 12),
+        ],
 
         ClipRRect(
           borderRadius: BorderRadius.circular(BrandShape.cardRadius),
@@ -1412,12 +1440,22 @@ class _Body extends ConsumerWidget {
         SectionCard(
           title: context.t('eventNotify.title'),
           icon: Icons.notifications_active_outlined,
-          child: EventNotifyCard(event: event, compact: true),
+          // İP-P1: özel bildirim Ücretsiz pakette yok (otomatik hatırlatmalar sürer).
+          child: planFeatureAllowed(event.planTier, 'messages')
+              ? EventNotifyCard(event: event, compact: true)
+              : PlanLockNote(feature: 'messages'),
         ),
 
-        // İP-R: etkinlik raporu (PDF + Excel).
+        // İP-R: etkinlik raporu (PDF + Excel). İP-P1: Ücretsiz pakette yok.
         const SizedBox(height: 16),
-        EventReportCard(event: event),
+        if (planFeatureAllowed(event.planTier, 'reportFile'))
+          EventReportCard(event: event)
+        else
+          SectionCard(
+            title: context.t('plan.feature.reportFile'),
+            icon: Icons.description_outlined,
+            child: PlanLockNote(feature: 'reportFile'),
+          ),
 
         // İP-D: etkinlik bitince katılımcıların kimliksiz değerlendirmesi.
         if (!event.cancelled &&
@@ -1435,7 +1473,13 @@ class _Body extends ConsumerWidget {
         SectionCard(
           title: context.t('cert.panel.title'),
           icon: Icons.workspace_premium_outlined,
-          child: CertificatePanelCard(event: event, registrations: list),
+          // İP-P1: Ücretsiz pakette isme özel belge yok; hazır belge webden paylaşılır.
+          child: planFeatureAllowed(event.planTier, 'certificates')
+              ? CertificatePanelCard(event: event, registrations: list)
+              : Text(
+                  context.t('plan.cert.freeHelp'),
+                  style: TextStyle(fontSize: 13.5, height: 1.4, color: context.inkMuted),
+                ),
         ),
 
         // ── Ücretli etkinlik onay kaydı ────────────────────────────

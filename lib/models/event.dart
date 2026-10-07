@@ -58,6 +58,8 @@ class AppEvent {
     this.institutionRejectReason = '',
     this.photosNotifiedAtMs = 0,
     this.hallSessionCount = 0,
+    this.onlineCheckpointOpenIndex = 0,
+    this.onlineCheckpointOpenUntilMs = 0,
     this.cancelled = false,
     this.cancelReason = '',
     this.seatsFull = false,
@@ -170,6 +172,8 @@ class AppEvent {
       institutionRejectReason: asString(data['institutionRejectReason']),
       photosNotifiedAtMs: (data['photosNotifiedAtMs'] as num?)?.toInt() ?? 0,
       hallSessionCount: (data['hallSessionCount'] as num?)?.toInt() ?? 0,
+      onlineCheckpointOpenIndex: (data['onlineCheckpointOpenIndex'] as num?)?.toInt() ?? 0,
+      onlineCheckpointOpenUntilMs: (data['onlineCheckpointOpenUntilMs'] as num?)?.toInt() ?? 0,
       // İP-K: iptal ve "kontenjan dolu" ipucu yalnızca sunucudan yazılır
       // (functions/registrations.js).
       cancelled: data['cancelled'] == true,
@@ -371,6 +375,10 @@ class AppEvent {
   /// İP-SL: çok salonlu etkinlikte program oturum sayısı.
   final int hallSessionCount;
 
+  /// İP-ON: açık anlık yoklama (sıra) ve kapanış anı.
+  final int onlineCheckpointOpenIndex;
+  final int onlineCheckpointOpenUntilMs;
+
   /// İP-K: kulüp etkinliği iptal etti (kayıtlar korunur, biletler geçersiz).
   final bool cancelled;
   final String cancelReason;
@@ -464,7 +472,8 @@ class AppEvent {
       CheckinMode.isValid(checkinMode) &&
       CheckinMode.hasDoorCheckin(resolvedCheckinMode);
 
-  bool get hasDoorCheckin => CheckinMode.hasDoorCheckin(resolvedCheckinMode);
+  // İP-ON: online etkinlikte kapı bileti yok ("Yayına katıl" giriş sayılır).
+  bool get hasDoorCheckin => !isOnline && CheckinMode.hasDoorCheckin(resolvedCheckinMode);
 
   bool get isMultiSession => CheckinMode.hasSessions(resolvedCheckinMode);
 

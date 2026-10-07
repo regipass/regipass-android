@@ -24,6 +24,7 @@ import '../services/event_repository.dart';
 import '../services/inbox_repository.dart';
 import '../services/notification_read_store.dart';
 import '../services/notification_service.dart';
+import '../services/online_service.dart';
 import '../services/phone_directory_repository.dart';
 import '../services/phone_hint_repository.dart';
 import '../services/plan_service.dart';
@@ -77,6 +78,10 @@ final eventByIdProvider = StreamProvider.family<AppEvent?, String>((
 /// test edilebilir hâlde durur.
 final Provider<RegistrationService> registrationServiceProvider =
     Provider<RegistrationService>((Ref ref) => const RegistrationService());
+
+/// İP-ON (mobil): Yayına katıl + yoklama kodu.
+final Provider<OnlineService> onlineServiceProvider =
+    Provider<OnlineService>((Ref ref) => const OnlineService());
 
 /// İP-P1 (mobil): paket bilgisi.
 final Provider<PlanService> planServiceProvider =

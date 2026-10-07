@@ -241,6 +241,8 @@ bool isEventOverForAttendee(AppEvent? event, {DateTime? now}) {
 /// aynı geçmiş etkinliğin farklı davranmasını engeller.
 bool isDiscoverableEvent(AppEvent event, {DateTime? now}) =>
     !event.hiddenGlobally &&
+    // İP-P2 / İP-KR: yönetici ya da kurum onayı bekleyen etkinlik görünmez.
+    !event.awaitingApproval &&
     !event.isLinkOnly &&
     !isRegistrationClosed(event, now: now);
 
@@ -281,6 +283,7 @@ bool matchesTargetDepartment(AppEvent event, StudentProfile? profile) {
 /// Öğrenci bu etkinliği görebilir mi? (hedef kitle filtresi)
 bool canStudentSeeEvent(AppEvent event, StudentProfile? profile) {
   if (event.hiddenGlobally) return false;
+  if (event.awaitingApproval) return false;
 
   switch (event.targetScope) {
     case TargetScope.public:

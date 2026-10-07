@@ -20,6 +20,7 @@ import '../shared/qr_code_view.dart';
 import '../shared/ticket_image.dart';
 import '../shared/wallet_buttons.dart';
 import 'event_feedback_card.dart';
+import 'online_join_card.dart';
 import 'student_providers.dart';
 
 /// student-appointments.js / student-qr-generate.js içindeki detay
@@ -412,7 +413,10 @@ class _AppointmentDetailSheetState
                     // Web de ikisini birlikte sunuyor (qr-entry.js +
                     // student-ticket.js); iki platform aynı veriyi okuduğu için
                     // mobilde birini kapatmak, o kapıda takılan öğrenci demekti.
-                    if ((item.event?.hasActiveDoorQr ?? false) &&
+                    // İP-ON: online etkinlik — Yayına katıl + anlık yoklama kodu.
+                    if ((item.event?.isOnline ?? false) && !item.isClosed && !item.isCancelled)
+                      OnlineJoinCard(event: item.event!)
+                    else if ((item.event?.hasActiveDoorQr ?? false) &&
                         !item.registration.isCheckedIn)
                       _DoorScanAction(
                         open: true,

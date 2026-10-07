@@ -12,6 +12,10 @@ const Map<String, Map<String, String>>
 kExtraTranslations = <String, Map<String, String>>{
   'tr': <String, String>{
     // İP-P (1.0.13): mobile özel paket hattı metinleri
+    'online.join.readyMobile':
+        'Yayın açık. “Yayına katıl”a bas; toplantı uygulaması ya da tarayıcı açılır.',
+    'approval.mobile.web':
+        'Kişi sayısı 1.000\'i geçtiği için yönetici onayı gerekiyor. İzin yazısını regipass.com\'da etkinlik penceresinden yükle; onaylanınca kayıtlar açılır.',
     'plan.mobile.companyWeb':
         'Firma hesabıyla etkinlik, etkinlik paketi seçilerek regipass.com\'dan açılır. Açtığın etkinliği burada yönetebilirsin.',
     // İP-8 / İP-9: yeni sertifika sistemi (web language.js ile aynı metinler)
@@ -1665,6 +1669,10 @@ kExtraTranslations = <String, Map<String, String>>{
   },
   'en': <String, String>{
     // İP-P (1.0.13): mobile-only package line texts
+    'online.join.readyMobile':
+        'The stream is open. Tap “Join stream”; the meeting app or browser opens.',
+    'approval.mobile.web':
+        'Admin approval is needed because capacity exceeds 1,000. Upload the permit letter in the event window on regipass.com; registrations open once approved.',
     'plan.mobile.companyWeb':
         'Company accounts create events on regipass.com by choosing an event package. You can manage the event here.',
     // İP-8 / İP-9: yeni sertifika sistemi (web language.js ile aynı metinler)

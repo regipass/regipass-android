@@ -19,6 +19,7 @@ import '../../services/phone_directory_repository.dart';
 import '../../state/providers.dart';
 import '../auth/auth_actions.dart';
 import '../auth/phone_verify_sheet.dart';
+import '../shared/plan_widgets.dart';
 import '../shared/account_settings_sheet.dart';
 import '../shared/common_widgets.dart';
 import '../shared/legal_consent.dart';
@@ -575,6 +576,9 @@ class _ClubAccountScreenState extends ConsumerState<ClubAccountScreen> {
             ),
           ),
           const SizedBox(height: 24),
+
+          // İP-P1 (1.0.13): Paketim (paket sistemi kapalıyken görünmez).
+          const PlanSummaryCard(),
 
           FeedbackBanner(message: _feedback, tone: _tone),
           // İP-KP: onay bekleyen / reddedilen profil değişikliği.
