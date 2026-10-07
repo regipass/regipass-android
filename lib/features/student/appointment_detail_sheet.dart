@@ -19,6 +19,7 @@ import '../shared/event_widgets.dart';
 import '../shared/qr_code_view.dart';
 import '../shared/ticket_image.dart';
 import '../shared/wallet_buttons.dart';
+import 'event_extras_section.dart';
 import 'event_feedback_card.dart';
 import 'online_join_card.dart';
 import 'student_providers.dart';
@@ -394,6 +395,15 @@ class _AppointmentDetailSheetState
                     // İP-B2: cüzdan düğmesi bilete bağlı değil — etkinlik günü
                     // bilet gizlense de (giriş yapıldı / yalnız yoklama)
                     // etkinlik bitene kadar burada durur.
+                    // İP-FS/PS/SL/FT: Fişlerim, pasaport, programım, fotoğraflar.
+                    if (item.event != null && !item.isCancelled)
+                      EventExtrasSection(
+                        event: item.event!,
+                        registrationId: item.registration.id,
+                        studentId: item.registration.studentId,
+                        ticketCode: item.registration.ticketCode,
+                        checkedIn: item.registration.isCheckedIn,
+                      ),
                     if (item.event != null && !item.isClosed)
                       WalletButtons(
                         key: const Key('detailWallet'),
