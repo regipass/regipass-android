@@ -64,6 +64,31 @@ class EventRepository {
         .toList(),
   );
 
+  /// Keşif için: bugünden itibaren olan etkinlikler (web dashboard.js /
+  /// club-dashboard.js ile aynı ölçüt). Önceden tüm koleksiyon canlı
+  /// dinleniyordu; etkinlik sayısı arttıkça her açılışta yüzlerce geçmiş
+  /// etkinlik indiriliyordu. Geçmiş etkinlikler zaten keşifte gösterilmez
+  /// (isDiscoverableEvent).
+  Stream<List<AppEvent>> watchDiscoverableEvents({DateTime? now}) {
+    final DateTime n = now ?? DateTime.now();
+    final int startOfToday = DateTime(
+      n.year,
+      n.month,
+      n.day,
+    ).millisecondsSinceEpoch;
+    return eventsCol
+        .where('eventDateAtMs', isGreaterThanOrEqualTo: startOfToday)
+        .snapshots()
+        .map(
+          (QSnap snap) => snap.docs
+              .map(
+                (QueryDocumentSnapshot<Map<String, dynamic>> doc) =>
+                    AppEvent.fromMap(doc.id, doc.data()),
+              )
+              .toList(),
+        );
+  }
+
   /// QR, canlı giriş aşaması doğrulandıktan sonra yayınlanır.
   ///
   /// Etkinliğin konumu isteğe bağlıdır: koordinat yoksa öğrenci tarafında

@@ -119,7 +119,7 @@ clubDiscoverEventsProvider = StreamProvider<List<AppEvent>>((Ref ref) {
   final ClubProfile? club = ref.watch(clubProfileProvider).value;
   final StudentProfile? pseudo = pseudoStudentFromClub(club);
 
-  return ref.watch(eventRepositoryProvider).watchAllEvents().map((
+  return ref.watch(eventRepositoryProvider).watchDiscoverableEvents().map((
     List<AppEvent> all,
   ) {
     // Hedef kitle filtresi (`canStudentSeeEvent`) BİLEREK uygulanmaz.
