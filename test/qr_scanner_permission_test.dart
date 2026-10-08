@@ -1,6 +1,8 @@
 // App Store 2.1(a): QR ekranında kamera izni akışı.
 // İzin kapalıyken ekran kilitlenmemeli; "İzin ver" ya da "Ayarları Aç"
 // düğmesi görünmeli, izin açılınca kamera gelmeli.
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -131,6 +133,48 @@ void main() {
     await tester.pump();
     expect(requests, 2);
     expect(find.byType(MobileScanner), findsOneWidget);
+  });
+
+  testWidgets('izin penceresi kapanırken gelen "resumed" sonucu ezmez', (
+    WidgetTester tester,
+  ) async {
+    status = _denied;
+    final Completer<void> dialog = Completer<void>();
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(_perm, (MethodCall call) async {
+          switch (call.method) {
+            case 'checkPermissionStatus':
+              return status;
+            case 'requestPermissions':
+              await dialog.future; // sistem penceresi açık
+              status = _granted;
+              return <int, int>{1: _granted};
+          }
+          return null;
+        });
+    final MobileScannerController controller = MobileScannerController(
+      autoStart: false,
+    );
+    await tester.pumpWidget(
+      LanguageScope(
+        language: 'tr',
+        child: MaterialApp(
+          home: Scaffold(
+            body: QrScannerView(controller: controller, onDetect: (_) {}),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    // Pencere açıkken uygulama inactive → resumed olur (iOS davranışı).
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    dialog.complete(); // kullanıcı "İzin Ver" dedi
+    await tester.pump();
+    await tester.pump();
+    expect(find.byType(MobileScanner), findsOneWidget);
+    expect(find.byKey(const Key('qrScanner.permission')), findsNothing);
   });
 
   test('iPad paylaşım kaynağı her zaman ekran içinde ve boş değil', () {
