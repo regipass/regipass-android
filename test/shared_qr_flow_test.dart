@@ -52,6 +52,10 @@ class LiveEvents extends EventRepository {
 
   @override
   Stream<List<AppEvent>> watchAllEvents() => controller.stream;
+
+  @override
+  Stream<List<AppEvent>> watchDiscoverableEvents({DateTime? now}) =>
+      controller.stream;
 }
 
 void main() {

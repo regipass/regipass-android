@@ -13,13 +13,13 @@ import '../../state/providers.dart';
 /// Öğrencinin görebileceği, süresi dolmamış etkinlikler — keşif önceliğine
 /// göre sıralanmış.
 ///
-/// dashboard.js#loadStudentVisibleEvents ile aynı: tüm etkinlikler çekilir,
-/// görünürlük ve tarih filtresi istemcide uygulanır. Kayıtların açılması ve
+/// dashboard.js#loadStudentVisibleEvents ile aynı: bugünden itibaren olan
+/// etkinlikler çekilir, görünürlük filtresi istemcide uygulanır. Kayıtların açılması ve
 /// kapanması keşfete canlı yansır.
 final StreamProvider<List<AppEvent>> studentVisibleEventsProvider =
     StreamProvider<List<AppEvent>>((Ref ref) {
       final StudentProfile? profile = ref.watch(studentProfileProvider).value;
-      return ref.watch(eventRepositoryProvider).watchAllEvents().map((
+      return ref.watch(eventRepositoryProvider).watchDiscoverableEvents().map((
         List<AppEvent> all,
       ) {
         // `isPastEvent` yalnızca son başvuru tarihine bakar; kulübün kaydı elle
