@@ -16,9 +16,8 @@ import 'notification_service.dart';
 class DevicePermissionService {
   DevicePermissionService._();
 
-  /// Açılış perdesi kapandıktan sonra kullanıcıya üç ayrı sistem istemi
-  /// gösterir (bildirim → kamera → konum). İstemler art arda gelir; böylece
-  /// iOS ve Android aynı anda iki iletişim kutusu göstermeye çalışmaz.
+  /// Açılış perdesi kapandıktan sonra yalnız bildirim iznini ister. Kamera ve
+  /// konum izinleri kullanıldıkları ekranda, bağlamı içinde istenir.
   ///
   /// Dönen kayıt, her iznin verilip verilmediğini söyler. Çağıran taraf
   /// isterse buna bakıp yönlendirme gösterebilir; hiçbiri uygulamanın
@@ -35,30 +34,20 @@ class DevicePermissionService {
       // eşitleyicisi oturum çözülünce bir kez daha denemeye devam eder.
     }
 
+    // Kamera ve konum açılışta İSTENMEZ (App Store 2.1(a) / 5.1.1):
+    // kullanıcı bağlamı görmeden "İzin Verme" deyince QR ekranı kilitleniyordu.
+    // Kamera QR ekranında (QrScannerView), konum etkinlik girişinde
+    // (GeoFenceService) ve harita ekranında, ihtiyaç anında sorulur. Burada
+    // yalnız mevcut durum okunur; sistem penceresi açılmaz.
     try {
-      camera = (await Permission.camera.request()).isGranted;
-    } catch (_) {
-      // Masaüstü/test ortamında platform izin kanalı bulunmayabilir. Mobilde
-      // bu çağrı Android/iOS'un kendi kamera izin iletişim kutusunu açar.
-    }
-
+      camera = (await Permission.camera.status).isGranted;
+    } catch (_) {}
     try {
-      // iOS izin listesinde bir satırın görünmesi için o iznin EN AZ BİR KEZ
-      // istenmiş olması gerekir. Konum daha önce yalnızca harita/giriş
-      // ekranlarının içinde isteniyordu; o ekranlara hiç girilmediğinde (ya
-      // da harita açılışta çöktüğünde) Ayarlar'da konum satırı hiç
-      // görünmüyordu. Açılışta bir kez istemek bunu çözer.
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
+      final LocationPermission permission = await Geolocator.checkPermission();
       location =
           permission == LocationPermission.whileInUse ||
           permission == LocationPermission.always;
-    } catch (_) {
-      // Konum servisi kapalıysa ya da platform kanalı yoksa sessiz geçilir;
-      // ilgili ekranlar kendi akışlarında yeniden soruyor.
-    }
+    } catch (_) {}
 
     return StartupPermissions(
       notifications: notifications,

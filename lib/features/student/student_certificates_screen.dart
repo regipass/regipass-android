@@ -20,6 +20,7 @@ import '../shared/common_widgets.dart';
 import '../shared/media_viewer.dart';
 import 'student_providers.dart';
 import 'student_shell.dart';
+import '../shared/share_origin.dart';
 
 /// student-certificates.html + js/pages/student-certificates.js karşılığı.
 ///
@@ -353,7 +354,7 @@ class _CertificateRow extends ConsumerWidget {
               mimeType: certificate.contentType.isNotEmpty ? certificate.contentType : null,
             ),
           ],
-          sharePositionOrigin: origin,
+          sharePositionOrigin: safeShareOrigin(origin),
         ),
       );
     } catch (_) {
@@ -379,7 +380,7 @@ class _CertificateRow extends ConsumerWidget {
         ShareParams(
           uri: Uri.tryParse(certificate.fileUrl),
           subject: _displayName,
-          sharePositionOrigin: origin,
+          sharePositionOrigin: safeShareOrigin(origin),
         ),
       );
     } catch (_) {
