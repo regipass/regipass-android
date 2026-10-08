@@ -8,7 +8,9 @@
 library;
 
 import 'dart:math' as math;
+import 'dart:ui' show Display;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 /// Bu genişlikten itibaren tablet düzeni (mantıksal piksel).
@@ -27,6 +29,20 @@ bool isTabletWidth(double width) => width >= kTabletBreakpoint;
 
 bool isTablet(BuildContext context) =>
     isTabletWidth(MediaQuery.sizeOf(context).width);
+
+/// Cihaz bir iPad mi? Pencere (Split View) değil, EKRANIN kısa kenarına
+/// bakılır: iPhone'larda ≤ 440, iPad'lerde ≥ 744 mantıksal piksel.
+bool isIpadDevice(BuildContext context) {
+  if (defaultTargetPlatform != TargetPlatform.iOS) return false;
+  try {
+    final Display display = View.of(context).display;
+    final Size size = display.size / display.devicePixelRatio;
+    if (size.isEmpty) return isTablet(context);
+    return size.shortestSide >= 600;
+  } catch (_) {
+    return isTablet(context);
+  }
+}
 
 /// Kart listesinde sütun sayısı.
 int cardColumnsFor(double width) {

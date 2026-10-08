@@ -1,6 +1,7 @@
 // İP-O: kapı ekranı — kamera kapanmadan arka arkaya okutma, kart ve sayaç.
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -70,6 +71,14 @@ void main() {
         },
       ),
     );
+
+    // Kamera izni verilmiş (QrScannerView izin akışı).
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          const MethodChannel('flutter.baseflow.com/permissions/methods'),
+          (MethodCall call) async =>
+              call.method == 'checkPermissionStatus' ? 1 : null,
+        );
 
     await tester.pumpWidget(
       ProviderScope(

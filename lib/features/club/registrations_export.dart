@@ -20,6 +20,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../core/text_utils.dart';
 import '../../domain/event_utils.dart';
 import '../../models/event.dart';
+import '../shared/share_origin.dart';
 
 /// Çıktıdaki tüm metinler. Ekran katmanı bunları çevirilerden doldurur;
 /// üretici fonksiyon `BuildContext` bilmediği için test edilebilir kalır.
@@ -200,7 +201,7 @@ Future<void> shareRegistrationsExcel({
         XFile(file.path, mimeType: 'application/vnd.ms-excel'),
       ],
       subject: subject,
-      sharePositionOrigin: sharePositionOrigin,
+      sharePositionOrigin: safeShareOrigin(sharePositionOrigin),
     ),
   );
 }

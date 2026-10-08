@@ -46,6 +46,8 @@ import 'package:regipass/features/shared/event_widgets.dart';
 import 'package:regipass/features/student/student_account_screen.dart';
 import 'package:regipass/features/student/student_appointments_screen.dart';
 import 'package:regipass/features/student/student_certificates_screen.dart';
+import 'package:regipass/features/student/student_qr_checkin_screen.dart';
+import 'package:regipass/features/club/club_qr_checkin_screen.dart';
 import 'package:regipass/features/student/student_dashboard_screen.dart';
 import 'package:regipass/features/student/student_providers.dart';
 import 'package:regipass/features/student/student_shell.dart';
@@ -443,9 +445,8 @@ Future<void> _shoot(
   // Gölgeler testte varsayılan olarak keskin bloklar hâlinde çizilir;
   // cihazdaki yumuşak görünüm için çekim süresince açılır.
   debugDisableShadows = false;
-  for (final Brightness brightness in _lightOnly
-      ? <Brightness>[Brightness.light]
-      : Brightness.values) {
+  for (final Brightness brightness
+      in _lightOnly ? <Brightness>[Brightness.light] : Brightness.values) {
     final double h = _shotH ?? height;
     tester.view.devicePixelRatio = 2;
     tester.view.physicalSize = Size(_shotW * 2, h * 2);
@@ -605,6 +606,57 @@ void main() {
     doorGateProvider.overrideWith((Ref ref) async => null),
   ];
 
+  // App Store 2.1(a): kamera izni kapalıyken QR ekranları.
+  void mockCameraPermission(int status) {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          const MethodChannel('flutter.baseflow.com/permissions/methods'),
+          (MethodCall call) async => switch (call.method) {
+            'checkPermissionStatus' => status,
+            'requestPermissions' => <int, int>{1: status},
+            _ => null,
+          },
+        );
+  }
+
+  testWidgets('qr scan camera blocked (student)', (WidgetTester tester) async {
+    mockCameraPermission(4);
+    await _shoot(
+      tester,
+      name: '40-qr-scan-camera-blocked',
+      home: _studentShell(
+        Routes.studentQrCheckin,
+        const StudentQrCheckinScreen(),
+      ),
+      overrides: student(),
+    );
+  });
+
+  testWidgets('qr scan camera ask again (student)', (
+    WidgetTester tester,
+  ) async {
+    mockCameraPermission(0);
+    await _shoot(
+      tester,
+      name: '41-qr-scan-camera-ask',
+      home: _studentShell(
+        Routes.studentQrCheckin,
+        const StudentQrCheckinScreen(),
+      ),
+      overrides: student(),
+    );
+  });
+
+  testWidgets('gate camera blocked (club)', (WidgetTester tester) async {
+    mockCameraPermission(4);
+    await _shoot(
+      tester,
+      name: '42-gate-camera-blocked',
+      home: _clubShell(Routes.clubQrCheckin, const ClubQrCheckinScreen()),
+      overrides: club(),
+    );
+  });
+
   testWidgets('login', (WidgetTester tester) async {
     await _shoot(
       tester,
@@ -724,13 +776,16 @@ void main() {
       ],
     };
     final AppEvent ev = AppEvent.fromMap('p1', base);
-    final EventRegistration mine = EventRegistration.fromMap('p1_s1', <String, dynamic>{
-      'eventId': 'p1',
-      'studentId': 's1',
-      'attendanceVerified': <String, dynamic>{'s1': 1},
-      'sessionsAttended': 1,
-      'lastAttendedSession': 1,
-    });
+    final EventRegistration mine = EventRegistration.fromMap(
+      'p1_s1',
+      <String, dynamic>{
+        'eventId': 'p1',
+        'studentId': 's1',
+        'attendanceVerified': <String, dynamic>{'s1': 1},
+        'sessionsAttended': 1,
+        'lastAttendedSession': 1,
+      },
+    );
     final List<EventRegistration> all = <EventRegistration>[
       mine,
       EventRegistration.fromMap('p1_s2', <String, dynamic>{
@@ -758,10 +813,16 @@ void main() {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: <Widget>[
-              const Text('Katılımcı görünümü', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+              const Text(
+                'Katılımcı görünümü',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+              ),
               EventProgramSection(event: ev, registration: mine),
               const SizedBox(height: 28),
-              const Text('Organizatör görünümü', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+              const Text(
+                'Organizatör görünümü',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+              ),
               EventProgramSection(event: ev, registrations: all),
             ],
           ),

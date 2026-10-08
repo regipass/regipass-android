@@ -13,6 +13,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../domain/calendar_export.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/event.dart';
+import 'share_origin.dart';
 
 CalendarEventInput calendarInputOf(AppEvent e) => CalendarEventInput(
   id: e.id,
@@ -47,7 +48,7 @@ Future<void> shareEventIcs(AppEvent event, Rect? origin) async {
     ShareParams(
       files: <XFile>[XFile(file.path, mimeType: 'text/calendar')],
       subject: event.title,
-      sharePositionOrigin: origin,
+      sharePositionOrigin: safeShareOrigin(origin),
     ),
   );
 }

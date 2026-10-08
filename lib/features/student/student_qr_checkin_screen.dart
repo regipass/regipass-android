@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
@@ -17,8 +18,8 @@ import '../../models/event.dart';
 import '../../services/attendance_service.dart';
 import '../../services/geo_fence_service.dart';
 import '../../state/providers.dart';
-import '../shared/common_widgets.dart';
 import '../shared/qr_code_view.dart';
+import '../shared/qr_scanner_view.dart';
 import 'student_shell.dart';
 import '../../domain/session_names.dart';
 
@@ -342,6 +343,7 @@ class _StudentQrCheckinScreenState
         _show(false, context.t('scan.locationRequired'));
         _lastProcessedKey =
             null; // izin verildikten sonra aynı kod denenebilsin
+        unawaited(_offerLocationSettings());
         return null;
       }
       location = (
@@ -390,6 +392,39 @@ class _StudentQrCheckinScreenState
     });
   }
 
+  /// Konum alınamadıysa ve sebep kalıcı izin reddi / kapalı konum servisiyse
+  /// kullanıcıya doğru ayarı açan bir kısayol sunar (sistem penceresi bir
+  /// daha çıkmayacağı için aksi hâlde çıkış yolu kalmaz).
+  Future<void> _offerLocationSettings() async {
+    try {
+      final bool serviceOn = await Geolocator.isLocationServiceEnabled();
+      final LocationPermission permission = await Geolocator.checkPermission();
+      if (!mounted) return;
+      final bool blocked = permission == LocationPermission.deniedForever;
+      if (serviceOn && !blocked) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 8),
+          content: Text(
+            context.t(
+              blocked ? 'scan.locationBlocked' : 'scan.locationServiceOff',
+            ),
+          ),
+          action: SnackBarAction(
+            label: context.t('scan.camera.openSettings'),
+            onPressed: () => unawaited(
+              blocked
+                  ? Geolocator.openAppSettings()
+                  : Geolocator.openLocationSettings(),
+            ),
+          ),
+        ),
+      );
+    } catch (_) {
+      // Ayar kısayolu en iyi çaba; hata mesajı zaten gösterildi.
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -403,33 +438,23 @@ class _StudentQrCheckinScreenState
           if (kShotsMode)
             const _StudentShotsScene()
           else
-            MobileScanner(
+            QrScannerView(
               controller: _controller,
               onDetect: _onDetect,
-              errorBuilder:
-                  (BuildContext context, MobileScannerException error) =>
-                      Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: FeedbackBanner(
-                            message: context.t('scan.permissionDenied'),
-                            tone: FeedbackTone.error,
-                          ),
-                        ),
-                      ),
-            ),
-
-          // Hedef çerçevesi
-          Center(
-            child: Container(
-              width: 240,
-              height: 240,
-              decoration: BoxDecoration(
-                border: Border.all(color: BrandColors.white, width: 3),
-                borderRadius: BorderRadius.circular(20),
+              // Hedef çerçevesi: yalnız kamera çalışırken (hata kartına binmesin).
+              overlay: Center(
+                child: IgnorePointer(
+                  child: Container(
+                    width: 240,
+                    height: 240,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: BrandColors.white, width: 3),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                ),
               ),
             ),
-          ),
 
           if (_busy)
             const Positioned(

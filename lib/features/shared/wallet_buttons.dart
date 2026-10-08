@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../app/responsive.dart';
 import '../../domain/wallet.dart';
 import '../../l10n/app_strings.dart';
 import '../../services/wallet_service.dart';
@@ -67,9 +68,11 @@ class _WalletButtonsState extends ConsumerState<WalletButtons> {
     final Map<String, Object?>? config = ref.watch(walletConfigProvider).value;
     final TargetPlatform platform =
         widget.platformOverride ?? defaultTargetPlatform;
+    // iPad'de Apple Cüzdan uygulaması yok; .pkpass açılamaz → düğme gizli.
+    final bool ipad = widget.platformOverride == null && isIpadDevice(context);
     final List<WalletPlatform> buttons = walletButtonsFor(
       config,
-      isIos: platform == TargetPlatform.iOS,
+      isIos: platform == TargetPlatform.iOS && !ipad,
       isAndroid: platform == TargetPlatform.android,
     );
     if (buttons.isEmpty) return const SizedBox.shrink();

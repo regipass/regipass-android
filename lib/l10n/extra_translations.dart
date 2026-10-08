@@ -642,6 +642,18 @@ kExtraTranslations = <String, Map<String, String>>{
 
     // Kamera / QR (mobilde web'den farklı izin akışı var)
     'scan.permissionDenied': 'Kamera izni kapalı. Ayarlardan aç.',
+    'scan.camera.offTitle': 'Kamera izni gerekiyor',
+    'scan.camera.offBody':
+        'QR kodu okutabilmek için Regipass\'in kamerayı kullanmasına izin ver.',
+    'scan.camera.blockedBody':
+        'Kamera izni kapalı. Ayarlar\'da Regipass için kamera iznini aç, sonra bu ekrana geri dön.',
+    'scan.camera.allow': 'Kameraya izin ver',
+    'scan.camera.openSettings': 'Ayarları Aç',
+    'scan.camera.unavailableTitle': 'Kamera açılamadı',
+    'scan.camera.errorBody':
+        'Kamera şu an başka bir uygulama tarafından kullanılıyor olabilir. Diğer uygulamaları kapatıp tekrar dene.',
+    'scan.camera.noCameraBody': 'Bu cihazda kullanılabilir bir kamera bulunamadı.',
+    'scan.camera.retry': 'Tekrar dene',
     'scan.pointCamera': 'Kamerayı QR koda tut.',
     'scan.ready': 'Sonraki katılımcı için hazır.',
     'scan.successTitle': 'Giriş Başarılı',
@@ -659,6 +671,9 @@ kExtraTranslations = <String, Map<String, String>>{
     'scan.doorOnlySuccess': 'Etkinlik girişin kaydedildi. İyi etkinlikler!',
     'scan.locationRequired':
         'Bu giriş için konum gerekiyor. Konumu açıp tekrar dene.',
+    'scan.locationBlocked':
+        'Konum izni kapalı. Ayarlar\'da Regipass için konumu aç.',
+    'scan.locationServiceOff': 'Telefonun konum servisi kapalı.',
     'scan.tooFar':
         'Etkinlik konumundan uzaktasın ({{distance}}; en fazla {{radius}} m).',
     'scan.missingSessionInfo': 'QR kod eksik ya da bozuk.',
@@ -2235,6 +2250,17 @@ kExtraTranslations = <String, Map<String, String>>{
     'common.done': 'Done',
 
     'scan.permissionDenied': 'Camera access is off. Turn it on in Settings.',
+    'scan.camera.offTitle': 'Camera access needed',
+    'scan.camera.offBody': 'Allow Regipass to use the camera to scan QR codes.',
+    'scan.camera.blockedBody':
+        'Camera access is off. Turn on camera access for Regipass in Settings, then come back to this screen.',
+    'scan.camera.allow': 'Allow camera',
+    'scan.camera.openSettings': 'Open Settings',
+    'scan.camera.unavailableTitle': 'Camera unavailable',
+    'scan.camera.errorBody':
+        'The camera may be in use by another app. Close other apps and try again.',
+    'scan.camera.noCameraBody': 'No usable camera was found on this device.',
+    'scan.camera.retry': 'Try again',
     'scan.pointCamera': 'Point the camera at the QR code.',
     'scan.ready': 'Ready for the next participant.',
     'scan.successTitle': 'Check-in Successful',
@@ -2252,6 +2278,9 @@ kExtraTranslations = <String, Map<String, String>>{
     'scan.doorOnlySuccess': 'Your event entry was recorded. Enjoy the event!',
     'scan.locationRequired':
         'This check-in needs your location. Turn it on and try again.',
+    'scan.locationBlocked':
+        'Location access is off. Turn on location for Regipass in Settings.',
+    'scan.locationServiceOff': 'Location services are turned off.',
     'scan.tooFar':
         'You are outside the event location ({{distance}}; maximum {{radius}} m).',
     'scan.missingSessionInfo': 'The QR code is incomplete or damaged.',

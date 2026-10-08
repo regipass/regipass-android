@@ -88,6 +88,8 @@
 	     seçici açıldığı anda uygulama kapanır. -->
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Profil fotoğrafını seçebilmen için fotoğraflarına erişim gerekiyor.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Biletini ve katılım belgeni Fotoğraflar'a kaydedebilmen için gerekiyor.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Profil fotoğrafı çekebilmen ve etkinlik QR kodlarını okutabilmen için kameraya erişim gerekiyor.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>

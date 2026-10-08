@@ -20,6 +20,7 @@ import '../../domain/calendar_export.dart';
 import '../../domain/checkin_qr.dart';
 import '../../models/event.dart';
 import 'add_to_calendar_button.dart';
+import 'share_origin.dart';
 
 const double _w = 720;
 const double _pad = 48;
@@ -256,7 +257,7 @@ Future<void> shareTicketImage({
     ShareParams(
       files: <XFile>[XFile(file.path, mimeType: 'image/png')],
       subject: event.title,
-      sharePositionOrigin: origin,
+      sharePositionOrigin: safeShareOrigin(origin),
     ),
   );
 }

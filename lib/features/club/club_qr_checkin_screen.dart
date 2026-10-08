@@ -14,8 +14,8 @@ import '../../domain/door_gate.dart';
 import '../../l10n/app_strings.dart';
 import '../../services/door_gate.dart';
 import '../../state/connectivity.dart';
-import '../shared/common_widgets.dart';
 import '../shared/qr_code_view.dart';
+import '../shared/qr_scanner_view.dart';
 import 'club_providers.dart';
 import 'club_shell.dart';
 
@@ -452,43 +452,33 @@ class _ClubQrCheckinScreenState extends ConsumerState<ClubQrCheckinScreen>
           if (kShotsMode)
             const _ShotsCameraScene()
           else
-            MobileScanner(
+            QrScannerView(
               controller: _controller,
               onDetect: _onDetect,
-              errorBuilder:
-                  (BuildContext context, MobileScannerException error) =>
-                      Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: FeedbackBanner(
-                            message: context.t('scan.permissionDenied'),
-                            tone: FeedbackTone.error,
-                          ),
-                        ),
+              // Kart, alttaki "Kodu elle gir" düğmesiyle çakışmasın.
+              messageAlignment: const Alignment(0, -0.6),
+              // Okuma çerçevesi: yalnız kamera çalışırken.
+              overlay: Align(
+                alignment: const Alignment(0, -0.25),
+                child: IgnorePointer(
+                  child: Container(
+                    width: 230,
+                    height: 230,
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: BrandColors.white.withValues(alpha: 0.9),
+                        width: 3,
                       ),
-            ),
-
-          // Okuma çerçevesi
-          Align(
-            alignment: const Alignment(0, -0.25),
-            child: IgnorePointer(
-              child: Container(
-                width: 230,
-                height: 230,
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: BrandColors.white.withValues(alpha: 0.9),
-                    width: 3,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
                   ),
-                  borderRadius: BorderRadius.circular(20),
                 ),
               ),
             ),
-          ),
 
           // Kamera okumuyorsa: kodu elle gir.
           Align(
-            alignment: const Alignment(0, 0.22),
+            alignment: const Alignment(0, 0.3),
             child: FilledButton.tonalIcon(
               key: const Key('gate.manualCode'),
               onPressed: _openManualEntry,

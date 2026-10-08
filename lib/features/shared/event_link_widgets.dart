@@ -11,6 +11,7 @@ import '../../app/theme.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/event.dart';
 import '../../services/event_link_service.dart';
+import 'share_origin.dart';
 
 Rect? _originOf(BuildContext context) {
   final RenderBox? box = context.findRenderObject() as RenderBox?;
@@ -28,7 +29,7 @@ Future<void> _shareText(BuildContext context, String title, String url) =>
       ShareParams(
         text: title.isEmpty ? url : '$title\n$url',
         subject: title,
-        sharePositionOrigin: _originOf(context),
+        sharePositionOrigin: safeShareOrigin(_originOf(context)),
       ),
     );
 

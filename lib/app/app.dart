@@ -239,10 +239,9 @@ class _RegipassAppState extends ConsumerState<RegipassApp>
     });
   }
 
-  /// Bildirimler sesli/uyarı şeklinde gösterilebilsin, QR okuma ekranı
-  /// kameraya anında erişebilsin ve harita/etkinlik girişi konumu
-  /// kullanabilsin diye üç izin ilk kullanılabilir anda istenir. Kullanıcı
-  /// daha önce seçim yaptıysa işletim sistemi tekrar pencere açmaz.
+  /// Bildirimler sesli/uyarı şeklinde gösterilebilsin diye bildirim izni ilk
+  /// kullanılabilir anda istenir. Kamera ve konum, kullanıldıkları ekranda
+  /// sorulur (bkz. DevicePermissionService).
   void _requestDevicePermissions() {
     if (_devicePermissionsRequested) return;
     _devicePermissionsRequested = true;

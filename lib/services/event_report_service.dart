@@ -15,6 +15,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'firebase_refs.dart';
+import '../features/shared/share_origin.dart';
 
 enum ReportFormat { pdf, xls }
 
@@ -89,7 +90,7 @@ class EventReportService {
       ShareParams(
         files: <XFile>[XFile(out.path, mimeType: file.mimeType)],
         subject: subject,
-        sharePositionOrigin: sharePositionOrigin,
+        sharePositionOrigin: safeShareOrigin(sharePositionOrigin),
       ),
     );
   }
