@@ -64,6 +64,14 @@ class _QrScannerViewState extends State<QrScannerView>
   _CameraAccess _access = _CameraAccess.checking;
   bool _retrying = false;
 
+  /// Sistem izin penceresi açıkken true. Pencere kapanınca uygulama
+  /// "resumed" olur; o anki ikinci kontrol isteğin sonucunu ezmesin diye
+  /// istek sürerken yaşam döngüsü kontrolleri atlanır.
+  bool _requesting = false;
+
+  /// Her kontrolün sıra numarası: geç dönen eski bir sonuç yenisini ezmez.
+  int _seq = 0;
+
   @override
   void initState() {
     super.initState();
@@ -85,11 +93,15 @@ class _QrScannerViewState extends State<QrScannerView>
       if (widget.controller.value.error != null) unawaited(_retryCamera());
       return;
     }
+    // İzin penceresinin kapanması da "resumed" üretir; o sonucu istek verir.
+    if (_requesting) return;
     // Ayarlar'dan dönüş: izin açıldıysa kamera kendiliğinden gelir.
     unawaited(_resolveAccess(askIfNeeded: false));
   }
 
   Future<void> _resolveAccess({required bool askIfNeeded}) async {
+    if (_requesting) return;
+    final int seq = ++_seq;
     _CameraAccess next;
     try {
       // Durum okuma takılırsa ekran beklemede kalmasın: kamera eklentisi
@@ -99,7 +111,12 @@ class _QrScannerViewState extends State<QrScannerView>
       );
       if (status.isDenied && askIfNeeded) {
         if (mounted) setState(() => _access = _CameraAccess.checking);
-        status = await Permission.camera.request();
+        _requesting = true;
+        try {
+          status = await Permission.camera.request();
+        } finally {
+          _requesting = false;
+        }
       }
       next = _accessFor(status);
     } catch (_) {
@@ -107,7 +124,7 @@ class _QrScannerViewState extends State<QrScannerView>
       // akışına bırakılır; hata olursa errorBuilder gösterir.
       next = _CameraAccess.granted;
     }
-    if (!mounted) return;
+    if (!mounted || seq != _seq) return;
     setState(() => _access = next);
   }
 
