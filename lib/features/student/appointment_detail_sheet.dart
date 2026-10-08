@@ -75,6 +75,10 @@ class _AppointmentDetailSheetState
   String _qrTicketCode = '';
   bool _ticketSaving = false;
 
+  /// Bilet kodu sunucudan alınamadıysa (bağlantı / geçici hata) kod satırı
+  /// yerine "Tekrar dene" gösterilir; bilet kodsuz kalmasın.
+  bool _ticketCodeFailed = false;
+
   /// Giriş onaylandığı anda açık QR'ı kapatmak için önceki katılım sayısı.
   int? _lastSeenAttendance;
 
@@ -126,13 +130,7 @@ class _AppointmentDetailSheetState
     // İP-O: internet yokken sunucuyu 8 sn beklemeden bilet hemen çizilir
     // (kod önceden alınmışsa kayıtta zaten vardır; Firestore önbelleği).
     if (ticketCode.isEmpty && ref.read(onlineProvider)) {
-      try {
-        ticketCode = await ref
-            .read(attendanceServiceProvider)
-            .ensureTicketCode(item.registration.id);
-      } catch (_) {
-        ticketCode = '';
-      }
+      ticketCode = await _fetchTicketCode(item.registration.id);
       if (!mounted) return;
     }
 
@@ -148,7 +146,51 @@ class _AppointmentDetailSheetState
     setState(() {
       _qrData = token;
       _qrTicketCode = ticketCode;
+      _ticketCodeFailed = ticketCode.isEmpty;
       _qrLoading = false;
+    });
+  }
+
+  /// Sunucudan bilet kodu: geçici hatalarda 3 kez dener (0 / 1 / 2 sn).
+  Future<String> _fetchTicketCode(String registrationId) async {
+    for (int attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) {
+        await Future<void>.delayed(Duration(seconds: attempt));
+        if (!mounted) return '';
+      }
+      try {
+        final String code = await ref
+            .read(attendanceServiceProvider)
+            .ensureTicketCode(registrationId);
+        if (code.isNotEmpty) return code;
+      } catch (_) {
+        // Bir sonraki denemeye geç.
+      }
+    }
+    return '';
+  }
+
+  /// "Tekrar dene": kodu yeniden ister, bulunca QR'ı kodla yeniden çizer.
+  Future<void> _retryTicketCode() async {
+    final RegistrationWithEvent? item = _currentItem();
+    if (item == null) return;
+    setState(() => _ticketCodeFailed = false);
+    final String code = await _fetchTicketCode(item.registration.id);
+    if (!mounted) return;
+    if (code.isEmpty) {
+      setState(() => _ticketCodeFailed = true);
+      return;
+    }
+    setState(() {
+      _qrTicketCode = code;
+      _qrData = createCheckinQrToken(
+        buildStudentCheckinPayload(
+          registrationId: item.registration.id,
+          eventId: item.registration.eventId,
+          studentId: item.registration.studentId,
+          ticketCode: code,
+        ),
+      );
     });
   }
 
@@ -499,6 +541,16 @@ class _AppointmentDetailSheetState
                               ),
                             ),
                           ],
+                          if (_qrTicketCode.isEmpty && _ticketCodeFailed)
+                            TextButton.icon(
+                              key: const Key('ticketCodeRetry'),
+                              onPressed: _retryTicketCode,
+                              style: TextButton.styleFrom(
+                                foregroundColor: BrandColors.white,
+                              ),
+                              icon: const Icon(Icons.refresh, size: 18),
+                              label: Text(context.t('ticket.codeRetry')),
+                            ),
                           const SizedBox(height: 18),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 32),

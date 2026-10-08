@@ -21,6 +21,7 @@ import '../../domain/checkin_qr.dart';
 import '../../models/event.dart';
 import 'add_to_calendar_button.dart';
 import 'share_origin.dart';
+import '../../domain/ticket_code.dart';
 
 const double _w = 720;
 const double _pad = 48;
@@ -93,6 +94,7 @@ Future<Uint8List> renderTicketPng({
   required String studentName,
   required String qrData,
   required String note,
+  String codeLine = '',
 }) async {
   const double scale = 2;
   final TextPainter titleP = _text(
@@ -114,7 +116,14 @@ Future<Uint8List> renderTicketPng({
       .toList();
   const double qrSize = 420;
   final double h =
-      130 + titleP.height + 16 + meta.length * 32 + 30 + qrSize + 150;
+      130 +
+      titleP.height +
+      16 +
+      meta.length * 32 +
+      30 +
+      qrSize +
+      150 +
+      (codeLine.isEmpty ? 0 : 46);
 
   final ui.PictureRecorder recorder = ui.PictureRecorder();
   final Canvas canvas = Canvas(recorder)..scale(scale);
@@ -188,6 +197,23 @@ Future<Uint8List> renderTicketPng({
   }
   y += qrPx + 20;
 
+  // Kamera okumazsa görevli bu kodu elle girer (biletteki kodla aynı).
+  if (codeLine.isNotEmpty) {
+    final TextPainter code = _text(
+      codeLine,
+      const TextStyle(
+        fontSize: 26,
+        fontWeight: FontWeight.w800,
+        color: _ink,
+        letterSpacing: 2,
+      ),
+      maxLines: 1,
+      align: TextAlign.center,
+    );
+    code.paint(canvas, Offset((_w - code.width) / 2, y - 6));
+    y += 46;
+  }
+
   if (studentName.isNotEmpty) {
     final TextPainter name = _text(
       studentName,
@@ -246,6 +272,9 @@ Future<void> shareTicketImage({
               : 'Düzenleyen: ${event.clubName}'),
     studentName: studentName,
     qrData: token,
+    codeLine: ticketCode.isEmpty
+        ? ''
+        : '${english ? 'Ticket code' : 'Bilet kodu'}: ${formatTicketCode(ticketCode)}',
     note: english
         ? 'Show this code at the door. The ticket is void if your registration is cancelled.'
         : 'Kapıda bu kodu göster. Kaydın iptal edilirse bilet geçersiz olur.',

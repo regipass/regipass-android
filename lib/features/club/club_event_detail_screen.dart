@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -33,10 +32,16 @@ import 'club_shell.dart';
 import 'registrations_export.dart';
 import '../../domain/session_names.dart';
 import '../../domain/session_attendance.dart';
+import '../../domain/ticket_code.dart';
 
 /// Dağıtılabilecek belge türleri — storage.rules `certificates/` kuralıyla
 /// (application/pdf veya image/*) birebir aynı olmalı.
-const List<String> kCertificateExtensions = <String>['pdf', 'png', 'jpg', 'jpeg'];
+const List<String> kCertificateExtensions = <String>[
+  'pdf',
+  'png',
+  'jpg',
+  'jpeg',
+];
 
 /// storage.rules sınırı: certificates/ altına en fazla 10 MB.
 const int kMaxCertificateBytes = 10 * 1024 * 1024;
@@ -101,10 +106,9 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
     _syncingQuotaState = true;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
-        await ref.read(eventRepositoryProvider).syncRegistrationStateWithQuota(
-              event: event,
-              status: status,
-            );
+        await ref
+            .read(eventRepositoryProvider)
+            .syncRegistrationStateWithQuota(event: event, status: status);
         // Başarılıysa kilidi bırak: etkinlik dokümanı değişti, build yeniden
         // çalışacak ve `quotaGateAction` artık `none` diyecek. Sonraki gerçek
         // durum değişimi (iptal, kontenjan artışı) yine yakalanabilsin.
@@ -144,10 +148,9 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       try {
-        await ref.read(registrationServiceProvider).setEventQuota(
-              eventId: event.id,
-              quota: event.quota,
-            );
+        await ref
+            .read(registrationServiceProvider)
+            .setEventQuota(eventId: event.id, quota: event.quota);
       } catch (error) {
         // Sessiz: kontenjan koruması olmadan da kayıt çalışmaya devam eder,
         // kulübün ekranını bir hata mesajıyla bölmenin anlamı yok.
@@ -205,18 +208,18 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
 
   /// Tek düğmeli bilgi penceresi: seçim yok, yalnızca "neden olmadı" der.
   Future<void> _notice(String title, String message) => showDialog<void>(
-        context: context,
-        builder: (BuildContext dialogContext) => AlertDialog(
-          title: Text(title),
-          content: Text(message),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: Text(dialogContext.t('common.close')),
-            ),
-          ],
+    context: context,
+    builder: (BuildContext dialogContext) => AlertDialog(
+      title: Text(title),
+      content: Text(message),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(),
+          child: Text(dialogContext.t('common.close')),
         ),
-      );
+      ],
+    ),
+  );
 
   // ── Kayıt aç/kapa ──────────────────────────────────────────────────
 
@@ -288,8 +291,10 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
         _setFeedback(successMessage, FeedbackTone.success);
       } catch (error) {
         if (error is StateError && mounted) {
-          await _notice(context.t('clubEvents.registrations.title'),
-              context.t(error.message));
+          await _notice(
+            context.t('clubEvents.registrations.title'),
+            context.t(error.message),
+          );
         } else {
           _setFeedback(errorMessage, FeedbackTone.error);
         }
@@ -314,7 +319,9 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
     final bool ok = await _confirm(
       context.t('manualAttendance.title'),
       context.t(
-        present ? 'manualAttendance.addConfirm' : 'manualAttendance.removeConfirm',
+        present
+            ? 'manualAttendance.addConfirm'
+            : 'manualAttendance.removeConfirm',
         <String, Object?>{'name': reg.displayName, 'session': label},
       ),
     );
@@ -395,7 +402,9 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
             .setSessionAttendance(eventId: event.id, ticketCode: value);
         if (!mounted) return;
         final String label = withSessionName(
-          context.t('attendance.stage.session', <String, Object?>{'n': out.session}),
+          context.t('attendance.stage.session', <String, Object?>{
+            'n': out.session,
+          }),
           event.sessionNames,
           out.session,
         );
@@ -415,7 +424,11 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
     });
   }
 
-  Future<void> _setPayment(AppEvent event, EventRegistration reg, bool paid) async {
+  Future<void> _setPayment(
+    AppEvent event,
+    EventRegistration reg,
+    bool paid,
+  ) async {
     if (!paid) {
       final bool ok = await _confirm(
         context.t('registration.club.paymentTitle'),
@@ -426,11 +439,17 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
       if (!ok || !mounted) return;
     }
     final String done = paid
-        ? context.t('registration.club.markedPaid', <String, Object?>{'name': reg.displayName})
-        : context.t('registration.club.unmarkedPaid', <String, Object?>{'name': reg.displayName});
+        ? context.t('registration.club.markedPaid', <String, Object?>{
+            'name': reg.displayName,
+          })
+        : context.t('registration.club.unmarkedPaid', <String, Object?>{
+            'name': reg.displayName,
+          });
     await _run(() async {
       try {
-        await ref.read(registrationServiceProvider).setPaymentStatus(
+        await ref
+            .read(registrationServiceProvider)
+            .setPaymentStatus(
               eventId: event.id,
               studentId: reg.studentId,
               paid: paid,
@@ -492,19 +511,25 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
     return ok == true ? text : null;
   }
 
-  Future<void> _removeRegistration(AppEvent event, EventRegistration reg) async {
+  Future<void> _removeRegistration(
+    AppEvent event,
+    EventRegistration reg,
+  ) async {
     final String? text = await _askRemoveReason(
       context.t('registration.club.removeBody', <String, Object?>{
         'name': reg.displayName,
       }),
     );
     if (text == null || !mounted) return;
-    final String done = context.t('registration.club.removed', <String, Object?>{
-      'name': reg.displayName,
-    });
+    final String done = context.t(
+      'registration.club.removed',
+      <String, Object?>{'name': reg.displayName},
+    );
     await _run(() async {
       try {
-        await ref.read(registrationServiceProvider).clubRemoveRegistration(
+        await ref
+            .read(registrationServiceProvider)
+            .clubRemoveRegistration(
               eventId: event.id,
               studentId: reg.studentId,
               reason: text,
@@ -603,23 +628,34 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
       return;
     }
     if (ids.length > RegistrationService.maxBulk) {
-      _setFeedback(context.t('registration.errors.too-many-students'), FeedbackTone.error);
+      _setFeedback(
+        context.t('registration.errors.too-many-students'),
+        FeedbackTone.error,
+      );
       return;
     }
     final bool ok = await _confirm(
       context.t('registration.bulk.markPaid'),
-      context.t('registration.bulk.markPaidConfirm', <String, Object?>{'n': ids.length}),
+      context.t('registration.bulk.markPaidConfirm', <String, Object?>{
+        'n': ids.length,
+      }),
     );
     if (!ok || !mounted) return;
     await _run(() async {
       try {
         final BulkResult result = await ref
             .read(registrationServiceProvider)
-            .setPaymentStatusBulk(eventId: event.id, studentIds: ids, paid: true);
+            .setPaymentStatusBulk(
+              eventId: event.id,
+              studentIds: ids,
+              paid: true,
+            );
         if (!mounted) return;
         setState(_selected.clear);
         _setFeedback(
-          context.t('registration.bulk.markedPaid', <String, Object?>{'n': result.count}),
+          context.t('registration.bulk.markedPaid', <String, Object?>{
+            'n': result.count,
+          }),
           FeedbackTone.success,
         );
       } on RegistrationFailure catch (failure) {
@@ -630,28 +666,39 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
   }
 
   Future<void> _bulkRemove(AppEvent event) async {
-    final List<String> ids = _selectedRegistrations(event)
-        .map((EventRegistration r) => r.studentId)
-        .toList(growable: false);
+    final List<String> ids = _selectedRegistrations(
+      event,
+    ).map((EventRegistration r) => r.studentId).toList(growable: false);
     if (ids.isEmpty) return;
     if (ids.length > RegistrationService.maxBulk) {
-      _setFeedback(context.t('registration.errors.too-many-students'), FeedbackTone.error);
+      _setFeedback(
+        context.t('registration.errors.too-many-students'),
+        FeedbackTone.error,
+      );
       return;
     }
     final String? text = await _askRemoveReason(
-      context.t('registration.bulk.removeBody', <String, Object?>{'n': ids.length}),
+      context.t('registration.bulk.removeBody', <String, Object?>{
+        'n': ids.length,
+      }),
     );
     if (text == null || !mounted) return;
     await _run(() async {
       try {
         final BulkResult result = await ref
             .read(registrationServiceProvider)
-            .clubRemoveRegistrations(eventId: event.id, studentIds: ids, reason: text);
+            .clubRemoveRegistrations(
+              eventId: event.id,
+              studentIds: ids,
+              reason: text,
+            );
         ref.invalidate(eventWaitlistCountProvider(event.id));
         if (!mounted) return;
         setState(_selected.clear);
         _setFeedback(
-          context.t('registration.bulk.removed', <String, Object?>{'n': result.count}),
+          context.t('registration.bulk.removed', <String, Object?>{
+            'n': result.count,
+          }),
           FeedbackTone.success,
         );
       } on RegistrationFailure catch (failure) {
@@ -684,7 +731,8 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
         final String blockedKey =
             'registration.club.quotaBlocked.${result.blockReason}';
         final bool blocked =
-            result.blockReason.isNotEmpty && context.t(blockedKey) != blockedKey;
+            result.blockReason.isNotEmpty &&
+            context.t(blockedKey) != blockedKey;
         _setFeedback(
           context.t(
             blocked ? blockedKey : 'registration.club.quotaNowOpen',
@@ -841,9 +889,7 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
         } catch (_) {
           // Yoksay.
         }
-        await ref
-            .read(eventRepositoryProvider)
-            .advanceSession(event, previous);
+        await ref.read(eventRepositoryProvider).advanceSession(event, previous);
         if (!mounted) return;
         _setFeedback(done, FeedbackTone.success);
         // Geri alınan oturumun QR'ı yeniden geçerli — hemen göster.
@@ -897,7 +943,9 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
 
     await _run(() async {
       try {
-        await ref.read(eventRepositoryProvider).setEntryOpen(
+        await ref
+            .read(eventRepositoryProvider)
+            .setEntryOpen(
               event.id,
               opening,
               // Damga "Bitir" sonrası "Yeniden Başlat"ta korunur: aşama "hiç
@@ -924,13 +972,16 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
   /// Kapı check-in'inin varsayılan yolu budur; QR gösterimi bunun yerine
   /// değil, isteyen kulüpler için bunun yanında duran ikinci bir seçenektir.
   void _openDoorScanner(AppEvent event) => context.push(
-        '${Routes.clubQrCheckin}?eventId=${Uri.encodeComponent(event.id)}',
-      );
+    '${Routes.clubQrCheckin}?eventId=${Uri.encodeComponent(event.id)}',
+  );
 
   /// Kapıda check-in'i kaçıranların oturum yoklamasına doğrudan katılmasına
   /// izin veren anahtar (PDF: "oturumları başlattıktan sonra bir switch").
   /// Kapalıyken yoklama için önce kapı girişi gerekir.
-  Future<void> _setAllowSessionWithoutCheckin(AppEvent event, bool allow) async {
+  Future<void> _setAllowSessionWithoutCheckin(
+    AppEvent event,
+    bool allow,
+  ) async {
     final String failed = context.t('clubEvents.feedback.updateError');
 
     await _run(() async {
@@ -951,13 +1002,10 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
   Future<void> _downloadStudentsExcel(AppEvent event) async {
     final List<EventRegistration> registrations =
         ref.read(eventRegistrationsProvider(event.id)).value ??
-            const <EventRegistration>[];
+        const <EventRegistration>[];
 
     if (registrations.isEmpty) {
-      _setFeedback(
-        context.t('clubEvents.students.empty'),
-        FeedbackTone.error,
-      );
+      _setFeedback(context.t('clubEvents.students.empty'), FeedbackTone.error);
       return;
     }
 
@@ -981,10 +1029,10 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
     // Metinler await'ten önce çözülür: sonrasında `context` kullanmak widget
     // ağaçtan çıkmışsa geçersiz olur.
     final String locale = context.lang;
-    final String subject =
-        context.t('clubEvents.excel.subject', <String, Object?>{
-      'title': event.title,
-    });
+    final String subject = context.t(
+      'clubEvents.excel.subject',
+      <String, Object?>{'title': event.title},
+    );
     final String preparing = context.t('clubEvents.excel.preparing');
     final String ready = context.t('clubEvents.excel.ready');
     final String failed = context.t('clubEvents.excel.error');
@@ -1022,16 +1070,18 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final AsyncValue<AppEvent?> eventAsync =
-        ref.watch(clubEventProvider(widget.eventId));
+    final AsyncValue<AppEvent?> eventAsync = ref.watch(
+      clubEventProvider(widget.eventId),
+    );
 
     final AppEvent? watched = eventAsync.value;
 
     // İP-O: etkinlik bir kez açıldıysa bilet listesi cihaza da yazılır;
     // kapıda internet olmasa da okutma çalışır.
     final DoorGate? doorGate = ref.watch(doorGateProvider).value;
-    final List<EventRegistration>? liveRegs =
-        ref.read(eventRegistrationsProvider(widget.eventId)).value;
+    final List<EventRegistration>? liveRegs = ref
+        .read(eventRegistrationsProvider(widget.eventId))
+        .value;
     if (doorGate != null &&
         watched != null &&
         liveRegs != null &&
@@ -1059,7 +1109,9 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
             return ListView(
               padding: const EdgeInsets.all(20),
               children: <Widget>[
-                EmptyState(message: context.t('dashboard.alerts.eventNotFound')),
+                EmptyState(
+                  message: context.t('dashboard.alerts.eventNotFound'),
+                ),
               ],
             );
           }
@@ -1067,9 +1119,8 @@ class _ClubEventDetailScreenState extends ConsumerState<ClubEventDetailScreen> {
 
           // Kontenjan doluluğu canlı izlenir: dolduğu an etkinlik
           // kendiliğinden beklemeye alınır, yer açılınca geri açılır.
-          final QuotaStatus quota = ref
-                  .watch(quotaStatusProvider(event.id))
-                  .value ??
+          final QuotaStatus quota =
+              ref.watch(quotaStatusProvider(event.id)).value ??
               QuotaStatus.untracked;
           _scheduleQuotaStateSync(event, quota);
 
@@ -1182,8 +1233,9 @@ class _Body extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final AsyncValue<List<EventRegistration>> registrations =
-        ref.watch(eventRegistrationsProvider(event.id));
+    final AsyncValue<List<EventRegistration>> registrations = ref.watch(
+      eventRegistrationsProvider(event.id),
+    );
 
     final List<EventRegistration> list =
         registrations.value ?? const <EventRegistration>[];
@@ -1201,9 +1253,10 @@ class _Body extends ConsumerWidget {
         if (event.cancelled) ...<Widget>[
           FeedbackBanner(
             message: event.cancelReason.isNotEmpty
-                ? context.t('registration.club.cancelledBannerReason', <String, Object?>{
-                    'reason': event.cancelReason,
-                  })
+                ? context.t(
+                    'registration.club.cancelledBannerReason',
+                    <String, Object?>{'reason': event.cancelReason},
+                  )
                 : context.t('registration.club.cancelledBanner'),
             tone: FeedbackTone.error,
           ),
@@ -1226,9 +1279,9 @@ class _Body extends ConsumerWidget {
         const SizedBox(height: 16),
         Text(
           event.title,
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.w800,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 10),
         Wrap(
@@ -1239,7 +1292,13 @@ class _Body extends ConsumerWidget {
               label: eventStatus(context, event).label,
               tone: eventStatus(context, event).tone,
             ),
-            StatusPill(label: eventScopeLabel(context, event.targetScope, linkOnly: event.isLinkOnly)),
+            StatusPill(
+              label: eventScopeLabel(
+                context,
+                event.targetScope,
+                linkOnly: event.isLinkOnly,
+              ),
+            ),
             StatusPill(label: eventFeeLabel(context, event)),
           ],
         ),
@@ -1282,40 +1341,39 @@ class _Body extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-
-        // Kontenjan doluluğu. Kayıt kartının ÜSTÜNDE duruyor: kulüp
-        // "kayıtları durdur" düğmesine bakmadan önce durdurulacak bir şey
-        // kalıp kalmadığını görmeli.
-        if (quota.isTracked) ...<Widget>[
-          _QuotaMeter(quota: quota, event: event),
-          const SizedBox(height: 12),
-        ],
-        // İP-K: bekleme listesi + "+5 yer aç".
-        if (quota.isTracked && !past && !event.cancelled)
-          _WaitlistRow(
-            eventId: event.id,
-            full: quota.isFull,
-            busy: busy,
-            onAddSeats: onAddSeats,
-          ),
-        _ActionCard(
-          icon: past ? Icons.lock_outline : Icons.how_to_reg_outlined,
-          title: past
-              ? context.t('clubEvents.registrations.pastLabel')
-              : event.registrationClosed
-                  ? context.t('clubEvents.registrations.openAction')
-                  : context.t('clubEvents.registrations.closeAction'),
-          subtitle: context.t('clubEvents.registrations.subtitle'),
-          // Sağdaki simge kartın ne yapacağını söyler: ">" her karta konan
-          // "ileri git" işaretiydi, oysa bu kart bir yere götürmüyor —
-          // kayıtları o anda durduruyor (ya da yeniden başlatıyor).
-          trailingIcon: event.registrationClosed
-              ? Icons.play_circle_outline
-              : Icons.stop_circle_outlined,
-          // Süresi geçmiş etkinlikte kayıtlar iki yönde de değiştirilemez.
-          onPressed: past || busy ? null : onToggleRegistrations,
-          danger: !event.registrationClosed,
-        ),
+              // Kontenjan doluluğu. Kayıt kartının ÜSTÜNDE duruyor: kulüp
+              // "kayıtları durdur" düğmesine bakmadan önce durdurulacak bir şey
+              // kalıp kalmadığını görmeli.
+              if (quota.isTracked) ...<Widget>[
+                _QuotaMeter(quota: quota, event: event),
+                const SizedBox(height: 12),
+              ],
+              // İP-K: bekleme listesi + "+5 yer aç".
+              if (quota.isTracked && !past && !event.cancelled)
+                _WaitlistRow(
+                  eventId: event.id,
+                  full: quota.isFull,
+                  busy: busy,
+                  onAddSeats: onAddSeats,
+                ),
+              _ActionCard(
+                icon: past ? Icons.lock_outline : Icons.how_to_reg_outlined,
+                title: past
+                    ? context.t('clubEvents.registrations.pastLabel')
+                    : event.registrationClosed
+                    ? context.t('clubEvents.registrations.openAction')
+                    : context.t('clubEvents.registrations.closeAction'),
+                subtitle: context.t('clubEvents.registrations.subtitle'),
+                // Sağdaki simge kartın ne yapacağını söyler: ">" her karta konan
+                // "ileri git" işaretiydi, oysa bu kart bir yere götürmüyor —
+                // kayıtları o anda durduruyor (ya da yeniden başlatıyor).
+                trailingIcon: event.registrationClosed
+                    ? Icons.play_circle_outline
+                    : Icons.stop_circle_outlined,
+                // Süresi geçmiş etkinlikte kayıtlar iki yönde de değiştirilemez.
+                onPressed: past || busy ? null : onToggleRegistrations,
+                danger: !event.registrationClosed,
+              ),
             ],
           ),
         ),
@@ -1335,20 +1393,18 @@ class _Body extends ConsumerWidget {
             title: context.t('clubEvents.entry.title'),
             icon: Icons.door_front_door_outlined,
             child: _CheckinStageBar(
-            event: event,
-            // Kapı, son kayıt tarihi geçse de etkinlik günü boyunca açık
-            // kalmalı (web ile aynı): yalnızca etkinlik günü bitince kilitlenir.
-            busy:
-                busy ||
-                getClubEventStage(event) == ClubEventStage.past,
-            attended: list
-                .where((EventRegistration r) => r.isCheckedIn)
-                .length,
-            total: list.length,
-            onToggle: onToggleDoorCheckin,
-            onShowQr: onShowDoorQr,
-            onScan: onScanDoorCheckin,
-          ),
+              event: event,
+              // Kapı, son kayıt tarihi geçse de etkinlik günü boyunca açık
+              // kalmalı (web ile aynı): yalnızca etkinlik günü bitince kilitlenir.
+              busy: busy || getClubEventStage(event) == ClubEventStage.past,
+              attended: list
+                  .where((EventRegistration r) => r.isCheckedIn)
+                  .length,
+              total: list.length,
+              onToggle: onToggleDoorCheckin,
+              onShowQr: onShowDoorQr,
+              onScan: onScanDoorCheckin,
+            ),
           ),
         ],
 
@@ -1361,42 +1417,44 @@ class _Body extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-          _SessionPanel(
-            event: event,
-            busy: busy,
-            // İLK oturum, kapı check-in'i bitirilene kadar başlatılamaz:
-            // kimin içeride olduğu henüz belli değildir ve erken başlatılan
-            // bir oturum, kapıda check-in yapmamış öğrencileri yoklamada
-            // reddeder (bkz. domain/checkin_mode.dart).
-            sessionsLockedByDoor: event.doorCheckinBlocksSessions,
-            onAdvance: onAdvanceSession,
-            onUndo: onUndoSession,
-            onReopen: onReopenSessions,
-            onShowQr: onShowSessionQr,
-          ),
-          // İP-B5: o anki oturuma bilet koduyla yoklama.
-          if (event.currentSession >= 1 &&
-              !event.sessionsCompleted &&
-              !event.cancelled)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: OutlinedButton.icon(
-                key: const Key('sessionCodeEntry'),
-                icon: const Icon(Icons.keyboard_alt_outlined, size: 18),
-                label: Text(context.t('manualAttendance.codeTitle')),
-                onPressed: busy ? null : onSessionCode,
-              ),
-            ),
-          if (event.hasDoorCheckin)
-            SwitchListTile.adaptive(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-              title: Text(context.t('clubEvents.session.allowWithoutCheckin')),
-              subtitle: Text(
-                context.t('clubEvents.session.allowWithoutCheckinHint'),
-              ),
-              value: event.allowSessionWithoutCheckin,
-              onChanged: busy ? null : onAllowSessionWithoutCheckin,
-            ),
+                _SessionPanel(
+                  event: event,
+                  busy: busy,
+                  // İLK oturum, kapı check-in'i bitirilene kadar başlatılamaz:
+                  // kimin içeride olduğu henüz belli değildir ve erken başlatılan
+                  // bir oturum, kapıda check-in yapmamış öğrencileri yoklamada
+                  // reddeder (bkz. domain/checkin_mode.dart).
+                  sessionsLockedByDoor: event.doorCheckinBlocksSessions,
+                  onAdvance: onAdvanceSession,
+                  onUndo: onUndoSession,
+                  onReopen: onReopenSessions,
+                  onShowQr: onShowSessionQr,
+                ),
+                // İP-B5: o anki oturuma bilet koduyla yoklama.
+                if (event.currentSession >= 1 &&
+                    !event.sessionsCompleted &&
+                    !event.cancelled)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: OutlinedButton.icon(
+                      key: const Key('sessionCodeEntry'),
+                      icon: const Icon(Icons.keyboard_alt_outlined, size: 18),
+                      label: Text(context.t('manualAttendance.codeTitle')),
+                      onPressed: busy ? null : onSessionCode,
+                    ),
+                  ),
+                if (event.hasDoorCheckin)
+                  SwitchListTile.adaptive(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                    title: Text(
+                      context.t('clubEvents.session.allowWithoutCheckin'),
+                    ),
+                    subtitle: Text(
+                      context.t('clubEvents.session.allowWithoutCheckinHint'),
+                    ),
+                    value: event.allowSessionWithoutCheckin,
+                    onChanged: busy ? null : onAllowSessionWithoutCheckin,
+                  ),
               ],
             ),
           ),
@@ -1446,10 +1504,7 @@ class _Body extends ConsumerWidget {
           SectionCard(
             title: context.t('paidEventConsent.log.title'),
             icon: Icons.verified_user_outlined,
-            child: _PaidEventConsentLogCard(
-              event: event,
-              registrations: list,
-            ),
+            child: _PaidEventConsentLogCard(event: event, registrations: list),
           ),
         ],
 
@@ -1853,8 +1908,8 @@ class _QuotaMeter extends StatelessWidget {
     final Color accent = full
         ? BrandColors.danger
         : quota.percent >= 80
-            ? BrandColors.red
-            : BrandColors.success;
+        ? BrandColors.red
+        : BrandColors.success;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
@@ -1882,10 +1937,7 @@ class _QuotaMeter extends StatelessWidget {
               ),
               Text(
                 '${quota.used} / ${quota.capacity}',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  color: accent,
-                ),
+                style: TextStyle(fontWeight: FontWeight.w700, color: accent),
               ),
             ],
           ),
@@ -1904,14 +1956,14 @@ class _QuotaMeter extends StatelessWidget {
             autoPaused
                 ? context.t('clubEvents.quota.autoPaused')
                 : full
-                    ? context.t('clubEvents.quota.full')
-                    : context.t('clubEvents.quota.remaining', <String, Object?>{
-                        'count': quota.remaining,
-                      }),
+                ? context.t('clubEvents.quota.full')
+                : context.t('clubEvents.quota.remaining', <String, Object?>{
+                    'count': quota.remaining,
+                  }),
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: full ? accent : context.inkMuted,
-                  fontWeight: full ? FontWeight.w600 : null,
-                ),
+              color: full ? accent : context.inkMuted,
+              fontWeight: full ? FontWeight.w600 : null,
+            ),
           ),
         ],
       ),
@@ -1959,11 +2011,7 @@ class _ActionCard extends StatelessWidget {
           ),
           child: Row(
             children: <Widget>[
-              Icon(
-                icon,
-                size: 21,
-                color: enabled ? accent : context.inkMuted,
-              ),
+              Icon(icon, size: 21, color: enabled ? accent : context.inkMuted),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
@@ -2044,13 +2092,14 @@ class _PaidEventConsentLogCardState extends State<_PaidEventConsentLogCard> {
 
     // Onay veren öğrenciler: onaysız (ücretli etkinlik alanları eklenmeden
     // önce yapılmış) kayıtlar listede yer almaz, sayı da onları saymaz.
-    final List<EventRegistration> consented = widget.registrations
-        .where((EventRegistration r) => r.studentConsentLog != null)
-        .toList()
-      ..sort(
-        (EventRegistration a, EventRegistration b) =>
-            b.studentConsentLog!.atMs.compareTo(a.studentConsentLog!.atMs),
-      );
+    final List<EventRegistration> consented =
+        widget.registrations
+            .where((EventRegistration r) => r.studentConsentLog != null)
+            .toList()
+          ..sort(
+            (EventRegistration a, EventRegistration b) =>
+                b.studentConsentLog!.atMs.compareTo(a.studentConsentLog!.atMs),
+          );
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -2248,19 +2297,21 @@ class _StudentTile extends StatelessWidget {
 
     // İP-Y: şüpheli yoklama (sunucu işaretleri + eski sürümden, sunucudan
     // geçmeden yazılmış giriş/yoklama).
-    final String suspicious = attendanceSuspicions(
-      flags: registration.attendanceFlags,
-      verified: registration.attendanceVerified,
-      checkedInVia: registration.checkedInVia,
-      lastAttendedSession: registration.lastAttendedSession,
-    )
-        .map(
-          (({int stage, String key}) s) =>
-              '${s.stage == 0 ? context.t('attendance.stage.door') : context.t('attendance.stage.session', <String, Object?>{'n': s.stage})}: ${context.t(s.key)}',
-        )
-        .join(' · ');
+    final String suspicious =
+        attendanceSuspicions(
+              flags: registration.attendanceFlags,
+              verified: registration.attendanceVerified,
+              checkedInVia: registration.checkedInVia,
+              lastAttendedSession: registration.lastAttendedSession,
+            )
+            .map(
+              (({int stage, String key}) s) =>
+                  '${s.stage == 0 ? context.t('attendance.stage.door') : context.t('attendance.stage.session', <String, Object?>{'n': s.stage})}: ${context.t(s.key)}',
+            )
+            .join(' · ');
 
-    final bool hasCertificate = event.isMultiSession &&
+    final bool hasCertificate =
+        event.isMultiSession &&
         event.certificateThresholdPercent != null &&
         (registration.sessionsAttended / event.sessionCount) * 100 >=
             event.certificateThresholdPercent!;
@@ -2308,8 +2359,9 @@ class _StudentTile extends StatelessWidget {
                 StatusPill(
                   label:
                       '${registration.sessionsAttended}/${event.sessionCount}',
-                  tone:
-                      hasCertificate ? FeedbackTone.success : FeedbackTone.info,
+                  tone: hasCertificate
+                      ? FeedbackTone.success
+                      : FeedbackTone.info,
                 )
               else
                 StatusPill(
@@ -2328,6 +2380,15 @@ class _StudentTile extends StatelessWidget {
             ),
           const SizedBox(height: 6),
           _Line(icon: Icons.mail_outline, text: registration.studentEmail),
+          // Kapıda telefonu çalışmayan katılımcı için: görevli kodu listeden
+          // bulup "Kodu elle gir" ile içeri alabilir.
+          if (registration.ticketCode.isNotEmpty)
+            _Line(
+              icon: Icons.confirmation_number_outlined,
+              text:
+                  '${context.t('ticket.codeLabel')}: '
+                  '${formatTicketCode(registration.ticketCode)}',
+            ),
           if (registration.studentPhone.isNotEmpty)
             _Line(icon: Icons.phone_outlined, text: registration.studentPhone),
           _Line(
@@ -2542,9 +2603,10 @@ class _BulkBar extends StatelessWidget {
                       ? null
                       : () => onReplaceSelection(pendingIds),
                   child: Text(
-                    context.t('registration.bulk.selectPending', <String, Object?>{
-                      'n': pendingIds.length,
-                    }),
+                    context.t(
+                      'registration.bulk.selectPending',
+                      <String, Object?>{'n': pendingIds.length},
+                    ),
                   ),
                 ),
               if (event.isPaid)
@@ -2614,7 +2676,6 @@ class _Line extends StatelessWidget {
   }
 }
 
-
 /// İP-K: bekleme listesi satırı ve "+5 yer aç".
 /// Kontenjan doluysa ya da bekleyen varsa görünür.
 class _WaitlistRow extends ConsumerWidget {
@@ -2651,11 +2712,14 @@ class _WaitlistRow extends ConsumerWidget {
             Expanded(
               child: Text(
                 count > 0
-                    ? context.t('registration.club.waitlistCount', <String, Object?>{'count': count})
+                    ? context.t(
+                        'registration.club.waitlistCount',
+                        <String, Object?>{'count': count},
+                      )
                     : context.t('registration.club.waitlistEmpty'),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
               ),
             ),
             OutlinedButton(
@@ -2663,7 +2727,9 @@ class _WaitlistRow extends ConsumerWidget {
               style: OutlinedButton.styleFrom(minimumSize: const Size(0, 40)),
               onPressed: busy ? null : onAddSeats,
               child: Text(
-                context.t('registration.club.addSeats', <String, Object?>{'n': 5}),
+                context.t('registration.club.addSeats', <String, Object?>{
+                  'n': 5,
+                }),
               ),
             ),
           ],
