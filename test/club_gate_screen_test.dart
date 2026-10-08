@@ -92,8 +92,14 @@ void main() {
         ),
       ),
     );
-    await tester.pump(const Duration(milliseconds: 100));
-    await tester.pump(const Duration(milliseconds: 100));
+    // Kamera izni eşzamansız okunur (QrScannerView); yoğun koşuda birkaç kare sürebilir.
+    for (
+      int i = 0;
+      i < 30 && find.byType(MobileScanner).evaluate().isEmpty;
+      i++
+    ) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
 
     final MobileScanner scanner = tester.widget(find.byType(MobileScanner));
     Future<void> scan(String raw) async {
